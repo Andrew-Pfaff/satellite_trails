@@ -1,0 +1,59 @@
+# ---------------------------------------------------
+# Virtual Environments
+# ---------------------------------------------------
+venv/
+.venv/
+env/
+.env/
+.env
+
+
+# ---------------------------------------------------
+# Python Caches & Build Artifacts
+# ---------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+build/
+dist/
+# Ignores the metadata folder generated when installing in editable mode
+src/*.egg-info/ 
+
+
+# ---------------------------------------------------
+# Jupyter Notebooks
+# ---------------------------------------------------
+.ipynb_checkpoints/
+
+
+# ---------------------------------------------------
+# Machine Learning Data & Models (Crucial)
+# ---------------------------------------------------
+# Ignore all data folders so you don't push huge datasets
+/data/
+datasets/
+*.csv
+*.png
+*.jpg
+*.tif
+*.tiff
+
+# Ignore trained model weights
+models/
+*.pt
+*.pth
+*.h5
+*.onnx
+
+# Ignore training logs (e.g., TensorBoard)
+logs/
+runs/
+
+
+# ---------------------------------------------------
+# IDEs and OS Files
+# ---------------------------------------------------
+.vscode/
+.idea/
+.DS_Store
