@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "satellite_trail_segmentation"
+version = "0.1.0"
+description = "Machine learning pipeline for segmentation of satellite trails"
+readme = "README.md"
+requires-python = ">=3.9"
+
+[project.optional-dependencies]
+dev = [
+    "matplotlib",
+    "jupyterlab",
+]
+
+[dependencies]
+dependencies = [
+    "torch",
+    "torchvision",
+    "h5py>=3.16",
+    "Pillow",
+    "numpy",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
