@@ -8,20 +8,17 @@ version = "0.1.0"
 description = "Machine learning pipeline for segmentation of satellite trails"
 readme = "README.md"
 requires-python = ">=3.9"
+dependencies = [
+    "torch",
+    "h5py>=3.16",
+    "Pillow",
+    "numpy",
+]
 
 [project.optional-dependencies]
 dev = [
     "matplotlib",
     "jupyterlab",
-]
-
-[dependencies]
-dependencies = [
-    "torch",
-    "torchvision",
-    "h5py>=3.16",
-    "Pillow",
-    "numpy",
 ]
 
 [tool.setuptools.packages.find]
