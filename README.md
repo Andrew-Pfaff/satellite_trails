@@ -2,7 +2,7 @@
 
 ## Environment Setup
 
-To run this pipeline locally or on a cluster, you need to set up a Python virtual environment and install the package in editable mode.
+To run this pipeline locally or on a cluster, set up a Python virtual environment and install the package in editable mode. The package requires Python 3.9+.
 
 1. **Clone the repository:**
    ```bash
@@ -17,13 +17,19 @@ To run this pipeline locally or on a cluster, you need to set up a Python virtua
    ```
 
 3. **Install the package:**
-   Install the package in "editable" mode so that changes to the source code apply immediately without needing to reinstall.
+   Install the package in editable mode so that changes to the source code apply immediately without needing to reinstall.
    ```bash
    pip install -e .
    ```
 
+4. **Optional: install development dependencies:**
+   This installs the extra tools declared in `pyproject.toml` for local analysis and notebooks.
+   ```bash
+   pip install -e .[dev]
+   ```
+
 #### Optional: Setting up for Jupyter Notebooks
-If you want to use this virtual environment inside a Jupyter Notebook, you need to link the environment to your Jupyter kernels. Make sure your virtual environment is active, then run:
+If you want to use this virtual environment inside a Jupyter Notebook, link the environment to your Jupyter kernels. If you installed `.[dev]`, `jupyterlab` is already included. Make sure your virtual environment is active, then run:
 
 ```bash
 pip install ipykernel
