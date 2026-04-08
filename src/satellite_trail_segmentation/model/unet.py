@@ -2,69 +2,64 @@ import torch
 import torch.nn as nn
 
 
-class UNet(nn.Module):
-    """U-Net CNN architecture for detecting satellite trails with zero padding to preserve spatial dimensions."""
 
-    def __init__(self, kernel_size, stride=1, padding=1, dilation=1, base_channels=16, depth=3, in_channels=1, out_channels=1, dropout=0.0):
+class UNet(nn.Module):
+    """
+    U-Net CNN architecture for detecting satellite trails.
+
+    The model uses zero padding instead of valid padding so the output mask matches the spatial dimensions of the input image.
+    """
+
+    def __init__(self, in_channels=1, out_channels=1, kernel_size=3, stride=1, padding=1, dilation=1, base_channels=16, dropout=0.0):
         """
         Initializes a configurable U-Net segmentation model.
+
         Parameters:
+            in_channels (int): Number of channels in the input image tensor
+            out_channels (int): Number of channels in the output mask tensor
             kernel_size (int): Convolution kernel size used in each block
             stride (int): Convolution stride used inside each block and in the final layer
             padding (int): Padding applied to each convolution
             dilation (int): Dilation applied to each convolution
             base_channels (int): Number of output channels in the first encoder block
-            depth (int): Number of downsampling stages before the bottleneck
-            in_channels (int): Number of channels in the input image tensor
-            out_channels (int): Number of channels in the output mask tensor
             dropout (float): Spatial dropout probability applied after each activation
         """
-        super().__init__()
+        
+        super(UNet, self).__init__()
 
-        if base_channels <= 0:
-            raise ValueError(f"base_channels must be positive, got {base_channels}")
-        if depth < 1:
-            raise ValueError(f"depth must be at least 1, got {depth}")
-        if in_channels <= 0:
-            raise ValueError(f"in_channels must be positive, got {in_channels}")
-        if out_channels <= 0:
-            raise ValueError(f"out_channels must be positive, got {out_channels}")
-        if not 0 <= dropout < 1:
-            raise ValueError(f"dropout must be in [0, 1), got {dropout}")
-        if stride != 1:
-            raise ValueError(f"stride must be 1 for this U-Net implementation, got {stride}")
-
+        self.in_channels = in_channels
+        self.out_channels = out_channels
         self.kernel_size = kernel_size
         self.stride = stride
         self.padding = padding
         self.dilation = dilation
         self.base_channels = base_channels
-        self.depth = depth
-        self.in_channels = in_channels
-        self.out_channels = out_channels
         self.dropout = dropout
 
-        encoder_channels = [base_channels * (2 ** level) for level in range(depth + 1)]
 
-        self.down_blocks = nn.ModuleList()
-        current_in_channels = in_channels
-        for output_channels in encoder_channels:
-            self.down_blocks.append(self._conv_block(current_in_channels, output_channels))
-            current_in_channels = output_channels
+        #U-net architecture
+        self.down1 = self._conv_block(self.in_channels, self.base_channels)
+        self.pool = nn.MaxPool2d(2,stride=2)
+        self.down2 = self._conv_block(self.base_channels, self.base_channels*2)
+        #Pool
+        self.down3 = self._conv_block(self.base_channels*2, self.base_channels*4)
+        #Pool
+        self.down4 = self._conv_block(self.base_channels*4, self.base_channels*8)
+        self.up_conv1 = nn.ConvTranspose2d(self.base_channels*8, self.base_channels*4, kernel_size=2, stride=2)
+        #Cat
+        self.up1 = self._conv_block(self.base_channels*8,self.base_channels*4)
+        self.up_conv2 = nn.ConvTranspose2d(self.base_channels*4, self.base_channels*2, kernel_size=2,stride=2)
+        #Cat
+        self.up2 = self._conv_block(self.base_channels*4, self.base_channels*2)
+        self.up_conv3 = nn.ConvTranspose2d(self.base_channels*2, self.base_channels, kernel_size=2, stride=2)
+        #Cat
+        self.up3 = self._conv_block(self.base_channels*2, self.base_channels)
+        self.final = nn.Conv2d(self.base_channels, self.out_channels, kernel_size=1, stride = self.stride, padding=0, dilation=self.dilation)
 
-        self.pool = nn.MaxPool2d(2, stride=2)
-        self.up_convs = nn.ModuleList()
-        self.up_blocks = nn.ModuleList()
-
-        for input_channels, skip_channels in zip(reversed(encoder_channels[1:]), reversed(encoder_channels[:-1])):
-            self.up_convs.append(nn.ConvTranspose2d(input_channels, skip_channels, kernel_size=2, stride=2))
-            self.up_blocks.append(self._conv_block(skip_channels * 2, skip_channels))
-
-        self.final = nn.Conv2d(encoder_channels[0], out_channels, kernel_size=1, stride=self.stride, padding=0, dilation=self.dilation)
-
-    def _regularization_layer(self):
+    def _dropout_layer(self):
         """
-        Builds the regularization layer used inside each convolution block.
+        Builds the dropout layer used inside each convolution block.
+
         Returns:
             layer (nn.Module): Dropout layer when dropout > 0, otherwise an identity layer
         """
@@ -73,63 +68,61 @@ class UNet(nn.Module):
 
         return nn.Dropout2d(p=self.dropout)
 
-    def _conv_block(self, input_channels, output_channels):
+
+    def _conv_block(self, conv_input_channels, conv_output_channels):
         """
         Builds a two-layer convolution block for the encoder or decoder.
+
         Parameters:
-            input_channels (int): Number of channels entering the block
-            output_channels (int): Number of channels produced by the block
+            conv_input_channels (int): Number of channels entering the block
+            conv_output_channels (int): Number of channels produced by the block
+
         Returns:
             block (nn.Sequential): Two-convolution block with normalization, activation, and optional dropout
         """
-        return nn.Sequential(
-            nn.Conv2d(input_channels, output_channels, self.kernel_size, self.stride, self.padding, self.dilation),
-            nn.BatchNorm2d(output_channels),
-            nn.ReLU(),
-            self._regularization_layer(),
-            nn.Conv2d(output_channels, output_channels, self.kernel_size, self.stride, self.padding, self.dilation),
-            nn.BatchNorm2d(output_channels),
-            nn.ReLU(),
-            self._regularization_layer(),
-        )
+        return nn.Sequential(nn.Conv2d(conv_input_channels, conv_output_channels, self.kernel_size, self.stride, self.padding, self.dilation),
+                             nn.BatchNorm2d(conv_output_channels),
+                             nn.ReLU(),
+                             self._dropout_layer(),
+                             nn.Conv2d(conv_output_channels, conv_output_channels, self.kernel_size, self.stride, self.padding, self.dilation),
+                             nn.BatchNorm2d(conv_output_channels),
+                             nn.ReLU(),
+                             self._dropout_layer())
 
-    def forward(self, image):
+
+    def forward(self,image):
         """
-        Passes an image tensor through the U-Net.
+        Passes a batch of images through the U-Net.
+
         Parameters:
             image (torch.Tensor): Tensor with shape (batch_size, in_channels, height, width)
+
         Returns:
             output (torch.Tensor): Tensor with shape (batch_size, out_channels, height, width)
         """
         if image.ndim != 4:
             raise ValueError(f"Expected a 4D input tensor, got shape {tuple(image.shape)}")
-        if image.shape[1] != self.in_channels:
-            raise ValueError(f"Expected {self.in_channels} input channels, got {image.shape[1]}")
+        if (image.shape[2] % 8) != 0 or (image.shape[3] % 8) != 0:
+            raise ValueError(f"Input spatial dimensions {(image.shape[2], image.shape[3])} must be divisible by 8")
 
-        downsample_factor = 2 ** self.depth
-        height, width = image.shape[-2:]
-        if height % downsample_factor != 0 or width % downsample_factor != 0:
-            raise ValueError(f"Input spatial dimensions {(height, width)} must be divisible by 2**depth={downsample_factor}")
+        #To pass our data through the architecture.
+        d1 = self.down1(image)
+        p1 = self.pool(d1)
+        d2 = self.down2(p1)
+        p2 = self.pool(d2)
+        d3 = self.down3(p2)
+        p3 = self.pool(d3)
+        d4 = self.down4(p3)
 
-        skip_connections = []
-        features = image
+        uc1 = self.up_conv1(d4)
+        cat1 = torch.cat([uc1,d3],dim=1)
+        u1 = self.up1(cat1)
+        uc2 = self.up_conv2(u1)
+        cat2 = torch.cat([uc2,d2],dim=1)
+        u2 = self.up2(cat2)
+        uc3 = self.up_conv3(u2)
+        cat3 = torch.cat([uc3,d1],dim=1)
+        u3 = self.up3(cat3)
+        final = self.final(u3)        
 
-        for down_block in self.down_blocks[:-1]:
-            features = down_block(features)
-            skip_connections.append(features)
-            features = self.pool(features)
-
-        features = self.down_blocks[-1](features)
-
-        for up_conv, up_block, skip_features in zip(self.up_convs, self.up_blocks, reversed(skip_connections)):
-            features = up_conv(features)
-
-            if features.shape[-2:] != skip_features.shape[-2:]:
-                raise ValueError(f"Upsampled tensor shape {tuple(features.shape[-2:])} does not match skip tensor shape {tuple(skip_features.shape[-2:])}")
-
-            features = torch.cat([features, skip_features], dim=1)
-            features = up_block(features)
-
-        output = self.final(features)
-
-        return output
+        return final
