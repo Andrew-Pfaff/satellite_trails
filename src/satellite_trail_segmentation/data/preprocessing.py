@@ -159,6 +159,9 @@ def create_h5(input_files, mask_files, split_mask, output_path="data/patches.h5"
         raise ValueError(f"Image shape {full_shape} is not evenly divisible by patch_dim={patch_dim}")
 
     patches_per_source = (full_shape[0] // patch_dim) * (full_shape[1] // patch_dim)
+    patches_per_row = full_shape[1] // patch_dim
+    patch_y0 = (np.arange(patches_per_source, dtype=np.int32) // patches_per_row) * patch_dim
+    patch_x0 = (np.arange(patches_per_source, dtype=np.int32) % patches_per_row) * patch_dim
     total_patches = len(input_files) * patches_per_source
 
     with h5py.File(output_path, "w") as h5_file:
@@ -169,6 +172,8 @@ def create_h5(input_files, mask_files, split_mask, output_path="data/patches.h5"
         mask_dataset = h5_file.create_dataset("masks", shape=(total_patches, patch_dim, patch_dim), dtype=np.uint8)
         source_index_dataset = h5_file.create_dataset("source_index", shape=(total_patches,), dtype=np.int32)
         patch_has_trail_dataset = h5_file.create_dataset("patch_has_trail", shape=(total_patches,), dtype=np.uint8)
+        patch_y0_dataset = h5_file.create_dataset("patch_y0", shape=(total_patches,), dtype=np.int32)
+        patch_x0_dataset = h5_file.create_dataset("patch_x0", shape=(total_patches,), dtype=np.int32)
         h5_file.create_dataset("source_files", data=np.asarray([os.path.basename(path) for path in input_files], dtype=object), dtype=string_dtype)
         h5_file.create_dataset("source_split", data=split_mask)
 
@@ -197,6 +202,8 @@ def create_h5(input_files, mask_files, split_mask, output_path="data/patches.h5"
             mask_dataset[start:end] = mask_patches
             source_index_dataset[start:end] = source_index
             patch_has_trail_dataset[start:end] = patch_has_trail
+            patch_y0_dataset[start:end] = patch_y0
+            patch_x0_dataset[start:end] = patch_x0
 
     print(f"Wrote {total_patches} patches to {output_path}")
 
