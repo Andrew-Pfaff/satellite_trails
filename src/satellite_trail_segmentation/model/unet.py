@@ -10,7 +10,7 @@ class UNet(nn.Module):
     The model uses zero padding instead of valid padding so the output mask matches the spatial dimensions of the input image.
     """
 
-    def __init__(self, in_channels=1, out_channels=1, kernel_size=3, stride=1, padding=1, dilation=1, base_channels=16, dropout=0.0):
+    def __init__(self, in_channels=1, out_channels=1, kernel_size=3, base_channels=16, dropout=0.0):
         """
         Initializes a configurable U-Net segmentation model.
 
@@ -18,21 +18,15 @@ class UNet(nn.Module):
             in_channels (int): Number of channels in the input image tensor
             out_channels (int): Number of channels in the output mask tensor
             kernel_size (int): Convolution kernel size used in each block
-            stride (int): Convolution stride used inside each block and in the final layer
-            padding (int): Padding applied to each convolution
-            dilation (int): Dilation applied to each convolution
             base_channels (int): Number of output channels in the first encoder block
             dropout (float): Spatial dropout probability applied after each activation
         """
         
-        super(UNet, self).__init__()
+        super().__init__()
 
         self.in_channels = in_channels
         self.out_channels = out_channels
         self.kernel_size = kernel_size
-        self.stride = stride
-        self.padding = padding
-        self.dilation = dilation
         self.base_channels = base_channels
         self.dropout = dropout
 
@@ -54,7 +48,7 @@ class UNet(nn.Module):
         self.up_conv3 = nn.ConvTranspose2d(self.base_channels*2, self.base_channels, kernel_size=2, stride=2)
         #Cat
         self.up3 = self._conv_block(self.base_channels*2, self.base_channels)
-        self.final = nn.Conv2d(self.base_channels, self.out_channels, kernel_size=1, stride = self.stride, padding=0, dilation=self.dilation)
+        self.final = nn.Conv2d(self.base_channels, self.out_channels, kernel_size=1, stride=1, padding=0, dilation=1)
 
     def _dropout_layer(self):
         """
@@ -80,11 +74,11 @@ class UNet(nn.Module):
         Returns:
             block (nn.Sequential): Two-convolution block with normalization, activation, and optional dropout
         """
-        return nn.Sequential(nn.Conv2d(conv_input_channels, conv_output_channels, self.kernel_size, self.stride, self.padding, self.dilation),
+        return nn.Sequential(nn.Conv2d(conv_input_channels, conv_output_channels, self.kernel_size, stride=1, padding=1, dilation=1),
                              nn.BatchNorm2d(conv_output_channels),
                              nn.ReLU(),
                              self._dropout_layer(),
-                             nn.Conv2d(conv_output_channels, conv_output_channels, self.kernel_size, self.stride, self.padding, self.dilation),
+                             nn.Conv2d(conv_output_channels, conv_output_channels, self.kernel_size, stride=1, padding=1, dilation=1),
                              nn.BatchNorm2d(conv_output_channels),
                              nn.ReLU(),
                              self._dropout_layer())
