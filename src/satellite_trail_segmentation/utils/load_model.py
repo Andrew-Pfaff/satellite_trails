@@ -4,7 +4,14 @@ from torch.optim.lr_scheduler import CosineAnnealingLR
 from satellite_trail_segmentation.model.unet import UNet
 
 
-def load_saved_model(save_path, learning_rate, epochs, lr_decay=1e4):
+def load_model_weights(save_path):
+    ckpt = torch.load(save_path, map_location="cpu")
+    model = UNet(**ckpt["model_config"])
+    model.load_state_dict(ckpt["model_state_dict"])
+    return model
+
+
+def load_full_model(save_path, learning_rate, epochs, lr_decay=1e4):
     ckpt = torch.load(save_path, map_location="cpu")
 
     model = UNet(**ckpt["model_config"])
