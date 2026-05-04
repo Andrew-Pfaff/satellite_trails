@@ -4,7 +4,7 @@ import torch
 from torch.utils.data import Dataset
 
 class H5PatchDataset(Dataset):
-    def __init__(self, h5_path, split='train', return_metadata=False):
+    def __init__(self, h5_path, split='train', return_metadata=False, source_index=None):
         self.h5_path = h5_path
         self.split = split
         self.return_metadata = return_metadata
@@ -19,6 +19,8 @@ class H5PatchDataset(Dataset):
             source_splits = f['source_split'][:]
             patch_source_indices = f['source_index'][:]
             valid_mask = source_splits[patch_source_indices] == split_idx
+            if source_index is not None:
+                valid_mask &= (patch_source_indices == source_index)
             self.valid_indices = np.where(valid_mask)[0]
             self.patch_has_trail = f["patch_has_trail"][:][self.valid_indices].astype(bool)
             self.source_indices = patch_source_indices[self.valid_indices]

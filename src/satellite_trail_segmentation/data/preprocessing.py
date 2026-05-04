@@ -45,7 +45,7 @@ def sort_images(image_dir, input_suffix=".fits_full.png", mask_suffix="_mask.png
     return input_files, target_files
 
 
-def data_split_mask(data_len, seed=1, val_split=0.1, test_split=0.1):
+def data_split_mask(data_len, val_split, test_split, seed=1):
     """
     Creates an integer mask defining a train/val/test split.
 
@@ -212,5 +212,5 @@ if __name__ == "__main__":
     image_dir = "data/png/"
     output_path = "data/patches.h5"
     input_files, mask_files = sort_images(image_dir)
-    split_mask = data_split_mask(len(input_files))
+    split_mask = data_split_mask(len(input_files), val_split=0.15, test_split=0.15)
     create_h5(input_files, mask_files, split_mask, output_path=output_path)
