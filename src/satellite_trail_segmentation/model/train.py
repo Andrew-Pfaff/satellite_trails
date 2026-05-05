@@ -13,22 +13,6 @@ from satellite_trail_segmentation.utils.visualizations import plot_loss_curves
 
 LOGGER = logging.getLogger(__name__)
 
-def parse_args():
-    parser = argparse.ArgumentParser(description="Train satellite trail segmentation model")
-    
-    parser.add_argument("--data-path", type=str, required=True)
-    parser.add_argument("--epochs", type=int, required=True)
-    parser.add_argument("--batch-size", type=int, required=True)
-    parser.add_argument("--learning-rate", type=float, required=True)
-    parser.add_argument("--lr-decay", type=float, default=1e4)
-    parser.add_argument("--dropout-rate", type=float, default=0.0)
-    parser.add_argument("--save-path", type=str, default=None)
-    parser.add_argument("--verbose", type=bool, default=True)
-    parser.add_argument("--plot-path", type=str, default=None)
-    
-    return parser.parse_args()
-
-
 
 def train_unet(model, train_ds, val_ds, optimizer, scheduler, epochs, batch_size, save_path=None):
     if save_path is not None:
@@ -106,6 +90,22 @@ def main(data_path, epochs, batch_size, learning_rate, dropout_rate, lr_decay, s
 
     train_loss, val_loss = train_unet(model, train_ds, val_ds, optimizer, scheduler, epochs, batch_size, save_path=save_path)
     return train_loss, val_loss
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Train satellite trail segmentation model")
+    
+    parser.add_argument("--data-path", type=str, required=True)
+    parser.add_argument("--epochs", type=int, required=True)
+    parser.add_argument("--batch-size", type=int, required=True)
+    parser.add_argument("--learning-rate", type=float, required=True)
+    parser.add_argument("--lr-decay", type=float, default=1e4)
+    parser.add_argument("--dropout-rate", type=float, default=0.0)
+    parser.add_argument("--save-path", type=str, default=None)
+    parser.add_argument("--verbose", type=bool, default=True)
+    parser.add_argument("--plot-path", type=str, default=None)
+    
+    return parser.parse_args()
 
 
 if __name__ == "__main__":

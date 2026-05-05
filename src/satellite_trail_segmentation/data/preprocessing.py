@@ -1,6 +1,7 @@
 import os
 import glob
 from PIL import Image
+import argparse
 
 import h5py
 
@@ -208,9 +209,24 @@ def create_h5(input_files, mask_files, split_mask, output_path="data/patches.h5"
     print(f"Wrote {total_patches} patches to {output_path}")
 
 
+def parse_args():
+    parser = argparse.ArgumentParser(description="Train satellite trail segmentation model")
+    
+    parser.add_argument("--data-path", type=str, required=True)
+    parser.add_argument("--output-path", type=str, required=True)  
+    parser.add_argument("--val-split", type=float, default=0.15)
+    parser.add_argument("--test-split", type=float, default=0.15)
+
+    
+    return parser.parse_args()
+
+
 if __name__ == "__main__":
-    image_dir = "data/png/"
-    output_path = "data/patches.h5"
+    args = parse_args()
+
+    image_dir = args.data_path
+    output_path = args.output_path
+
     input_files, mask_files = sort_images(image_dir)
-    split_mask = data_split_mask(len(input_files), val_split=0.15, test_split=0.15)
+    split_mask = data_split_mask(len(input_files), val_split=args.val_split, test_split=args.test_split)
     create_h5(input_files, mask_files, split_mask, output_path=output_path)
