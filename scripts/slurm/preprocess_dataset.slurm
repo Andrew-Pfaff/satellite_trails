@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 #SBATCH -J trail-pre
 #SBATCH -p icelake
+#SBATCH -A MPHIL-DIS-SL2-CPU
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=16G
