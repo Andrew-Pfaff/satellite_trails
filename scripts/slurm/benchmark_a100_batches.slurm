@@ -32,7 +32,7 @@ SCRIPT_PATH="$PROJECT_ROOT/src/satellite_trail_segmentation/model/train.py"
 # benchmark is easy to rerun and compare across submissions.
 DATA_PATH="$PROJECT_ROOT/data/h5s/small_set.h5"
 OUTPUT_DIR="$PROJECT_ROOT/benchmark_runs/a100_batch_sizes"
-BATCH_SIZES=(8 16 32)
+BATCH_SIZES=(8 16 32 64)
 EPOCHS=3
 LEARNING_RATE=0.001
 LR_DECAY=1e4
