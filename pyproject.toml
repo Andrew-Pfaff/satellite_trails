@@ -9,7 +9,7 @@ description = "Machine learning pipeline for segmentation of satellite trails"
 readme = "README.md"
 requires-python = ">=3.9"
 dependencies = [
-    "torch",
+    "torch==2.10.0",
     "h5py>=3.16",
     "Pillow",
     "numpy",
