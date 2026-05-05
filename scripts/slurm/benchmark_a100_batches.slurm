@@ -17,7 +17,10 @@ set -euo pipefail
 # Module handling matches the rest of your Slurm scripts so the job gets a predictable
 # environment on the cluster node.
 module purge
-module load rhel8/default-amp
+
+# Load only the SLURM module so basic cluster commands remain available
+module load rhel8/slurm
+
 
 
 # Fixed project paths keep the script simple to submit. Edit these in one place when you
@@ -46,6 +49,8 @@ GPU_LOG_INTERVAL_SECONDS=1
 cd "$PROJECT_ROOT"
 source "$VENV_PATH"
 mkdir -p "$OUTPUT_DIR"
+
+python3 -c "import torch; assert torch.cuda.is_available(), 'No CUDA device found'"
 
 
 for BATCH_SIZE in "${BATCH_SIZES[@]}"; do
