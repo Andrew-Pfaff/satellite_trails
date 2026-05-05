@@ -17,9 +17,7 @@ set -euo pipefail
 # Module handling matches the rest of your Slurm scripts so the job gets a predictable
 # environment on the cluster node.
 module purge
-
-# Load only the SLURM module so basic cluster commands remain available
-module load rhel8/slurm
+module load rhel8/default-amp
 
 
 
