@@ -18,7 +18,7 @@ set -euo pipefail
 # environment on the cluster node.
 module purge
 module load rhel8/default-amp
-
+module load python/3.8.11/gcc-9.4.0-yb6rzr6
 
 
 # Fixed project paths keep the script simple to submit. Edit these in one place when you
@@ -48,7 +48,16 @@ cd "$PROJECT_ROOT"
 source "$VENV_PATH"
 mkdir -p "$OUTPUT_DIR"
 
+
+#fail fast if GPU does not load
 python3 -c "import torch; assert torch.cuda.is_available(), 'No CUDA device found'"
+
+
+LOCAL_DATA_PATH="$TMPDIR/small_set.h5"
+echo "Copying dataset to local scratch..."
+cp "$DATA_PATH" "$LOCAL_DATA_PATH"
+# Use local path from now on
+DATA_PATH="$LOCAL_DATA_PATH"
 
 
 for BATCH_SIZE in "${BATCH_SIZES[@]}"; do
@@ -88,7 +97,6 @@ for BATCH_SIZE in "${BATCH_SIZES[@]}"; do
         --dropout-rate="$DROPOUT_RATE" \
         --save-path="$CHECKPOINT_PATH" \
         --plot-path="$PLOT_PATH" \
-        --verbose=True \
         2>&1 | tee "$TRAIN_LOG"
 
     END_TIME=$(date +%s)
