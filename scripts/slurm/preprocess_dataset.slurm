@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+#SBATCH -J trail-pre
+#SBATCH -p icelake
+#SBATCH --nodes=1
+#SBATCH --cpus-per-task=4
+#SBATCH --mem=16G
+#SBATCH --time=00:30:00
+#SBATCH --output=slurm-%j.out
+
+#Module handling
+module purge
+module load rhel8/default-icl
+
+
+#Paths
+PROJECT_ROOT="/home/anp50/rds/hpc-work/satellite_trails"
+VENV_PATH="$PROJECT_ROOT/.venv/bin/activate"
+SCRIPT_PATH="$PROJECT_ROOT/src/satellite_trail_segmentation/data/preprocessing.py"
+
+
+cd "$PROJECT_ROOT"
+
+source "$VENV_PATH"
+
+
+#Arguments:
+DATA_PATH="$PROJECT_ROOT/data/small_dataset"
+OUTPUT_PATH="$PROJECT_ROOT/data/h5s/small_set.h5"
+VAL_SPLIT=0.1
+TEST_SPLIT=0.1
+
+
+
+#Running the script:
+python3 "$SCRIPT_PATH" --data-path="$DATA_PATH" --output-path="$OUTPUT_PATH" --val-split="$VAL_SPLIT" --test-split="$TEST_SPLIT"
+
