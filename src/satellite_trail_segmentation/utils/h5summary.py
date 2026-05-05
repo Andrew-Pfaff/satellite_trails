@@ -68,13 +68,15 @@ def write_summary_csv(rows, csv_path):
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Summarize source images and splits in an HDF5 patch dataset")
+    
     parser.add_argument("--data-path", type=str, required=True)
     parser.add_argument("--csv-path", type=str, default=None)
     parser.add_argument("--no-print", action="store_true")
+    
     return parser.parse_args()
 
 
-def main():
+if __name__ == "__main__":
     args = parse_args()
     rows = build_h5_summary(args.data_path)
 
@@ -83,7 +85,3 @@ def main():
 
     if args.csv_path is not None:
         write_summary_csv(rows, args.csv_path)
-
-
-if __name__ == "__main__":
-    main()
