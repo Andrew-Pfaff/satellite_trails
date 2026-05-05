@@ -59,4 +59,4 @@ runs/
 .DS_Store
 
 
-!benchmark_runs/*
+!benchmark_runs/**
