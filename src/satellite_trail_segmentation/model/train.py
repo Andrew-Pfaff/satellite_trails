@@ -102,7 +102,7 @@ def parse_args():
     parser.add_argument("--lr-decay", type=float, default=1e4)
     parser.add_argument("--dropout-rate", type=float, default=0.0)
     parser.add_argument("--save-path", type=str, default=None)
-    parser.add_argument("--verbose", type=bool, default=True)
+    parser.add_argument("--verbose", action="store_true", default=True)
     parser.add_argument("--plot-path", type=str, default=None)
     
     return parser.parse_args()
