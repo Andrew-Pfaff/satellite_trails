@@ -9,27 +9,23 @@
 #SBATCH --time=00:30:00
 #SBATCH --output=slurm-%j.out
 
-# Stop immediately on errors, unset variables, or failed pipelines so the job does not
-# continue after a broken training run.
+# Stop immediately on errors, unset variables, or failed pipelines so the job does not continue after a broken training run.
 set -euo pipefail
 
 
-# Module handling matches the rest of your Slurm scripts so the job gets a predictable
-# environment on the cluster node.
+# Module handling matches the rest of your Slurm scripts so the job gets a predictable environment on the cluster node.
 module purge
 module load rhel8/default-amp
 module load python/3.8.11/gcc-9.4.0-yb6rzr6
 
 
-# Fixed project paths keep the script simple to submit. Edit these in one place when you
-# want to benchmark a different dataset or output location.
+# Fixed project paths keep the script simple to submit. Edit these in one place when you want to benchmark a different dataset or output location.
 PROJECT_ROOT="/home/anp50/rds/hpc-work/satellite_trails"
 VENV_PATH="$PROJECT_ROOT/.venv/bin/activate"
 SCRIPT_PATH="$PROJECT_ROOT/src/satellite_trail_segmentation/model/train.py"
 
 
-# Training configuration is defined here rather than passed as job arguments so the
-# benchmark is easy to rerun and compare across submissions.
+# Training configuration is defined here rather than passed as job arguments so the benchmark is easy to rerun and compare across submissions.
 DATA_PATH="$PROJECT_ROOT/data/h5s/small_set.h5"
 OUTPUT_DIR="$PROJECT_ROOT/benchmark_runs/a100_batch_sizes"
 BATCH_SIZES=(8 16 32 64)
@@ -39,8 +35,7 @@ LR_DECAY=1e4
 DROPOUT_RATE=0.0
 
 
-# GPU metrics are sampled once per second and written to CSV so you can inspect
-# utilization and memory after the run instead of watching interactively.
+# GPU metrics are sampled once per second and written to CSV so you can inspect utilization and memory after the run instead of watching interactively.
 GPU_LOG_INTERVAL_SECONDS=1
 
 
@@ -49,7 +44,7 @@ source "$VENV_PATH"
 mkdir -p "$OUTPUT_DIR"
 
 
-#fail fast if GPU does not load
+#fail fast if torch cannot load to CUDA
 python3 -c "import torch; assert torch.cuda.is_available(), 'No CUDA device found'"
 
 
@@ -61,8 +56,7 @@ DATA_PATH="$LOCAL_DATA_PATH"
 
 
 for BATCH_SIZE in "${BATCH_SIZES[@]}"; do
-    # Each batch size gets its own output folder so logs, checkpoints, and plots do not
-    # overwrite one another.
+    # Each batch size gets its own output folder so logs, checkpoints, and plots do not overwrite one another.
     RUN_DIR="$OUTPUT_DIR/bs_${BATCH_SIZE}"
     CHECKPOINT_PATH="$RUN_DIR/save_model.pt"
     PLOT_PATH="$RUN_DIR/loss.png"
@@ -83,8 +77,7 @@ for BATCH_SIZE in "${BATCH_SIZES[@]}"; do
         > "$GPU_LOG" &
     SMI_PID=$!
 
-    # Wall-clock timing is recorded per batch-size run so you can compare throughput
-    # directly from the summary files.
+    # Wall-clock timing is recorded per batch-size run so you can compare throughput directly from the summary files.
     START_TIME=$(date +%s)
 
     # Training output is streamed to the Slurm log and also saved per run with tee.
