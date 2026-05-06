@@ -3,11 +3,23 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset
 
+from satellite_trail_segmentation.data.augmentation import augment_image
+
 class H5PatchDataset(Dataset):
-    def __init__(self, h5_path, split='train', return_metadata=False, source_index=None):
+    def __init__(self, h5_path, split='train', return_metadata=False, source_index=None, augment=True, p_flip=0.1, p_rot=0.1, p_shift=0.1):
         self.h5_path = h5_path
         self.split = split
         self.return_metadata = return_metadata
+
+        if self.split=='train' and augment==True:
+            self.augment = True
+        else:
+            self.augment = False
+
+        self.p_flip = p_flip
+        self.p_rot = p_rot
+        self.p_shift = p_shift
+ 
 
         self.h5_file = None
         split_map = {'train': 0, 'val': 1, 'test': 2}
@@ -42,6 +54,12 @@ class H5PatchDataset(Dataset):
         
         image = self.images[real_idx].astype(np.float32) / 255.0
         mask = (self.masks[real_idx] > 0).astype(np.float32)
+
+        if self.augment == True and self.patch_has_trail[idx]:
+            # You can adjust these probabilities as needed
+            image, mask = augment_image(image, mask, p_flip=self.p_flip, p_rot=self.p_rot, p_shift=self.p_shift)
+            image = np.ascontiguousarray(image)
+            mask = np.ascontiguousarray(mask)
         
         x_tensor = torch.from_numpy(image).float().unsqueeze(0)
         y_tensor = torch.from_numpy(mask).float().unsqueeze(0)
