@@ -2,6 +2,7 @@ import os
 import glob
 from PIL import Image
 import argparse
+import random
 
 import h5py
 
@@ -216,6 +217,7 @@ def parse_args():
     parser.add_argument("--output-path", type=str, required=True)  
     parser.add_argument("--val-split", type=float, default=0.15)
     parser.add_argument("--test-split", type=float, default=0.15)
+    parser.add_argument("--num-images", type=int, default=None)
 
     
     return parser.parse_args()
@@ -228,5 +230,19 @@ if __name__ == "__main__":
     output_path = args.output_path
 
     input_files, mask_files = sort_images(image_dir)
+
+    if args.num_images is not None:
+        if args.num_images > len(input_files):
+            raise ValueError(f"Number of images ({args.num_images}) must be less than total number of images {len(input_files)}.")
+        
+        combined = list(zip(input_files, mask_files))
+        random.seed(1)
+        random.shuffle(combined)
+        input_files, mask_files = zip(*combined)
+        input_files, mask_files = list(input_files), list(mask_files)
+
+        input_files = input_files[:args.num_images]
+        mask_files = mask_files[:args.num_images]
+
     split_mask = data_split_mask(len(input_files), val_split=args.val_split, test_split=args.test_split)
     create_h5(input_files, mask_files, split_mask, output_path=output_path)
