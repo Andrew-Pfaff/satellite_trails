@@ -6,7 +6,7 @@ from torch.utils.data import Dataset
 from satellite_trail_segmentation.data.augmentation import augment_image
 
 class H5PatchDataset(Dataset):
-    def __init__(self, h5_path, split='train', return_metadata=False, source_index=None, augment=True, p_flip=0.1, p_rot=0.1, p_shift=0.1):
+    def __init__(self, h5_path, split='train', return_metadata=False, source_index=None, augment=False, p_flip=0.1, p_rot=0.1, p_shift=0.1):
         self.h5_path = h5_path
         self.split = split
         self.return_metadata = return_metadata

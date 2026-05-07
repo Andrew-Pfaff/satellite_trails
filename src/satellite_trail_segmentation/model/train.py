@@ -80,7 +80,7 @@ def train_unet(model, train_ds, val_ds, optimizer, scheduler, epochs, batch_size
 
 
 def main(data_path, epochs, batch_size, learning_rate, dropout_rate, lr_decay, save_path=None):
-    train_ds = H5PatchDataset(data_path, split="train")
+    train_ds = H5PatchDataset(data_path, split="train", augment=True, p_flip=0.1, p_rot=0.1, p_shift=0.1)
     val_ds = H5PatchDataset(data_path, split="val")
     
     model = UNet(in_channels=1, out_channels=1, kernel_size=3, base_channels=8, dropout=dropout_rate)
