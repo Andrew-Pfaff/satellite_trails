@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import matplotlib.pyplot as plt
+from satellite_trail_segmentation.model.evaluate import image_threshold
 
 
 def plot_loss_curves(train_loss, val_loss, save_path):
@@ -20,17 +21,19 @@ def plot_loss_curves(train_loss, val_loss, save_path):
     plt.savefig(save_path)
     plt.close()
 
-def plot_full_field(full_image, full_pred, full_mask, source_index, save_path, threshold=0.8):
-    fig, axes = plt.subplots(1, 3, figsize=(18, 12))
+def plot_full_field(full_image, full_pred, full_mask, save_path, threshold=0.5, title1="Input Image", title2=f"Prediction", title3="Ground Truth Mask"):
+    fig, axes = plt.subplots(1, 3, figsize=(18, 8))
 
     axes[0].imshow(full_image, cmap="gray", origin="lower")
-    axes[0].set_title(f"Input Image (source {source_index})")
-
-    axes[1].imshow(full_pred > threshold, cmap="gray", origin="lower")
-    axes[1].set_title(f"Prediction (threshold={threshold})")
+    axes[0].set_title(title1)
+    
+    if threshold is not None:
+        full_pred = image_threshold(full_pred, threshold=threshold)
+    axes[1].imshow(full_pred, cmap="gray", origin="lower")
+    axes[1].set_title(title2)
 
     axes[2].imshow(full_mask, cmap="gray", origin="lower")
-    axes[2].set_title("Ground Truth Mask")
+    axes[2].set_title(title3)
 
     for ax in axes:
         ax.axis("off")
