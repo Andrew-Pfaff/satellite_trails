@@ -1,6 +1,7 @@
 import os
 import glob
 from PIL import Image
+Image.MAX_IMAGE_PIXELS = 150000000
 import argparse
 import random
 
