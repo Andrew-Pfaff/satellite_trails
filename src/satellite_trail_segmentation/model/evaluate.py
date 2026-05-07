@@ -34,6 +34,12 @@ def evaluate_full_fields(model, h5_path, split_type):
     dataset = H5PatchDataset(h5_path, split=split_type)
 
 
+def image_threshold(image, threshold=0.5):
+    binary_image = (image > threshold)
+    binary_image = binary_image.astype(np.uint8)*255
+    return binary_image
+
+
 def recreate_full_field(model, h5_path, split_type, source_index, batch_size=1, patch_dim=528):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = model.to(device)
