@@ -13,6 +13,7 @@ dependencies = [
     "h5py>=3.9",
     "Pillow",
     "numpy",
+    "opencv-python-headless",
 ]
 
 [project.optional-dependencies]
