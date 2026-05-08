@@ -1,16 +1,16 @@
 import os
+import csv
 import glob
-from PIL import Image
-Image.MAX_IMAGE_PIXELS = 150000000
 import argparse
 import random
+from PIL import Image
+Image.MAX_IMAGE_PIXELS = 150000000
 
 import h5py
-
 import numpy as np
 
 
-def sort_images(image_dir, input_suffix=".fits_full.png", mask_suffix="_mask.png"):
+def _sort_images(image_dir, input_suffix=".fits_full.png", mask_suffix="_mask.png"):
     """
     Sorts the target/mask pairs into separate lists of file paths.
 
@@ -22,6 +22,7 @@ def sort_images(image_dir, input_suffix=".fits_full.png", mask_suffix="_mask.png
     Returns:
         input_paths (list): Sorted image file paths
         mask_paths (list): Corresponding mask file paths
+        
     """
     input_files = sorted(glob.glob(os.path.join(image_dir, f"*{input_suffix}")))
     target_files = sorted(glob.glob(os.path.join(image_dir, f"*{mask_suffix}")))
@@ -48,28 +49,17 @@ def sort_images(image_dir, input_suffix=".fits_full.png", mask_suffix="_mask.png
     return input_files, target_files
 
 
-def data_split_mask(data_len, val_split, test_split, seed=1):
-    """
-    Creates an integer mask defining a train/val/test split.
-
-    Parameters:
-        data_len (int): Number of image/mask pairs to split
-        seed (int): Random seed used to shuffle indices before splitting
-        val_split (float): Fraction of samples assigned to the validation set
-        test_split (float): Fraction of samples assigned to the test set
-
-    Returns:
-        split_mask (np.ndarray): Array of shape (data_len,) where
-            0 = train, 1 = validation, and 2 = test
-    """
-    if data_len < 0:
-        raise ValueError(f"data_len must be non-negative, got {data_len}")
+def define_split(image_dir, val_split, test_split, output_path, seed=1):
     if not 0 <= val_split < 1:
         raise ValueError(f"val_split must be in [0, 1), got {val_split}")
     if not 0 <= test_split < 1:
         raise ValueError(f"test_split must be in [0, 1), got {test_split}")
-    if val_split + test_split >= 1:
+    if (val_split + test_split) >= 1:
         raise ValueError(f"val_split + test_split must be less than 1, got {val_split + test_split}")
+    
+    input_files, target_files = _sort_images(image_dir) 
+
+    data_len = len(input_files)
 
     rng = np.random.default_rng(seed)
     shuffled_indices = np.arange(data_len)
@@ -85,12 +75,76 @@ def data_split_mask(data_len, val_split, test_split, seed=1):
     train_count = int(np.sum(split_mask == 0))
     val_count = int(np.sum(split_mask == 1))
     test_count = int(np.sum(split_mask == 2))
-    print(f"Split counts -> train: {train_count}, val: {val_count}, test: {test_count}")
-
-    return split_mask
+    print(f"Split counts: train: {train_count} | val: {val_count} | test: {test_count}")
 
 
-def create_patches(image, patch_dim=528):
+    
+    with open(output_path, 'w', newline='') as f:
+        writer = csv.writer(f)
+        for input, target, split in zip(input_files, target_files, split_mask):
+            writer.writerow([input, target, split])
+
+
+def load_split(path):
+    train = []
+    val = []
+    test = []
+
+    with open(path, 'r', newline='') as f:
+        reader = csv.reader(f)
+        for row in reader:
+            pair = (row[0], row[1])
+            if int(row[2]) == 0:
+                train.append(pair)
+            elif int(row[2]) == 1:
+                val.append(pair)
+            elif int(row[2]) == 2:
+                test.append(pair)
+
+    return train, val, test
+
+
+def prepare_subset_data(train_files, test_files, val_files, num_images, val_split, test_split, seed=1):
+    num_val = int(val_split*num_images)
+    num_test = int(test_split*num_images)
+    num_train = num_images - (num_val + num_test) 
+
+
+    if num_val > len(val_files):
+        raise ValueError(f"Validation split ({val_split}) requests more val images ({num_val}) than allowed by the initial data split ({len(val_files)}).")
+    if num_test > len(test_files):
+        raise ValueError(f"Test split ({test_split}) requests more test images ({num_test}) than allowed by the initial data split ({len(test_files)}).")
+    if num_train < 1:
+        raise ValueError(f"There must be train images within the split.")
+
+
+    random.seed(seed)
+    if num_train < len(train_files):
+        train_files = random.sample(train_files, num_train)
+    if num_val < len(val_files):
+        val_files = random.sample(val_files, num_val)
+    if num_test < len(test_files):
+        test_files = random.sample(test_files, num_test)
+
+    
+    input_files = []
+    target_files = []
+    for file_pair in train_files:
+        input_files.append(file_pair[0])
+        target_files.append(file_pair[1])
+    for file_pair in val_files:
+        input_files.append(file_pair[0])
+        target_files.append(file_pair[1])
+    for file_pair in test_files:
+        input_files.append(file_pair[0])
+        target_files.append(file_pair[1])
+
+    split_mask = np.concatenate([np.zeros(num_train, dtype=int), np.ones(num_val, dtype=int), np.full(num_test, 2)])
+
+    return input_files, target_files, split_mask
+
+
+def _create_patches(image, patch_dim=528):
     """
     Creates non-overlapping square patches from a 2D image.
 
@@ -116,7 +170,7 @@ def create_patches(image, patch_dim=528):
     return patches
 
 
-def create_h5(input_files, mask_files, split_mask, output_path="data/patches.h5", patch_dim=528, overwrite=False):
+def create_h5(input_files, mask_files, split_mask, output_path, patch_dim=528, overwrite=False):
     """
     Creates an HDF5 file containing image patches, mask patches, and metadata.
 
@@ -191,8 +245,8 @@ def create_h5(input_files, mask_files, split_mask, output_path="data/patches.h5"
             if image.shape != full_shape:
                 raise ValueError(f"All images must share the same shape. Expected {full_shape}, got {image.shape} for {input_path}")
 
-            image_patches = create_patches(image, patch_dim=patch_dim)
-            mask_patches = create_patches(mask, patch_dim=patch_dim)
+            image_patches = _create_patches(image, patch_dim=patch_dim)
+            mask_patches = _create_patches(mask, patch_dim=patch_dim)
 
             num_patches = image_patches.shape[0]
             if num_patches != patches_per_source:
@@ -229,21 +283,20 @@ if __name__ == "__main__":
 
     image_dir = args.data_path
     output_path = args.output_path
+    master_split_mask_path = "data/master_split.csv"
 
-    input_files, mask_files = sort_images(image_dir)
 
-    if args.num_images is not None:
-        if args.num_images > len(input_files):
-            raise ValueError(f"Number of images ({args.num_images}) must be less than total number of images {len(input_files)}.")
-        
-        combined = list(zip(input_files, mask_files))
-        random.seed(1)
-        random.shuffle(combined)
-        input_files, mask_files = zip(*combined)
-        input_files, mask_files = list(input_files), list(mask_files)
+    if not os.path.exists(master_split_mask_path):
+        define_split(image_dir, args.val_split, args.test_split, master_split_mask_path)
+    
+    train_files, val_files, test_files = load_split(master_split_mask_path)
 
-        input_files = input_files[:args.num_images]
-        mask_files = mask_files[:args.num_images]
+    if args.num_images == None:
+        num_images = len(train_files) + len(val_files) + len(test_files)
+    else:
+        num_images = args.num_images
 
-    split_mask = data_split_mask(len(input_files), val_split=args.val_split, test_split=args.test_split)
-    create_h5(input_files, mask_files, split_mask, output_path=output_path)
+    input_files, target_files, split_mask = prepare_subset_data(train_files, test_files, val_files, num_images, args.val_split, args.test_split)
+
+
+    create_h5(input_files, target_files, split_mask, args.output_path)
