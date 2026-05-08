@@ -5,6 +5,7 @@ import argparse
 import torch
 from torch.utils.data import DataLoader
 from torch.optim.lr_scheduler import CosineAnnealingLR
+import optuna
 
 from satellite_trail_segmentation.data.dataset import H5PatchDataset
 from satellite_trail_segmentation.model.unet import UNet
@@ -14,7 +15,7 @@ from satellite_trail_segmentation.utils.visualizations import plot_loss_curves
 LOGGER = logging.getLogger(__name__)
 
 
-def train_unet(model, train_ds, val_ds, optimizer, scheduler, epochs, batch_size, save_path=None):
+def train_unet(model, train_ds, val_ds, optimizer, scheduler, epochs, batch_size, save_path=None, trial=None):
     if save_path is not None:
         Path(save_path).parent.mkdir(parents=True, exist_ok=True)
     
@@ -65,6 +66,13 @@ def train_unet(model, train_ds, val_ds, optimizer, scheduler, epochs, batch_size
         train_loss.append(epoch_train_loss)
         val_loss.append(epoch_val_loss)
 
+        if trial is not None:
+            trial.report(epoch_val_loss, epoch)
+            if trial.should_prune():
+                raise optuna.exceptions.TrialPruned()
+
+
+
         if epoch_val_loss < best_loss:
             best_loss = epoch_val_loss
 
@@ -74,9 +82,10 @@ def train_unet(model, train_ds, val_ds, optimizer, scheduler, epochs, batch_size
                             "train_loss": train_loss, "val_loss": val_loss},
                             save_path)
 
+        final_epoch = (epoch+1)
         LOGGER.info(f"Epoch {epoch + 1}/{epochs} | train loss={epoch_train_loss:.6f} | val_loss={epoch_val_loss:.6f}")
 
-    return train_loss, val_loss
+    return train_loss, val_loss, best_loss, final_epoch
 
 
 def main(data_path, epochs, batch_size, learning_rate, dropout_rate, lr_decay, save_path=None):
@@ -88,7 +97,7 @@ def main(data_path, epochs, batch_size, learning_rate, dropout_rate, lr_decay, s
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
     scheduler = CosineAnnealingLR(optimizer, T_max=epochs, eta_min=learning_rate/lr_decay)
 
-    train_loss, val_loss = train_unet(model, train_ds, val_ds, optimizer, scheduler, epochs, batch_size, save_path=save_path)
+    train_loss, val_loss, _, _ = train_unet(model, train_ds, val_ds, optimizer, scheduler, epochs, batch_size, save_path=save_path)
     return train_loss, val_loss
 
 
