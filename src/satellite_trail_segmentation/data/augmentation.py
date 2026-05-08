@@ -20,22 +20,23 @@ def shift(image, mask, min_shift=4, max_shift=20):
 
     aug_image = np.zeros_like(image)
     aug_mask = np.zeros_like(mask)
+    fill_value = np.mean(image).astype(np.uint8)
 
     if shift_dir == 0:
         aug_image[:,shift_total:] = image[:,:-shift_total]
-        aug_image[:,:shift_total] = np.mean(image)
+        aug_image[:,:shift_total] = fill_value
         aug_mask[:,shift_total:] = mask[:,:-shift_total]
     elif shift_dir == 1:
         aug_image[shift_total:,:] = image[:-shift_total,:]
-        aug_image[:shift_total,:] = np.mean(image)
+        aug_image[:shift_total,:] = fill_value
         aug_mask[shift_total:,:] = mask[:-shift_total,:]
     elif shift_dir == 2:
         aug_image[:,:-shift_total] = image[:,shift_total:]
-        aug_image[:,:shift_total] = np.mean(image)
+        aug_image[:,-shift_total:] = fill_value
         aug_mask[:,:-shift_total] = mask[:,shift_total:]
     else:
         aug_image[:-shift_total,:] = image[shift_total:,:]
-        aug_image[:shift_total,:] = np.mean(image)
+        aug_image[-shift_total:,:] = fill_value
         aug_mask[:-shift_total,:] = mask[shift_total:,:]
 
     return aug_image, aug_mask

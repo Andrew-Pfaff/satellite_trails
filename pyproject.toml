@@ -21,7 +21,17 @@ dev = [
     "matplotlib",
     "jupyterlab",
     "optuna",
+    "pytest",
+    "pytest-cov",
 ]
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.coverage.run]
+source = ["satellite_trail_segmentation"]
+omit = ["tests/*"]
