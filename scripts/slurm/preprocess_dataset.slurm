@@ -25,10 +25,10 @@ source "$VENV_PATH"
 
 
 #Arguments:
-DATA_PATH="$PROJECT_ROOT/data/small_dataset"
-OUTPUT_PATH="$PROJECT_ROOT/data/h5s/small_set.h5"
-VAL_SPLIT=0.1
-TEST_SPLIT=0.1
+DATA_PATH="$PROJECT_ROOT/data/dataset_pngs"
+OUTPUT_PATH="$PROJECT_ROOT/data/h5s/data.h5"
+VAL_SPLIT=0.15
+TEST_SPLIT=0.15
 
 
 
