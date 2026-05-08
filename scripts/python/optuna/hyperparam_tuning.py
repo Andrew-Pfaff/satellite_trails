@@ -31,7 +31,7 @@ def create_objective(data_path, epochs):
         optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
         scheduler = CosineAnnealingLR(optimizer, T_max=epochs, eta_min=learning_rate/lr_decay)
 
-        train_loss, val_loss, best_loss, total_epochs = train.train_unet(model, train_ds, val_ds, optimizer, scheduler, epochs, batch_size=1, trial=trial)
+        train_loss, val_loss, best_loss, total_epochs = train.train_unet(model, train_ds, val_ds, optimizer, scheduler, epochs, batch_size=16, trial=trial)
         
         score = best_loss
 
