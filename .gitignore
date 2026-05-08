@@ -60,3 +60,4 @@ runs/
 
 
 !benchmark_runs/**
+*.db
