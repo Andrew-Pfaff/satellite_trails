@@ -265,7 +265,7 @@ def create_h5(input_files, mask_files, split_mask, output_path, patch_dim=528, o
     print(f"Wrote {total_patches} patches to {output_path}")
 
 
-def parse_args():
+def parse_args(): # pragma: no cover.
     parser = argparse.ArgumentParser(description="Train satellite trail segmentation model")
     
     parser.add_argument("--data-path", type=str, required=True)
@@ -278,7 +278,7 @@ def parse_args():
     return parser.parse_args()
 
 
-if __name__ == "__main__":
+if __name__ == "__main__": # pragma: no cover.
     args = parse_args()
 
     image_dir = args.data_path
