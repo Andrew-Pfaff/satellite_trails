@@ -88,7 +88,7 @@ def train_unet(model, train_ds, val_ds, optimizer, scheduler, epochs, batch_size
     return train_loss, val_loss, best_loss, final_epoch
 
 
-def main(data_path, epochs, batch_size, learning_rate, dropout_rate, lr_decay, save_path=None):
+def main(data_path, epochs, batch_size, learning_rate, dropout_rate, lr_decay, save_path=None): # pragma: no cover.
     train_ds = H5PatchDataset(data_path, split="train", augment=True, p_flip=0.1, p_rot=0.1, p_shift=0.1)
     val_ds = H5PatchDataset(data_path, split="val")
     
@@ -101,7 +101,7 @@ def main(data_path, epochs, batch_size, learning_rate, dropout_rate, lr_decay, s
     return train_loss, val_loss
 
 
-def parse_args():
+def parse_args(): # pragma: no cover.
     parser = argparse.ArgumentParser(description="Train satellite trail segmentation model")
     
     parser.add_argument("--data-path", type=str, required=True)
@@ -117,7 +117,7 @@ def parse_args():
     return parser.parse_args()
 
 
-if __name__ == "__main__":
+if __name__ == "__main__": # pragma: no cover.
     args = parse_args()
 
     logging.basicConfig(level=logging.INFO if args.verbose else logging.WARNING, 
