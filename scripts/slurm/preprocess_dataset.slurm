@@ -26,11 +26,10 @@ source "$VENV_PATH"
 
 #Arguments:
 DATA_PATH="$PROJECT_ROOT/data/dataset_pngs"
-OUTPUT_PATH="$PROJECT_ROOT/data/h5s/data.h5"
+OUTPUT_PATH="$PROJECT_ROOT/data/h5s/dataset.h5"
 VAL_SPLIT=0.15
 TEST_SPLIT=0.15
-
-
+	
 
 #Running the script:
 python3 "$SCRIPT_PATH" --data-path="$DATA_PATH" --output-path="$OUTPUT_PATH" --val-split="$VAL_SPLIT" --test-split="$TEST_SPLIT"
