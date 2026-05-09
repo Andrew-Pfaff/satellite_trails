@@ -58,4 +58,5 @@ runs/
 .idea/
 .DS_Store
 
+!*master_split.csv
 *.db
