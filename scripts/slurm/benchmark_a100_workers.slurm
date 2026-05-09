@@ -30,7 +30,7 @@ SCRIPT_PATH="$PROJECT_ROOT/src/satellite_trail_segmentation/model/train.py"
 
 # Training configuration is defined here rather than passed as job arguments so the
 # benchmark is easy to rerun and compare across submissions.
-DATA_PATH="$PROJECT_ROOT/data/h5s/small_set.h5"
+DATA_PATH="$PROJECT_ROOT/data/h5s/small_dataset.h5"
 OUTPUT_DIR="$PROJECT_ROOT/benchmark_runs/a100_num_workers"
 NUM_WORKERS_LIST=(0 2 4 8)
 BATCH_SIZE=16
