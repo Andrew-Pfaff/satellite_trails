@@ -32,8 +32,8 @@ python3 -c "import torch; assert torch.cuda.is_available(), 'No CUDA device foun
 
 #Arguments:
 DATA_PATH="$PROJECT_ROOT/data/h5s/small_dataset.h5"
-EPOCHS=30
-TRIALS=50
+EPOCHS=15
+TRIALS=30
 	
 mkdir -p "$TMPDIR"
 LOCAL_DATA_PATH="$TMPDIR/small_dataset.h5"
