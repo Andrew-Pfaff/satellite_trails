@@ -1,0 +1,5 @@
+batch_size=16
+num_workers=4
+epochs=3
+learning_rate=0.001
+elapsed_seconds=331
