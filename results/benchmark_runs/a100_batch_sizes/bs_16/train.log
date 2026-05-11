@@ -1,4 +1,0 @@
-2026-05-05 15:52:52,258 INFO __main__: Starting training for 3 epochs on cuda with 200 train batches and 25 val batches.
-2026-05-05 15:53:19,665 INFO __main__: Epoch 1/3 | train loss=0.700160 | val_loss=0.644882
-2026-05-05 15:53:46,493 INFO __main__: Epoch 2/3 | train loss=0.603183 | val_loss=0.581424
-2026-05-05 15:54:13,325 INFO __main__: Epoch 3/3 | train loss=0.567427 | val_loss=0.566500
