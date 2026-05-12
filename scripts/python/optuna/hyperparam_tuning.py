@@ -3,7 +3,6 @@ import argparse
 import os
 
 import optuna
-from optuna.visualization import plot_intermediate_values, plot_optimization_history
 import torch
 from torch.optim.lr_scheduler import CosineAnnealingLR
 
@@ -20,7 +19,7 @@ def create_objective(data_path, epochs):
         learning_rate = trial.suggest_float("learning_rate", 1e-5, 1e-2, log=True)
         dropout_rate = trial.suggest_float("dropout_rate", 0.0, 0.5)
         p_aug = trial.suggest_float("p_aug", 0.1, 0.5)
-        lr_decay = trial.suggest_float("lr_decay", 10, 10000, log=True)
+        lr_decay = trial.suggest_float("lr_decay", 10, 1000, log=True)
 
 
         train_ds = H5PatchDataset(data_path, split="train", augment=True, p_flip=p_aug, p_rot=p_aug, p_shift=p_aug)
@@ -31,7 +30,7 @@ def create_objective(data_path, epochs):
         optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
         scheduler = CosineAnnealingLR(optimizer, T_max=epochs, eta_min=learning_rate/lr_decay)
 
-        train_loss, val_loss, best_loss, total_epochs = train.train_unet(model, train_ds, val_ds, optimizer, scheduler, epochs, batch_size=16, trial=trial)
+        train_loss, val_loss, best_loss, total_epochs = train.train_unet(model, train_ds, val_ds, optimizer, scheduler, epochs, batch_size=32, num_workers=4, trial=trial)
         
         score = best_loss
 
@@ -68,7 +67,7 @@ if __name__ == "__main__":
 
     db_file_dir = "results/optuna"
     os.makedirs(db_file_dir, exist_ok=True)
-    study = optuna.create_study(study_name="unet_tuning", storage=f"sqlite:///{db_file_dir}/optuna_study.db", load_if_exists=True, direction="minimize", pruner=optuna.pruners.MedianPruner())
+    study = optuna.create_study(study_name="unet_tuning", storage=f"sqlite:///{db_file_dir}/optuna_study.db", load_if_exists=True, direction="minimize", pruner=optuna.pruners.HyperbandPruner())
 
     study.optimize(objective, n_trials=n_trials)
 

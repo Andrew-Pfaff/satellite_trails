@@ -15,15 +15,15 @@ from satellite_trail_segmentation.utils.visualizations import plot_loss_curves
 LOGGER = logging.getLogger(__name__)
 
 
-def train_unet(model, train_ds, val_ds, optimizer, scheduler, epochs, batch_size, save_path=None, trial=None):
+def train_unet(model, train_ds, val_ds, optimizer, scheduler, epochs, batch_size, num_workers=0, save_path=None, trial=None):
     if save_path is not None:
         Path(save_path).parent.mkdir(parents=True, exist_ok=True)
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = model.to(device)
 
-    train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True)
-    val_loader = DataLoader(val_ds, batch_size=batch_size, shuffle=False)
+    train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True, num_workers=num_workers)
+    val_loader = DataLoader(val_ds, batch_size=batch_size, shuffle=False, num_workers=num_workers)
 
     train_loss = []
     val_loss = []
@@ -88,7 +88,7 @@ def train_unet(model, train_ds, val_ds, optimizer, scheduler, epochs, batch_size
     return train_loss, val_loss, best_loss, final_epoch
 
 
-def main(data_path, epochs, batch_size, learning_rate, dropout_rate, lr_decay, save_path=None): # pragma: no cover.
+def main(data_path, epochs, batch_size, learning_rate, dropout_rate, lr_decay, num_workers, save_path=None): # pragma: no cover.
     train_ds = H5PatchDataset(data_path, split="train", augment=True, p_flip=0.1, p_rot=0.1, p_shift=0.1)
     val_ds = H5PatchDataset(data_path, split="val")
     
@@ -97,7 +97,7 @@ def main(data_path, epochs, batch_size, learning_rate, dropout_rate, lr_decay, s
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
     scheduler = CosineAnnealingLR(optimizer, T_max=epochs, eta_min=learning_rate/lr_decay)
 
-    train_loss, val_loss, _, _ = train_unet(model, train_ds, val_ds, optimizer, scheduler, epochs, batch_size, save_path=save_path)
+    train_loss, val_loss, _, _ = train_unet(model, train_ds, val_ds, optimizer, scheduler, epochs, batch_size, num_workers=num_workers, save_path=save_path)
     return train_loss, val_loss
 
 
@@ -113,7 +113,8 @@ def parse_args(): # pragma: no cover.
     parser.add_argument("--save-path", type=str, default=None)
     parser.add_argument("--verbose", action="store_true", default=True)
     parser.add_argument("--plot-path", type=str, default=None)
-    
+    parser.add_argument("--num-workers", type=int, default=0)
+
     return parser.parse_args()
 
 
@@ -129,7 +130,8 @@ if __name__ == "__main__": # pragma: no cover.
                                 learning_rate=args.learning_rate,
                                 dropout_rate=args.dropout_rate,
                                 lr_decay=args.lr_decay,
-                                save_path=args.save_path)
+                                save_path=args.save_path,
+                                num_workers=args.num_workers)
     
       
     plot_loss_curves(train_loss, val_loss, args.plot_path)

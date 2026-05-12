@@ -33,7 +33,6 @@ src/*.egg-info/
 # Ignore all data folders so you don't push huge datasets
 /data/*
 datasets/
-*.csv
 *.png
 *.jpg
 *.tif
@@ -58,5 +57,12 @@ runs/
 .idea/
 .DS_Store
 
-!data/master_split.csv
 *.db
+
+
+# ---------------------------------------------------
+# Keep
+# ---------------------------------------------------
+!results/optuna/plots/
+!results/optuna/plots/*
+!results/optuna/optuna_study-*

@@ -1,4 +1,5 @@
 batch_size=16
+num_workers=8
 epochs=3
 learning_rate=0.001
-elapsed_seconds=87
+elapsed_seconds=333

@@ -1,4 +1,0 @@
-batch_size=8
-epochs=3
-learning_rate=0.001
-elapsed_seconds=164
