@@ -63,5 +63,5 @@ runs/
 # ---------------------------------------------------
 # Keep
 # ---------------------------------------------------
-!optuna/plots/
-!optuna/plots/*
+!results/optuna/plots/
+!results/optuna/plots/*
