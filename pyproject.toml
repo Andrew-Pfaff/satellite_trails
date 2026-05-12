@@ -14,6 +14,7 @@ dependencies = [
     "Pillow",
     "numpy",
     "opencv-python-headless",
+    "scikit-learn",
 ]
 
 [project.optional-dependencies]
