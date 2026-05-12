@@ -6,7 +6,7 @@
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=16
 #SBATCH --mem=32G
-#SBATCH --time=03:00:00
+#SBATCH --time=04:00:00
 #SBATCH --output=results/slurm/optuna_study-%j.out
 
 set -euo pipefail
@@ -33,7 +33,7 @@ python3 -c "import torch; assert torch.cuda.is_available(), 'No CUDA device foun
 #Arguments:
 DATA_PATH="$PROJECT_ROOT/data/h5s/small_dataset.h5"
 EPOCHS=15
-TRIALS=30
+TRIALS=10
 	
 mkdir -p "$TMPDIR"
 LOCAL_DATA_PATH="$TMPDIR/small_dataset.h5"
