@@ -1,0 +1,95 @@
+Loading rhel8/default-amp
+  Loading requirement: rhel8/slurm singularity/current rhel8/global cuda/11.4
+    libpciaccess/0.16/gcc-9.4.0-6fonbj6 libiconv/1.16/gcc-9.4.0-ahebbov
+    libxml2/2.9.12/gcc-9.4.0-gnknt5e ncurses/6.2/gcc-9.4.0-aiirok7
+    hwloc/2.5.0/gcc-9.4.0-7sqomga libevent/2.1.12/gcc-9.4.0-hgny7cm
+    numactl/2.0.14/gcc-9.4.0-52dwc6n cuda/11.4.0/gcc-9.4.0-3hnxhjt
+    gdrcopy/2.2/gcc-9.4.0-e4igtfp knem/1.1.4/gcc-9.4.0-bpbxgva
+    libnl/3.3.0/gcc-9.4.0-whwhrwb rdma-core/34.0/gcc-9.4.0-5eo5n2u
+    ucx/1.11.1/gcc-9.4.0-lktqyl4 openmpi/4.1.1/gcc-9.4.0-epagguv
+Loading python/3.8.11/gcc-9.4.0-yb6rzr6
+  Loading requirement: libmd/1.0.3/gcc-9.4.0-epxofcy
+    libbsd/0.11.3/gcc-9.4.0-vthuym4 expat/2.4.1/gcc-9.4.0-bk6uyet
+    readline/8.1/gcc-9.4.0-cddhb5i gdbm/1.21/gcc-9.4.0-ddi42iv
+    gettext/0.21/gcc-9.4.0-crlrk2m libffi/3.3/gcc-9.4.0-5qx32pc
+    sqlite/3.36.0/gcc-9.4.0-kwwt3r6 tcl/8.6.11/gcc-9.4.0-jp7pdhd
+    inputproto/2.3.2/gcc-9.4.0-njblfvv kbproto/1.0.7/gcc-9.4.0-7yamta5
+    libpthread-stubs/0.4/gcc-9.4.0-vcluyo4 xproto/7.0.31/gcc-9.4.0-7rjn5nb
+    libxau/1.0.8/gcc-9.4.0-bjkdkpd libxdmcp/1.1.2/gcc-9.4.0-oyjq2tg
+    xcb-proto/1.14.1/gcc-9.4.0-673q3no libxcb/1.14/gcc-9.4.0-kvfmuib
+    xextproto/7.3.0/gcc-9.4.0-fxabcj4 xtrans/1.3.5/gcc-9.4.0-l2bxpul
+    libx11/1.7.0/gcc-9.4.0-bsn7l3n font-util/1.3.2/gcc-9.4.0-ryqeio4
+    libpng/1.6.37/gcc-9.4.0-yci6ujg freetype/2.11.0/gcc-9.4.0-boinooq
+    util-linux-uuid/2.36.2/gcc-9.4.0-g242id5 fontconfig/2.13.1/gcc-9.4.0-yhkmiqz
+    renderproto/0.11.1/gcc-9.4.0-im3l4v3 libxrender/0.9.10/gcc-9.4.0-kpzqacy
+    libxft/2.3.2/gcc-9.4.0-sqd3zss libxext/1.3.3/gcc-9.4.0-zgzsc7i
+    scrnsaverproto/1.2.2/gcc-9.4.0-qa7liqu libxscrnsaver/1.2.2/gcc-9.4.0-rcvaluz
+    tk/8.6.11/gcc-9.4.0-dwuhmi2
+Copying dataset to local scratch...
+[I 2026-05-12 12:03:31,547] Using an existing study with name 'unet_tuning' instead of creating a new one.
+2026-05-12 12:04:10,540 satellite_trail_segmentation.model.train: Starting training for 15 epochs on cuda with 375 train batches and 125 val batches.
+
+2026-05-12 12:06:17,095 satellite_trail_segmentation.model.train: Epoch 1/15 | train loss=0.665392 | val_loss=0.571146
+2026-05-12 12:08:07,415 satellite_trail_segmentation.model.train: Epoch 2/15 | train loss=0.539031 | val_loss=0.516687
+2026-05-12 12:09:57,090 satellite_trail_segmentation.model.train: Epoch 3/15 | train loss=0.500995 | val_loss=0.483956
+2026-05-12 12:11:47,197 satellite_trail_segmentation.model.train: Epoch 4/15 | train loss=0.465479 | val_loss=0.441282
+2026-05-12 12:13:37,264 satellite_trail_segmentation.model.train: Epoch 5/15 | train loss=0.417296 | val_loss=0.398186
+2026-05-12 12:15:27,279 satellite_trail_segmentation.model.train: Epoch 6/15 | train loss=0.381305 | val_loss=0.412948
+2026-05-12 12:17:17,626 satellite_trail_segmentation.model.train: Epoch 7/15 | train loss=0.354795 | val_loss=0.368809
+2026-05-12 12:19:07,735 satellite_trail_segmentation.model.train: Epoch 8/15 | train loss=0.341219 | val_loss=0.354853
+2026-05-12 12:20:57,777 satellite_trail_segmentation.model.train: Epoch 9/15 | train loss=0.321254 | val_loss=0.359319
+2026-05-12 12:22:47,839 satellite_trail_segmentation.model.train: Epoch 10/15 | train loss=0.299289 | val_loss=0.355312
+2026-05-12 12:24:37,755 satellite_trail_segmentation.model.train: Epoch 11/15 | train loss=0.303991 | val_loss=0.349872
+2026-05-12 12:26:27,582 satellite_trail_segmentation.model.train: Epoch 12/15 | train loss=0.287187 | val_loss=0.350887
+2026-05-12 12:28:17,666 satellite_trail_segmentation.model.train: Epoch 13/15 | train loss=0.282018 | val_loss=0.353865
+2026-05-12 12:30:07,806 satellite_trail_segmentation.model.train: Epoch 14/15 | train loss=0.293872 | val_loss=0.347785
+2026-05-12 12:31:57,938 satellite_trail_segmentation.model.train: Epoch 15/15 | train loss=0.275295 | val_loss=0.345890
+2026-05-12 12:31:57,938 __main__: Trial 8 complete after 15 epochs. 
+ Parameters: lr=1.53e-03 | dropout=0.07946254626868393 | p_augmentation=0.46910415181684406 | lr_decay=4.49e+01 
+Best validation loss: 0.3458901579380037.
+[I 2026-05-12 12:31:57,984] Trial 8 finished with value: 0.3458901579380037 and parameters: {'learning_rate': 0.0015263911293381413, 'dropout_rate': 0.07946254626868393, 'p_aug': 0.46910415181684406, 'lr_decay': 44.87853870084948}. Best is trial 8 with value: 0.3458901579380037.
+2026-05-12 12:31:58,226 satellite_trail_segmentation.model.train: Starting training for 15 epochs on cuda with 375 train batches and 125 val batches.
+
+2026-05-12 12:33:48,246 satellite_trail_segmentation.model.train: Epoch 1/15 | train loss=0.844363 | val_loss=0.815074
+2026-05-12 12:35:38,212 satellite_trail_segmentation.model.train: Epoch 2/15 | train loss=0.815796 | val_loss=0.810785
+2026-05-12 12:37:28,313 satellite_trail_segmentation.model.train: Epoch 3/15 | train loss=0.798409 | val_loss=0.803818
+2026-05-12 12:39:18,279 satellite_trail_segmentation.model.train: Epoch 4/15 | train loss=0.786049 | val_loss=0.796473
+2026-05-12 12:41:08,378 satellite_trail_segmentation.model.train: Epoch 5/15 | train loss=0.776396 | val_loss=0.789120
+2026-05-12 12:42:58,453 satellite_trail_segmentation.model.train: Epoch 6/15 | train loss=0.767906 | val_loss=0.785903
+2026-05-12 12:44:48,428 satellite_trail_segmentation.model.train: Epoch 7/15 | train loss=0.760939 | val_loss=0.777062
+2026-05-12 12:46:38,707 satellite_trail_segmentation.model.train: Epoch 8/15 | train loss=0.755352 | val_loss=0.775208
+2026-05-12 12:48:28,704 satellite_trail_segmentation.model.train: Epoch 9/15 | train loss=0.749987 | val_loss=0.770899
+2026-05-12 12:50:18,719 satellite_trail_segmentation.model.train: Epoch 10/15 | train loss=0.747434 | val_loss=0.767957
+2026-05-12 12:52:08,819 satellite_trail_segmentation.model.train: Epoch 11/15 | train loss=0.744840 | val_loss=0.768012
+2026-05-12 12:53:58,856 satellite_trail_segmentation.model.train: Epoch 12/15 | train loss=0.742254 | val_loss=0.765149
+2026-05-12 12:55:49,256 satellite_trail_segmentation.model.train: Epoch 13/15 | train loss=0.741084 | val_loss=0.765742
+2026-05-12 12:57:39,448 satellite_trail_segmentation.model.train: Epoch 14/15 | train loss=0.740980 | val_loss=0.763626
+2026-05-12 12:59:29,623 satellite_trail_segmentation.model.train: Epoch 15/15 | train loss=0.740748 | val_loss=0.766116
+2026-05-12 12:59:29,680 __main__: Trial 9 complete after 15 epochs. 
+ Parameters: lr=3.03e-05 | dropout=0.3812611961280292 | p_augmentation=0.40062193801594204 | lr_decay=1.12e+02 
+Best validation loss: 0.7636263537406923.
+[I 2026-05-12 12:59:29,728] Trial 9 finished with value: 0.7636263537406923 and parameters: {'learning_rate': 3.0346840393769783e-05, 'dropout_rate': 0.3812611961280292, 'p_aug': 0.40062193801594204, 'lr_decay': 111.96484786840331}. Best is trial 8 with value: 0.3458901579380037.
+2026-05-12 12:59:30,069 satellite_trail_segmentation.model.train: Starting training for 15 epochs on cuda with 375 train batches and 125 val batches.
+
+2026-05-12 13:01:22,975 satellite_trail_segmentation.model.train: Epoch 1/15 | train loss=0.832995 | val_loss=0.827518
+2026-05-12 13:03:13,109 satellite_trail_segmentation.model.train: Epoch 2/15 | train loss=0.806894 | val_loss=0.810075
+2026-05-12 13:05:03,000 satellite_trail_segmentation.model.train: Epoch 3/15 | train loss=0.789883 | val_loss=0.792812
+2026-05-12 13:06:53,149 satellite_trail_segmentation.model.train: Epoch 4/15 | train loss=0.777952 | val_loss=0.777442
+2026-05-12 13:08:45,177 satellite_trail_segmentation.model.train: Epoch 5/15 | train loss=0.768872 | val_loss=0.768105
+2026-05-12 13:10:40,054 satellite_trail_segmentation.model.train: Epoch 6/15 | train loss=0.759283 | val_loss=0.758019
+2026-05-12 13:12:30,234 satellite_trail_segmentation.model.train: Epoch 7/15 | train loss=0.751198 | val_loss=0.752732
+2026-05-12 13:14:20,744 satellite_trail_segmentation.model.train: Epoch 8/15 | train loss=0.745411 | val_loss=0.749037
+2026-05-12 13:16:11,130 satellite_trail_segmentation.model.train: Epoch 9/15 | train loss=0.739616 | val_loss=0.744882
+2026-05-12 13:18:01,639 satellite_trail_segmentation.model.train: Epoch 10/15 | train loss=0.736273 | val_loss=0.740484
+2026-05-12 13:19:51,652 satellite_trail_segmentation.model.train: Epoch 11/15 | train loss=0.733637 | val_loss=0.739169
+2026-05-12 13:21:42,126 satellite_trail_segmentation.model.train: Epoch 12/15 | train loss=0.731264 | val_loss=0.737459
+2026-05-12 13:23:32,129 satellite_trail_segmentation.model.train: Epoch 13/15 | train loss=0.729764 | val_loss=0.735462
+2026-05-12 13:25:22,653 satellite_trail_segmentation.model.train: Epoch 14/15 | train loss=0.728615 | val_loss=0.734356
+2026-05-12 13:27:12,673 satellite_trail_segmentation.model.train: Epoch 15/15 | train loss=0.728812 | val_loss=0.736717
+2026-05-12 13:27:12,674 __main__: Trial 10 complete after 15 epochs. 
+ Parameters: lr=2.36e-05 | dropout=0.3316656935145844 | p_augmentation=0.14289151617415646 | lr_decay=2.74e+02 
+Best validation loss: 0.7343564000129699.
+[I 2026-05-12 13:27:12,713] Trial 10 finished with value: 0.7343564000129699 and parameters: {'learning_rate': 2.359253927169221e-05, 'dropout_rate': 0.3316656935145844, 'p_aug': 0.14289151617415646, 'lr_decay': 274.4916338416669}. Best is trial 8 with value: 0.3458901579380037.
+2026-05-12 13:27:14,066 satellite_trail_segmentation.model.train: Starting training for 15 epochs on cuda with 375 train batches and 125 val batches.
+
+slurmstepd: error: *** JOB 29263384 ON gpu-q-5 CANCELLED AT 2026-05-12T13:27:27 ***
