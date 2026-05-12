@@ -9,6 +9,12 @@ env/
 
 
 # ---------------------------------------------------
+# Keep
+# ---------------------------------------------------
+!optuna/plots/*
+
+
+# ---------------------------------------------------
 # Python Caches & Build Artifacts
 # ---------------------------------------------------
 __pycache__/
@@ -33,7 +39,6 @@ src/*.egg-info/
 # Ignore all data folders so you don't push huge datasets
 /data/*
 datasets/
-*.csv
 *.png
 *.jpg
 *.tif
@@ -58,5 +63,4 @@ runs/
 .idea/
 .DS_Store
 
-!data/master_split.csv
 *.db
