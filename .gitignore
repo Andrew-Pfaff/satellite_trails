@@ -65,3 +65,4 @@ runs/
 # ---------------------------------------------------
 !results/optuna/plots/
 !results/optuna/plots/*
+!results/slurm/analyse_optuna*
