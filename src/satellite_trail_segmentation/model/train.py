@@ -88,8 +88,8 @@ def train_unet(model, train_ds, val_ds, optimizer, scheduler, epochs, batch_size
     return train_loss, val_loss, best_loss, final_epoch
 
 
-def main(data_path, epochs, batch_size, learning_rate, dropout_rate, lr_decay, num_workers, save_path=None): # pragma: no cover.
-    train_ds = H5PatchDataset(data_path, split="train", augment=True, p_flip=0.1, p_rot=0.1, p_shift=0.1)
+def main(data_path, epochs, batch_size, learning_rate, dropout_rate, lr_decay, p_aug, num_workers, save_path=None): # pragma: no cover.
+    train_ds = H5PatchDataset(data_path, split="train", augment=True, p_flip=p_aug, p_rot=p_aug, p_shift=p_aug)
     val_ds = H5PatchDataset(data_path, split="val")
     
     model = UNet(in_channels=1, out_channels=1, kernel_size=3, base_channels=8, dropout=dropout_rate)
@@ -110,6 +110,7 @@ def parse_args(): # pragma: no cover.
     parser.add_argument("--learning-rate", type=float, required=True)
     parser.add_argument("--lr-decay", type=float, default=1e4)
     parser.add_argument("--dropout-rate", type=float, default=0.0)
+    parser.add_argument("--augmentation-prob", type=float, default=0.0)
     parser.add_argument("--save-path", type=str, default=None)
     parser.add_argument("--verbose", action="store_true", default=True)
     parser.add_argument("--plot-path", type=str, default=None)
@@ -130,6 +131,7 @@ if __name__ == "__main__": # pragma: no cover.
                                 learning_rate=args.learning_rate,
                                 dropout_rate=args.dropout_rate,
                                 lr_decay=args.lr_decay,
+                                p_aug=args.augmentation_prob,
                                 save_path=args.save_path,
                                 num_workers=args.num_workers)
     
