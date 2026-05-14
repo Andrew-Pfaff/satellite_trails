@@ -18,7 +18,7 @@ def recreate_full_field(model, h5_path, split_type, source_index, batch_size=32,
     with h5py.File(h5_path, "r") as f:
         full_shape = tuple(f.attrs["full_shape"])
 
-    dataset = H5PatchDataset(h5_path, split=split_type, return_metadata=True, source_index=source_index)
+    dataset = H5PatchDataset(h5_path, split=split_type, return_metadata=True, return_masks=False, source_index=source_index)
     loader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
 
     full_image = np.zeros(full_shape, dtype=np.float32)
