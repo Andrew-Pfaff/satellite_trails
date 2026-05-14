@@ -47,16 +47,16 @@ def evaluate_patches(model, h5_path, split_type, batch_size, subsample_fraction=
     # --- SAMPLED METRIC CALCULATION ---
     # Concatenate all subsampled batches into single global arrays
     sampled_pred = np.concatenate(sampled_pred)
-    sampled_masks = np.concatenate(sampled_masks)
+    sampled_mask = np.concatenate(sampled_mask)
 
     # Calculate global ROC and find the optimal threshold
-    fpr, tpr, thresholds, optimal_threshold, roc_auc = get_roc_auc_data(sampled_pred, sampled_masks)
+    fpr, tpr, thresholds, optimal_threshold, roc_auc = get_roc_auc_data(sampled_pred, sampled_mask)
 
     # Binarize the predictions using that optimal threshold
     pred_bin = (sampled_pred > optimal_threshold).astype(np.uint8)
 
     # Calculate final accuracy metrics (IoU, Dice, Precision, etc.)
-    metrics = accuracy_metrics(pred_bin, sampled_masks)
+    metrics = accuracy_metrics(pred_bin, sampled_mask)
     
     # Store the ROC info inside the metrics dict for convenience
     metrics["roc_auc"] = roc_auc

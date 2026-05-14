@@ -6,7 +6,7 @@
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=16G
-#SBATCH --time=00:30:00
+#SBATCH --time=01:00:00
 #SBATCH --output=results/evaluate/evaluate-%j.out
 
 set -euo pipefail
@@ -17,11 +17,11 @@ module load python/3.8.11/gcc-9.4.0-yb6rzr6
 
 PROJECT_ROOT="/home/anp50/rds/hpc-work/satellite_trails"
 VENV_PATH="$PROJECT_ROOT/.venv/bin/activate"
-SCRIPT_PATH="$PROJECT_ROOT/src/satellite_trail_segmentation/model/evaluate.py"
+SCRIPT_PATH="$PROJECT_ROOT/scripts/python/evaluation.py"
 DATA_PATH="$PROJECT_ROOT/data/h5s/small_dataset.h5"
 
 MODEL_PATH="$PROJECT_ROOT/results/mini_train/small_train.pt"
-FULL_FIELD_INDEX=
+FULL_FIELD_INDEX=37
 BATCH_SIZE=32
 SUBSAMPLE_FRACTION=0.01
 PATCH_DIM=528
