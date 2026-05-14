@@ -6,10 +6,11 @@ from torch.utils.data import Dataset
 from satellite_trail_segmentation.data.augmentation import augment_image
 
 class H5PatchDataset(Dataset):
-    def __init__(self, h5_path, split='train', return_metadata=False, source_index=None, augment=False, p_flip=0.1, p_rot=0.1, p_shift=0.1):
+    def __init__(self, h5_path, split='train', return_metadata=False, return_masks=True, source_index=None, augment=False, p_flip=0.1, p_rot=0.1, p_shift=0.1):
         self.h5_path = h5_path
         self.split = split
         self.return_metadata = return_metadata
+        self.return_masks = return_masks
 
         if self.split=='train' and augment==True:
             self.augment = True
@@ -53,7 +54,8 @@ class H5PatchDataset(Dataset):
         real_idx = self.valid_indices[idx]
         
         image = self.images[real_idx].astype(np.float32) / 255.0
-        mask = (self.masks[real_idx] > 0).astype(np.float32)
+        need_mask = self.return_masks or (self.augment and self.patch_has_trail[idx])
+        mask = (self.masks[real_idx] > 0).astype(np.float32) if need_mask else None
 
         if self.augment == True and self.patch_has_trail[idx]:
             # You can adjust these probabilities as needed
@@ -62,11 +64,17 @@ class H5PatchDataset(Dataset):
             mask = np.ascontiguousarray(mask)
         
         x_tensor = torch.from_numpy(image).float().unsqueeze(0)
-        y_tensor = torch.from_numpy(mask).float().unsqueeze(0)
-        
+        y_tensor = torch.from_numpy(mask).float().unsqueeze(0) if self.return_masks else None
+
         metadata = {"h5_index": int(real_idx), "source_index": int(self.source_indices[idx]), "patch_has_trail": bool(self.patch_has_trail[idx]), "patch_y0": int(self.patch_y0[idx]), "patch_x0": int(self.patch_x0[idx])}
 
-        return (x_tensor, y_tensor, metadata) if self.return_metadata else (x_tensor, y_tensor)      
+        if self.return_metadata and self.return_masks:
+            return x_tensor, y_tensor, metadata
+        if self.return_metadata:
+            return x_tensor, metadata
+        if self.return_masks:
+            return x_tensor, y_tensor
+        return x_tensor
     
 
     def __del__(self): 
