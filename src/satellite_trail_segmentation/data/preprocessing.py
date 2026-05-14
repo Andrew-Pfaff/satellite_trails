@@ -82,7 +82,7 @@ def define_split(image_dir, val_split, test_split, output_path, seed=1):
     with open(output_path, 'w', newline='') as f:
         writer = csv.writer(f)
         for input, target, split in zip(input_files, target_files, split_mask):
-            writer.writerow([input, target, split])
+            writer.writerow([os.path.basename(input), os.path.basename(target), split])
 
 
 def load_split(path):
@@ -289,7 +289,12 @@ if __name__ == "__main__": # pragma: no cover.
     if not os.path.exists(master_split_mask_path):
         define_split(image_dir, args.val_split, args.test_split, master_split_mask_path)
     
-    train_files, val_files, test_files = load_split(master_split_mask_path)
+    train_raw, val_raw, test_raw = load_split(master_split_mask_path)
+
+    train_files = [(os.path.join(image_dir, f[0]), os.path.join(image_dir, f[1])) for f in train_raw]
+    val_files = [(os.path.join(image_dir, f[0]), os.path.join(image_dir, f[1])) for f in val_raw]    
+    test_files = [(os.path.join(image_dir, f[0]), os.path.join(image_dir, f[1])) for f in test_raw]
+
 
     if args.num_images == None:
         num_images = len(train_files) + len(val_files) + len(test_files)
