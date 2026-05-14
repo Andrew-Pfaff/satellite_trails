@@ -66,3 +66,4 @@ runs/
 !results/optuna/plots/
 !results/optuna/plots/*
 !results/optuna/optuna_study-*
+*.ipynb
