@@ -1,7 +1,7 @@
 import argparse
 import logging
 
-from satellite_trail_segmentation.model.evaluate import evaluate_patches, recreate_full_field_pred, evaluate_full_field_pred
+from satellite_trail_segmentation.unet_model.evaluate import evaluate_patches, recreate_full_field_pred, evaluate_full_field_pred
 from satellite_trail_segmentation.utils.load_model import load_model_weights
 from satellite_trail_segmentation.utils.visualizations import plot_full_field, plot_roc_curve, plot_pred_residual
 

@@ -1,7 +1,7 @@
 import torch
 from torch.optim.lr_scheduler import CosineAnnealingLR
 
-from satellite_trail_segmentation.model.unet import UNet
+from satellite_trail_segmentation.unet_model.unet import UNet
 
 
 def load_model_weights(save_path):

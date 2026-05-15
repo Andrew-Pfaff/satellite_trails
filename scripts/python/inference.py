@@ -1,11 +1,11 @@
 import argparse
 from time import time
 
-from satellite_trail_segmentation.model.evaluate import recreate_full_field
+from satellite_trail_segmentation.unet_model.evaluate import recreate_full_field
 from satellite_trail_segmentation.utils.visualizations import plot_full_field
 from satellite_trail_segmentation.utils.load_model import load_model_weights
 from satellite_trail_segmentation.postprocess.hough import hough_tranform
-from satellite_trail_segmentation.model.evaluate import image_threshold
+from satellite_trail_segmentation.unet_model.evaluate import image_threshold
 
 
 

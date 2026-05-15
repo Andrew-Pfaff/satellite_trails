@@ -1,6 +1,6 @@
 import pytest
 import torch
-from satellite_trail_segmentation.model.unet import UNet
+from satellite_trail_segmentation.unet_model.unet import UNet
 
 def test_unet_forward_shape(dummy_image, dummy_unet):
     """Test if the forward pass yields a tensor of the same shape as the input."""

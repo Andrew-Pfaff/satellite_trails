@@ -1,7 +1,7 @@
 import pytest
 import torch
 import numpy as np
-from satellite_trail_segmentation.model.unet import UNet
+from satellite_trail_segmentation.unet_model.unet import UNet
 
 @pytest.fixture
 def dummy_image():

@@ -2,7 +2,7 @@ from pathlib import Path
 
 import numpy as np
 import matplotlib.pyplot as plt
-from satellite_trail_segmentation.model.evaluate import image_threshold
+from satellite_trail_segmentation.unet_model.evaluate import image_threshold
 
 
 def plot_loss_curves(train_loss, val_loss, save_path):
