@@ -1,6 +1,6 @@
 import pytest
 import torch
-from satellite_trail_segmentation.model.losses import bce_loss, dice_loss, combo_loss
+from satellite_trail_segmentation.unet_model.losses import bce_loss, dice_loss, combo_loss
 
 @pytest.fixture
 def prediction_and_target():

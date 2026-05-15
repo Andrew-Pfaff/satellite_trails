@@ -4,7 +4,7 @@ import sys
 from unittest.mock import patch, MagicMock
 from torch.optim.lr_scheduler import CosineAnnealingLR
 
-from satellite_trail_segmentation.model.train import train_unet, parse_args
+from satellite_trail_segmentation.unet_model.train import train_unet, parse_args
 
 
 def test_parse_args():

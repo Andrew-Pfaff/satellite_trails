@@ -8,8 +8,8 @@ from torch.optim.lr_scheduler import CosineAnnealingLR, LinearLR, SequentialLR
 import optuna
 
 from satellite_trail_segmentation.data.dataset import H5PatchDataset
-from satellite_trail_segmentation.model.unet import UNet
-from satellite_trail_segmentation.model.losses import combo_loss
+from satellite_trail_segmentation.unet_model.unet import UNet
+from satellite_trail_segmentation.unet_model.losses import combo_loss
 from satellite_trail_segmentation.utils.visualizations import plot_loss_curves
 
 LOGGER = logging.getLogger(__name__)

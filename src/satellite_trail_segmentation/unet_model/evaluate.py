@@ -3,9 +3,9 @@ import h5py
 import torch
 from torch.utils.data import DataLoader
 
-from satellite_trail_segmentation.model.losses import combo_loss
+from satellite_trail_segmentation.unet_model.losses import combo_loss
 from satellite_trail_segmentation.data.dataset import H5PatchDataset
-from satellite_trail_segmentation.model.metrics import accuracy_metrics, get_roc_auc_data
+from satellite_trail_segmentation.unet_model.metrics import accuracy_metrics, get_roc_auc_data
 
 
 def evaluate_patches(model, h5_path, split_type, batch_size, subsample_fraction=0.01):

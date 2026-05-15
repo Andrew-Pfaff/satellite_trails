@@ -3,7 +3,7 @@ import numpy as np
 import torch
 from unittest.mock import patch, MagicMock
 
-from satellite_trail_segmentation.model.evaluate import evaluate_patches, image_threshold
+from satellite_trail_segmentation.unet_model.evaluate import evaluate_patches, image_threshold
 
 def test_image_threshold():
     """Test numpy binarization arrays."""
