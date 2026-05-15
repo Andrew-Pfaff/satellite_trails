@@ -6,7 +6,7 @@
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=16
 #SBATCH --mem=32G
-#SBATCH --time=04:00:00
+#SBATCH --time=05:00:00
 #SBATCH --output=slurm-%j.out
 
 set -euo pipefail
@@ -27,7 +27,7 @@ CLASSIFIER_SCRIPT_PATH="$PROJECT_ROOT/src/satellite_trail_segmentation/trail_cla
 
 #Benchmark configuration
 DATA_PATH="$PROJECT_ROOT/data/h5s/small_dataset.h5"
-OUTPUT_DIR="$PROJECT_ROOT/benchmark_runs/training_grid"
+OUTPUT_DIR="$PROJECT_ROOT/results/benchmark_runs"
 BATCH_SIZES=(8 16 32 64)
 NUM_WORKERS_LIST=(0 2 4 8)
 EPOCHS=3
@@ -127,11 +127,22 @@ run_benchmark() {
     wait "$SMI_PID" 2>/dev/null || true
 
     ELAPSED_SECONDS=$((END_TIME - START_TIME))
-    AVG_GPU_UTIL=$(awk -F, 'NR > 1 {gsub(/[^0-9.]/, "", $4); if ($4 != "") {sum += $4; count += 1}} END {if (count > 0) printf "%.2f"; else printf "NA"}' "$GPU_LOG")
-    AVG_GPU_MEMORY_UTIL=$(awk -F, 'NR > 1 {gsub(/[^0-9.]/, "", $5); if ($5 != "") {sum += $5; count += 1}} END {if (count > 0) printf "%.2f"; else printf "NA"}' "$GPU_LOG")
-    MAX_GPU_MEMORY_USED=$(awk -F, 'NR > 1 {gsub(/[^0-9.]/, "", $6); if ($6 != "" && $6 > max) max = $6} END {if (max != "") printf "%.0f"; else printf "NA"}' "$GPU_LOG")
+    AVG_GPU_UTIL=$(awk -F, '
+        NR > 1 { gsub(/[^0-9.]/, "", $4); if ($4 ~ /^[0-9]+(\.[0-9]+)?$/) { sum += $4; count++ } }
+        END { if (count > 0) printf "%.2f", sum/count; else printf "NA" }
+    ' "$GPU_LOG")
 
+    AVG_GPU_MEMORY_UTIL=$(awk -F, '
+        NR > 1 { gsub(/[^0-9.]/, "", $5); if ($5 ~ /^[0-9]+(\.[0-9]+)?$/) { sum += $5; count++ } }
+        END { if (count > 0) printf "%.2f", sum/count; else printf "NA" }
+    ' "$GPU_LOG")
+
+    MAX_GPU_MEMORY_USED=$(awk -F, '
+        NR > 1 { gsub(/[^0-9.]/, "", $6); if ($6 ~ /^[0-9]+(\.[0-9]+)?$/ && $6 > max) max = $6 }
+        END { if (max != "") printf "%.0f", max; else printf "NA" }
+    ' "$GPU_LOG")
     echo "${MODEL_NAME},${BATCH_SIZE},${NUM_WORKERS},${EPOCHS},${LEARNING_RATE},${ELAPSED_SECONDS},${RUN_EXIT_CODE},${AVG_GPU_UTIL},${AVG_GPU_MEMORY_UTIL},${MAX_GPU_MEMORY_USED},${RUN_DIR}" >> "$SUMMARY_CSV"
+
 
     if [[ "$RUN_EXIT_CODE" -eq 0 ]]; then
         echo "Finished ${MODEL_NAME} batch_size=${BATCH_SIZE} num_workers=${NUM_WORKERS} in ${ELAPSED_SECONDS} seconds"

@@ -1,0 +1,17 @@
+model,batch_size,num_workers,epochs,learning_rate,elapsed_seconds,exit_code,avg_gpu_utilization_percent,avg_gpu_memory_utilization_percent,max_gpu_memory_used_mib,run_dir
+trail_class_model,8,0,3,0.001,108,0,75.31,19.85,801,/home/anp50/rds/hpc-work/satellite_trails/results/benchmark_runs/trail_class_model/bs_8/workers_0
+trail_class_model,8,2,3,0.001,122,0,66.98,17.76,4,/home/anp50/rds/hpc-work/satellite_trails/results/benchmark_runs/trail_class_model/bs_8/workers_2
+trail_class_model,8,4,3,0.001,122,0,66.50,17.70,2011,/home/anp50/rds/hpc-work/satellite_trails/results/benchmark_runs/trail_class_model/bs_8/workers_4
+trail_class_model,8,8,3,0.001,122,0,66.12,17.50,587,/home/anp50/rds/hpc-work/satellite_trails/results/benchmark_runs/trail_class_model/bs_8/workers_8
+trail_class_model,16,0,3,0.001,104,0,76.69,22.32,3461,/home/anp50/rds/hpc-work/satellite_trails/results/benchmark_runs/trail_class_model/bs_16/workers_0
+trail_class_model,16,2,3,0.001,119,0,67.50,19.45,4,/home/anp50/rds/hpc-work/satellite_trails/results/benchmark_runs/trail_class_model/bs_16/workers_2
+trail_class_model,16,4,3,0.001,110,0,71.79,20.80,3461,/home/anp50/rds/hpc-work/satellite_trails/results/benchmark_runs/trail_class_model/bs_16/workers_4
+trail_class_model,16,8,3,0.001,112,0,70.71,20.35,3461,/home/anp50/rds/hpc-work/satellite_trails/results/benchmark_runs/trail_class_model/bs_16/workers_8
+trail_class_model,32,0,3,0.001,125,0,62.34,18.52,6301,/home/anp50/rds/hpc-work/satellite_trails/results/benchmark_runs/trail_class_model/bs_32/workers_0
+trail_class_model,32,2,3,0.001,106,0,73.18,21.63,6301,/home/anp50/rds/hpc-work/satellite_trails/results/benchmark_runs/trail_class_model/bs_32/workers_2
+trail_class_model,32,4,3,0.001,107,0,72.61,21.32,6301,/home/anp50/rds/hpc-work/satellite_trails/results/benchmark_runs/trail_class_model/bs_32/workers_4
+trail_class_model,32,8,3,0.001,107,0,72.07,21.30,6301,/home/anp50/rds/hpc-work/satellite_trails/results/benchmark_runs/trail_class_model/bs_32/workers_8
+trail_class_model,64,0,3,0.001,119,0,65.95,19.47,19,/home/anp50/rds/hpc-work/satellite_trails/results/benchmark_runs/trail_class_model/bs_64/workers_0
+trail_class_model,64,2,3,0.001,103,0,74.23,22.35,19,/home/anp50/rds/hpc-work/satellite_trails/results/benchmark_runs/trail_class_model/bs_64/workers_2
+trail_class_model,64,4,3,0.001,104,0,74.88,22.53,20,/home/anp50/rds/hpc-work/satellite_trails/results/benchmark_runs/trail_class_model/bs_64/workers_4
+trail_class_model,64,8,3,0.001,104,0,73.26,21.63,19,/home/anp50/rds/hpc-work/satellite_trails/results/benchmark_runs/trail_class_model/bs_64/workers_8

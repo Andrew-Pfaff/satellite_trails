@@ -135,5 +135,5 @@ if __name__ == "__main__": # pragma: no cover.
                                 save_path=args.save_path,
                                 num_workers=args.num_workers)
     
-      
-    plot_loss_curves(train_loss, val_loss, args.plot_path)
+    if args.plot_path is not None:  
+        plot_loss_curves(train_loss, val_loss, args.plot_path)
