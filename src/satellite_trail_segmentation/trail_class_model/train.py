@@ -4,7 +4,7 @@ import argparse
 
 import torch
 from torch.utils.data import DataLoader
-from torch.optim.lr_scheduler import CosineAnnealingLR
+from torch.optim.lr_scheduler import CosineAnnealingLR, LinearLR, SequentialLR
 import optuna
 
 from satellite_trail_segmentation.data.dataset import H5PatchDataset
@@ -16,7 +16,7 @@ from satellite_trail_segmentation.utils.visualizations import plot_loss_curves
 LOGGER = logging.getLogger(__name__)
 
 
-def train_classifier(model, train_ds, val_ds, optimizer, scheduler, epochs, batch_size, pos_weight, num_workers, save_path, trial):
+def train_classifier(model, train_ds, val_ds, optimizer, scheduler, epochs, batch_size, pos_weight, num_workers, save_path, trial=None):
     if save_path is not None:
         Path(save_path).parent.mkdir(parents=True, exist_ok=True)
 
@@ -53,6 +53,7 @@ def train_classifier(model, train_ds, val_ds, optimizer, scheduler, epochs, batc
             val_true_positive = 0.0
             val_false_positive = 0.0
             val_false_negative = 0.0
+            val_true_negative = 0.0
 
             for images, metadata in val_loader:
                 images = images.to(device)
@@ -66,6 +67,7 @@ def train_classifier(model, train_ds, val_ds, optimizer, scheduler, epochs, batc
                 val_true_positive += metrics["true_positive"]
                 val_false_positive += metrics["false_positive"]
                 val_false_negative += metrics["false_negative"]
+                val_true_negative += metrics["true_negative"]
 
         scheduler.step()
 
@@ -109,16 +111,25 @@ def train_classifier(model, train_ds, val_ds, optimizer, scheduler, epochs, batc
     return train_loss, val_loss, best_val_recall, final_epoch
 
 
-def main(data_path, epochs, batch_size, learning_rate, dropout_rate, lr_decay, pos_weight, num_workers, save_path=None, base_channels=16, trial=None): # pragma: no cover.
+def create_cos_lr_sched(optimizer, epochs, warmup_epochs=5, eta_min=1e-6):
+    if warmup_epochs is not None and warmup_epochs > 0:
+        warmup = LinearLR(optimizer, start_factor=0.1, end_factor=1.0, total_iters=warmup_epochs)
+        cos = CosineAnnealingLR(optimizer, T_max=(epochs-warmup_epochs), eta_min=eta_min)
+        return SequentialLR(optimizer, schedulers=[warmup, cos], milestones=[warmup_epochs])
+    else:
+        return CosineAnnealingLR(optimizer, T_max=epochs, eta_min=eta_min)
+    
+
+def main(data_path, epochs, batch_size, learning_rate, dropout_rate, pos_weight, num_workers, warmup_epochs, eta_min, base_channels=16, save_path=None): # pragma: no cover.
     train_ds = H5PatchDataset(data_path, split="train", return_metadata=True, return_masks=False, augment=True, p_flip=0.1, p_rot=0.1, p_shift=0.1)
     val_ds = H5PatchDataset(data_path, split="val", return_metadata=True, return_masks=False)
 
     model = TrailClassifier(in_channels=1, base_channels=base_channels, dropout=dropout_rate)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
-    scheduler = CosineAnnealingLR(optimizer, T_max=epochs, eta_min=learning_rate / lr_decay)
+    scheduler = create_cos_lr_sched(optimizer, epochs, warmup_epochs=warmup_epochs, eta_min=eta_min)
 
-    train_loss, val_loss, best_val_recall, final_epoch = train_classifier(model, train_ds, val_ds, optimizer, scheduler, epochs, batch_size, pos_weight, num_workers, save_path, trial=trial)
+    train_loss, val_loss, best_val_recall, final_epoch = train_classifier(model, train_ds, val_ds, optimizer, scheduler, epochs, batch_size, pos_weight, num_workers, save_path, trial=None)
     return train_loss, val_loss, best_val_recall, final_epoch
 
 
@@ -129,10 +140,11 @@ def parse_args():  # pragma: no cover.
     parser.add_argument("--epochs", type=int, required=True)
     parser.add_argument("--batch-size", type=int, required=True)
     parser.add_argument("--learning-rate", type=float, required=True)
-    parser.add_argument("--lr-decay", type=float, default=1e4)
     parser.add_argument("--dropout-rate", type=float, default=0.3)
     parser.add_argument("--pos-weight", type=float, default=10.0)
     parser.add_argument("--base-channels", type=int, default=16)
+    parser.add_argument("--warmup-epochs", type=int, default=5)
+    parser.add_argument("--eta-min", type=float, default=1e-6)
     parser.add_argument("--save-path", type=str, default=None)
     parser.add_argument("--verbose", action="store_true", default=True)
     parser.add_argument("--plot-path", type=str, default=None)
@@ -152,7 +164,8 @@ if __name__ == "__main__": # pragma: no cover.
                                                               batch_size=args.batch_size,
                                                               learning_rate=args.learning_rate,
                                                               dropout_rate=args.dropout_rate,
-                                                              lr_decay=args.lr_decay,
+                                                              warmup_epochs=args.warmup_epochs,
+                                                              eta_min=args.eta_min, 
                                                               pos_weight=args.pos_weight,
                                                               num_workers=args.num_workers,
                                                               save_path=args.save_path,
