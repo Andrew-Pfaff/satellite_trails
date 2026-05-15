@@ -40,6 +40,9 @@ class H5PatchDataset(Dataset):
             self.patch_y0 = f["patch_y0"][:][self.valid_indices]
             self.patch_x0 = f["patch_x0"][:][self.valid_indices]
 
+        self.pos_indices = np.where(self.patch_has_trail == True)[0]
+        self.neg_indices = np.where(self.patch_has_trail == False)[0]
+
 
     def __len__(self):
         return len(self.valid_indices)

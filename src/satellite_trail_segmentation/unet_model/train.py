@@ -8,6 +8,7 @@ from torch.optim.lr_scheduler import CosineAnnealingLR, LinearLR, SequentialLR
 import optuna
 
 from satellite_trail_segmentation.data.dataset import H5PatchDataset
+from satellite_trail_segmentation.data.sampler import BalancedTrailSampler
 from satellite_trail_segmentation.unet_model.unet import UNet
 from satellite_trail_segmentation.unet_model.losses import combo_loss
 from satellite_trail_segmentation.utils.visualizations import plot_loss_curves
@@ -15,14 +16,17 @@ from satellite_trail_segmentation.utils.visualizations import plot_loss_curves
 LOGGER = logging.getLogger(__name__)
 
 
-def train_unet(model, train_ds, val_ds, optimizer, scheduler, epochs, batch_size, num_workers=0, save_path=None, trial=None):
+def train_unet(model, train_ds, val_ds, optimizer, scheduler, epochs, batch_size, sampler=None, num_workers=0, save_path=None, trial=None):
     if save_path is not None:
         Path(save_path).parent.mkdir(parents=True, exist_ok=True)
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = model.to(device)
 
-    train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True, num_workers=num_workers)
+    if sampler is not None:
+        train_loader = DataLoader(train_ds, batch_size=batch_size, sampler=sampler, num_workers=num_workers)
+    else:
+        train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True, num_workers=num_workers)
     val_loader = DataLoader(val_ds, batch_size=batch_size, shuffle=False, num_workers=num_workers)
 
     train_loss = []
@@ -97,16 +101,21 @@ def create_cos_lr_sched(optimizer, epochs, warmup_epochs=5, eta_min=1e-6):
         return CosineAnnealingLR(optimizer, T_max=epochs, eta_min=eta_min)
 
 
-def main(data_path, epochs, batch_size, learning_rate, dropout_rate, p_aug, num_workers, warmup_epochs, eta_min, save_path=None): # pragma: no cover.
+def main(data_path, epochs, batch_size, learning_rate, dropout_rate, p_aug, num_workers, warmup_epochs, eta_min, sampler_fraction=None, save_path=None): # pragma: no cover.
     train_ds = H5PatchDataset(data_path, split="train", augment=True, p_flip=p_aug, p_rot=p_aug, p_shift=p_aug)
     val_ds = H5PatchDataset(data_path, split="val")
+
+    if sampler_fraction is not None:
+        sampler = BalancedTrailSampler(train_ds.pos_indices, train_ds.neg_indices, pos_fraction=sampler_fraction)
+    else:
+        sampler = None
     
-    model = UNet(in_channels=1, out_channels=1, kernel_size=3, base_channels=8, dropout=dropout_rate)
+    model = UNet(dropout=dropout_rate)
     
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
     scheduler = create_cos_lr_sched(optimizer, epochs, warmup_epochs=warmup_epochs, eta_min=eta_min)
 
-    train_loss, val_loss, _, _ = train_unet(model, train_ds, val_ds, optimizer, scheduler, epochs, batch_size, num_workers=num_workers, save_path=save_path)
+    train_loss, val_loss, _, _ = train_unet(model, train_ds, val_ds, optimizer, scheduler, epochs, batch_size, sampler=sampler, num_workers=num_workers, save_path=save_path)
     return train_loss, val_loss
 
 
@@ -121,10 +130,11 @@ def parse_args(): # pragma: no cover.
     parser.add_argument("--augmentation-prob", type=float, default=0.0)
     parser.add_argument("--warmup-epochs", type=int, default=5)
     parser.add_argument("--eta-min", type=float, default=1e-6)
+    parser.add_argument("--sampler-fraction", type=float, default=None)
     parser.add_argument("--save-path", type=str, default=None)
-    parser.add_argument("--verbose", action="store_true", default=True)
-    parser.add_argument("--plot-path", type=str, default=None)
     parser.add_argument("--num-workers", type=int, default=0)
+    parser.add_argument("--verbose", action="store_true")
+    parser.add_argument("--plot-path", type=str, default=None)
 
     return parser.parse_args()
 
@@ -143,6 +153,7 @@ if __name__ == "__main__": # pragma: no cover.
                                 p_aug=args.augmentation_prob,
                                 warmup_epochs=args.warmup_epochs,
                                 eta_min=args.eta_min,
+                                sampler_fraction=args.sampler_fraction,
                                 save_path=args.save_path,
                                 num_workers=args.num_workers)
     
