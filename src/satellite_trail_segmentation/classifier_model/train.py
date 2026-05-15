@@ -8,15 +8,18 @@ from torch.optim.lr_scheduler import CosineAnnealingLR, LinearLR, SequentialLR
 import optuna
 
 from satellite_trail_segmentation.data.dataset import H5PatchDataset
-from satellite_trail_segmentation.classifier_model.classifier import TrailClassifier
-from satellite_trail_segmentation.classifier_model.losses import recall_combo_loss
+from satellite_trail_segmentation.classifier_model.classifier import get_classifier_model
+from satellite_trail_segmentation.classifier_model.losses import bce_fn_penalty_loss
 from satellite_trail_segmentation.classifier_model.metrics import batch_metrics
 from satellite_trail_segmentation.utils.visualizations import plot_loss_curves
 
 LOGGER = logging.getLogger(__name__)
 
 
-def train_classifier(model, train_ds, val_ds, optimizer, scheduler, epochs, batch_size, pos_weight, num_workers, save_path, trial=None):
+def train_classifier(model, train_ds, val_ds, optimizer, scheduler, epochs, 
+                     batch_size, pos_weight, fn_penalty_weight, pred_threshold, 
+                     num_workers, save_path, trial=None):
+    
     if save_path is not None:
         Path(save_path).parent.mkdir(parents=True, exist_ok=True)
 
@@ -28,7 +31,9 @@ def train_classifier(model, train_ds, val_ds, optimizer, scheduler, epochs, batc
 
     train_loss = []
     val_loss = []
-    best_val_recall = float("-inf")
+    best_val_recall = 0.0
+    min_val_loss = float("inf")
+
 
     LOGGER.info(f"Starting classifier training for {epochs} epochs on {device} with {len(train_loader)} train batches and {len(val_loader)} val batches.")
 
@@ -41,7 +46,7 @@ def train_classifier(model, train_ds, val_ds, optimizer, scheduler, epochs, batc
 
             optimizer.zero_grad()
             logits = model(images)
-            loss = recall_combo_loss(logits, targets, pos_weight=pos_weight)
+            loss = bce_fn_penalty_loss(logits, targets, pos_weight=pos_weight, fn_penalty_weight=fn_penalty_weight)
             loss.backward()
             optimizer.step()
 
@@ -60,10 +65,10 @@ def train_classifier(model, train_ds, val_ds, optimizer, scheduler, epochs, batc
                 targets = metadata["patch_has_trail"].to(device=device, dtype=torch.float32).view(-1, 1)
 
                 logits = model(images)
-                loss = recall_combo_loss(logits, targets, pos_weight=pos_weight)
+                loss = bce_fn_penalty_loss(logits, targets, pos_weight=pos_weight, fn_penalty_weight=fn_penalty_weight)
                 epoch_val_loss += 1/len(val_loader) * loss.item()
 
-                metrics = batch_metrics(logits, targets)
+                metrics = batch_metrics(logits, targets, threshold=pred_threshold)
                 val_true_positive += metrics["true_positive"]
                 val_false_positive += metrics["false_positive"]
                 val_false_negative += metrics["false_negative"]
@@ -83,8 +88,12 @@ def train_classifier(model, train_ds, val_ds, optimizer, scheduler, epochs, batc
             if trial.should_prune():
                 raise optuna.exceptions.TrialPruned()
 
-        if epoch_val_recall > best_val_recall:
-            best_val_recall = epoch_val_recall
+        is_best_recall = epoch_val_recall > best_val_recall
+        is_better_loss_at_max_recall = (epoch_val_recall >= best_val_recall and epoch_val_loss < min_val_loss)
+
+        if is_best_recall or is_better_loss_at_max_recall:
+            best_val_recall = max(best_val_recall, epoch_val_recall)
+            min_val_loss = epoch_val_loss
             if save_path is not None:
                 torch.save(
                     {
@@ -94,10 +103,8 @@ def train_classifier(model, train_ds, val_ds, optimizer, scheduler, epochs, batc
                         "optimizer_state_dict": optimizer.state_dict(),
                         "scheduler_state_dict": scheduler.state_dict(),
                         "model_config": {
-                            "in_channels": model.in_channels,
-                            "kernel_size": model.kernel_size,
-                            "base_channels": model.base_channels,
-                            "dropout": model.dropout,
+                            "arch": "resnet18",
+                            "pos_weight": pos_weight,
                         },
                         "train_loss": train_loss,
                         "val_loss": val_loss,
@@ -106,7 +113,7 @@ def train_classifier(model, train_ds, val_ds, optimizer, scheduler, epochs, batc
                 )
 
         final_epoch = epoch + 1
-        LOGGER.info(f"Epoch {epoch + 1}/{epochs} | train_loss={epoch_train_loss:.6f} | val_loss={epoch_val_loss:.6f} | val_recall={epoch_val_recall:.6f} | val_precision={epoch_val_precision:.6f} | val_fnr={epoch_val_fnr:.6f}")
+        LOGGER.info(f"Epoch {epoch + 1}/{epochs} | val_fnr={epoch_val_fnr:.6f} | train_loss={epoch_train_loss:.6f} | val_loss={epoch_val_loss:.6f} | val_recall={epoch_val_recall:.6f} | val_precision={epoch_val_precision:.6f}")
 
     return train_loss, val_loss, best_val_recall, final_epoch
 
@@ -120,16 +127,18 @@ def create_cos_lr_sched(optimizer, epochs, warmup_epochs=5, eta_min=1e-6):
         return CosineAnnealingLR(optimizer, T_max=epochs, eta_min=eta_min)
     
 
-def main(data_path, epochs, batch_size, learning_rate, dropout_rate, pos_weight, num_workers, warmup_epochs, eta_min, base_channels=16, save_path=None): # pragma: no cover.
-    train_ds = H5PatchDataset(data_path, split="train", return_metadata=True, return_masks=False, augment=True, p_flip=0.1, p_rot=0.1, p_shift=0.1)
+def main(data_path, epochs, batch_size, learning_rate, pos_weight, num_workers, warmup_epochs, eta_min, p_shift, fn_penalty_weight, pred_threshold, save_path=None): # pragma: no cover.
+    train_ds = H5PatchDataset(data_path, split="train", return_metadata=True, return_masks=False, augment=True, p_flip=0.5, p_rot=0.75, p_shift=p_shift)
     val_ds = H5PatchDataset(data_path, split="val", return_metadata=True, return_masks=False)
 
-    model = TrailClassifier(in_channels=1, base_channels=base_channels, dropout=dropout_rate)
+    model = get_classifier_model()
 
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
     scheduler = create_cos_lr_sched(optimizer, epochs, warmup_epochs=warmup_epochs, eta_min=eta_min)
 
-    train_loss, val_loss, best_val_recall, final_epoch = train_classifier(model, train_ds, val_ds, optimizer, scheduler, epochs, batch_size, pos_weight, num_workers, save_path, trial=None)
+    train_loss, val_loss, best_val_recall, final_epoch = train_classifier(model, train_ds, val_ds, optimizer, scheduler, epochs, 
+                                                                          batch_size, pos_weight, fn_penalty_weight, pred_threshold,
+                                                                          num_workers, save_path, trial=None)
     return train_loss, val_loss, best_val_recall, final_epoch
 
 
@@ -140,11 +149,12 @@ def parse_args():  # pragma: no cover.
     parser.add_argument("--epochs", type=int, required=True)
     parser.add_argument("--batch-size", type=int, required=True)
     parser.add_argument("--learning-rate", type=float, required=True)
-    parser.add_argument("--dropout-rate", type=float, default=0.3)
-    parser.add_argument("--pos-weight", type=float, default=10.0)
-    parser.add_argument("--base-channels", type=int, default=16)
     parser.add_argument("--warmup-epochs", type=int, default=5)
     parser.add_argument("--eta-min", type=float, default=1e-6)
+    parser.add_argument("--pos-weight", type=float, default=10.0)
+    parser.add_argument("--p-shift", type=float, default=0.1)
+    parser.add_argument("--fn-penalty-weight", type=float, default=1)
+    parser.add_argument("--pred-threshold", type=float, default=0.3)
     parser.add_argument("--save-path", type=str, default=None)
     parser.add_argument("--verbose", action="store_true", default=True)
     parser.add_argument("--plot-path", type=str, default=None)
@@ -163,13 +173,14 @@ if __name__ == "__main__": # pragma: no cover.
                                                               epochs=args.epochs,
                                                               batch_size=args.batch_size,
                                                               learning_rate=args.learning_rate,
-                                                              dropout_rate=args.dropout_rate,
                                                               warmup_epochs=args.warmup_epochs,
                                                               eta_min=args.eta_min, 
                                                               pos_weight=args.pos_weight,
+                                                              p_shift=args.p_shift,
+                                                              fn_penalty_weight=args.fn_penalty_weight,
+                                                              pred_threshold=args.pred_threshold,
                                                               num_workers=args.num_workers,
-                                                              save_path=args.save_path,
-                                                              base_channels=args.base_channels)
+                                                              save_path=args.save_path)
 
     if args.plot_path is not None:
         plot_loss_curves(train_loss, val_loss, args.plot_path)
