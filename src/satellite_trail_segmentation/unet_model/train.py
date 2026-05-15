@@ -101,8 +101,8 @@ def create_cos_lr_sched(optimizer, epochs, warmup_epochs=5, eta_min=1e-6):
         return CosineAnnealingLR(optimizer, T_max=epochs, eta_min=eta_min)
 
 
-def main(data_path, epochs, batch_size, learning_rate, dropout_rate, p_aug, num_workers, warmup_epochs, eta_min, sampler_fraction=None, save_path=None): # pragma: no cover.
-    train_ds = H5PatchDataset(data_path, split="train", augment=True, p_flip=p_aug, p_rot=p_aug, p_shift=p_aug)
+def main(data_path, epochs, batch_size, learning_rate, dropout_rate, p_shift, num_workers, warmup_epochs, eta_min, sampler_fraction=None, save_path=None): # pragma: no cover.
+    train_ds = H5PatchDataset(data_path, split="train", augment=True, p_flip=0.5, p_rot=0.75, p_shift=p_shift)
     val_ds = H5PatchDataset(data_path, split="val")
 
     if sampler_fraction is not None:
@@ -127,7 +127,7 @@ def parse_args(): # pragma: no cover.
     parser.add_argument("--batch-size", type=int, required=True)
     parser.add_argument("--learning-rate", type=float, required=True)
     parser.add_argument("--dropout-rate", type=float, default=0.0)
-    parser.add_argument("--augmentation-prob", type=float, default=0.0)
+    parser.add_argument("--shift-prob", type=float, default=0.0)
     parser.add_argument("--warmup-epochs", type=int, default=5)
     parser.add_argument("--eta-min", type=float, default=1e-6)
     parser.add_argument("--sampler-fraction", type=float, default=None)
@@ -150,7 +150,7 @@ if __name__ == "__main__": # pragma: no cover.
                                 batch_size=args.batch_size,
                                 learning_rate=args.learning_rate,
                                 dropout_rate=args.dropout_rate,
-                                p_aug=args.augmentation_prob,
+                                p_shift=args.shift_prob,
                                 warmup_epochs=args.warmup_epochs,
                                 eta_min=args.eta_min,
                                 sampler_fraction=args.sampler_fraction,

@@ -17,10 +17,10 @@ def create_objective(data_path, epochs):
     def objective(trial):
         learning_rate = trial.suggest_float("learning_rate", 5e-5, 1e-2, log=True)
         dropout_rate = trial.suggest_float("dropout_rate", 0.0, 0.5)
-        p_aug = trial.suggest_float("p_aug", 0.1, 0.5)
+        p_shift = trial.suggest_float("p_shift", 0.1, 0.5)
         sampler_fraction = trial.suggest_float("sampler_fraction", 0.1, 0.5)
 
-        train_ds = H5PatchDataset(data_path, split="train", augment=True, p_flip=p_aug, p_rot=p_aug, p_shift=p_aug)
+        train_ds = H5PatchDataset(data_path, split="train", augment=True, p_flip=0.5, p_rot=0.75, p_shift=p_shift)
         val_ds = H5PatchDataset(data_path, split="val")
         sampler = BalancedTrailSampler(train_ds.pos_indices, train_ds.neg_indices, pos_fraction=sampler_fraction)
 
@@ -29,11 +29,11 @@ def create_objective(data_path, epochs):
         optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
         scheduler = create_cos_lr_sched(optimizer, epochs, warmup_epochs=5)
 
-        train_loss, val_loss, best_loss, total_epochs = train_unet(model, train_ds, val_ds, optimizer, scheduler, epochs, batch_size=64, num_workers=4, sampler=sampler, trial=trial)
+        _, _, best_loss, total_epochs = train_unet(model, train_ds, val_ds, optimizer, scheduler, epochs, batch_size=64, num_workers=4, sampler=sampler, trial=trial)
         
         score = best_loss
 
-        LOGGER.warning(f'Trial {trial.number} complete after {total_epochs} epochs. \n Parameters: lr={learning_rate:.2e} | dropout={dropout_rate} | p_augmentation={p_aug}\nBest validation loss: {score}.')
+        LOGGER.warning(f'Trial {trial.number} complete after {total_epochs} epochs. \n Parameters: lr={learning_rate:.2e} | dropout={dropout_rate} | p_shift={p_shift}\nBest validation loss: {score}.')
         
         
         return score
@@ -47,7 +47,7 @@ def parse_args():
     parser.add_argument("--data-path", type=str, required=True)
     parser.add_argument("--epochs", type=int, default=50)
     parser.add_argument("--trials", type=int, default=25)
-    parser.add_argument("--verbose", action="store_true", default=True)
+    parser.add_argument("--verbose", action="store_true")
     
     return parser.parse_args()
 
