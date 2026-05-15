@@ -8,7 +8,7 @@ from torch.optim.lr_scheduler import CosineAnnealingLR, LinearLR, SequentialLR
 import optuna
 
 from satellite_trail_segmentation.data.dataset import H5PatchDataset
-from satellite_trail_segmentation.classifier_model.classifier import get_classifier_model
+from satellite_trail_segmentation.classifier_model.classifier import get_classifier_model, TinyGatekeeper
 from satellite_trail_segmentation.classifier_model.losses import bce_fn_penalty_loss
 from satellite_trail_segmentation.classifier_model.metrics import batch_metrics
 from satellite_trail_segmentation.utils.visualizations import plot_loss_curves
@@ -131,7 +131,7 @@ def main(data_path, epochs, batch_size, learning_rate, pos_weight, num_workers, 
     train_ds = H5PatchDataset(data_path, split="train", return_metadata=True, return_masks=False, augment=True, p_flip=0.5, p_rot=0.75, p_shift=p_shift)
     val_ds = H5PatchDataset(data_path, split="val", return_metadata=True, return_masks=False)
 
-    model = get_classifier_model()
+    model = TinyGatekeeper()
 
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
     scheduler = create_cos_lr_sched(optimizer, epochs, warmup_epochs=warmup_epochs, eta_min=eta_min)
