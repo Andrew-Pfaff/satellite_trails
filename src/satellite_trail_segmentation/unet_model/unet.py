@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.init as init
 
 
 class UNet(nn.Module):
@@ -48,6 +49,22 @@ class UNet(nn.Module):
         self.up_conv4 = nn.ConvTranspose2d(self.base_channels * 2, self.base_channels, kernel_size=2, stride=2)
         self.up4 = self._conv_block(self.base_channels*2, self.base_channels)
         self.final = nn.Conv2d(self.base_channels, self.out_channels, kernel_size=1, stride=1, padding=0, dilation=1)
+        self._initialize_weights() #He/Kaiming initialization
+
+
+    def _initialize_weights(self):
+        for m in self.modules():
+            if isinstance(m, (nn.Conv2d, nn.ConvTranspose2d)):
+                # Use kaiming_normal_ for weights
+                init.kaiming_normal_(m.weight, a=0.01, mode='fan_out', nonlinearity='leaky_relu')
+                if m.bias is not None:
+                    init.constant_(m.bias, 0)
+            
+            elif isinstance(m, nn.BatchNorm2d):
+                # Standard initialization for BatchNorm
+                init.constant_(m.weight, 1)
+                init.constant_(m.bias, 0)
+
 
     def _dropout_layer(self):
         """
