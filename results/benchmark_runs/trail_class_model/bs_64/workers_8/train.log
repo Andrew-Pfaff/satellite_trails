@@ -1,0 +1,4 @@
+2026-05-15 11:03:28,600 INFO __main__: Starting classifier training for 3 epochs on cuda with 188 train batches and 63 val batches.
+2026-05-15 11:04:02,054 INFO __main__: Epoch 1/3 | train_loss=0.491724 | val_loss=0.673971 | val_recall=1.000000 | val_precision=0.044250 | val_fnr=0.000000
+2026-05-15 11:04:35,135 INFO __main__: Epoch 2/3 | train_loss=0.415555 | val_loss=0.763079 | val_recall=0.983051 | val_precision=0.046749 | val_fnr=0.016949
+2026-05-15 11:05:08,037 INFO __main__: Epoch 3/3 | train_loss=0.342394 | val_loss=0.583225 | val_recall=0.966102 | val_precision=0.046430 | val_fnr=0.033898
