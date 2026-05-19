@@ -9,6 +9,45 @@ from satellite_trail_segmentation.unet_model.metrics import accuracy_metrics, ge
 
 
 def evaluate_patches(model, h5_path, split_type, batch_size, subsample_fraction=0.01):
+    """
+    Evaluates all patches within a custom h5 path that are within the specified split type.
+    
+    Computes a global combo-loss, and uses a randomly subsampled fraction of pixels across the dataset to calculate ROC-AUC and binary classification metrics using an optimal threshold.
+    
+    Args:
+        model (torch.nn.Module): Trained UNet model to evaluate.
+        h5_path (str): Path to the h5 file containing the dataset.
+        split_type (str): Type of data split to evaluate. Must be "train", 
+            "val", or "test".
+        batch_size (int): Number of patches per batch.
+        subsample_fraction (float, optional): Percentage of pixels to randomly 
+            sample per batch for memory-efficient ROC-AUC calculations. 
+            Defaults to 0.01.
+
+    Returns:
+        tuple: A tuple containing:
+            - test_loss (float): The average combo-loss (Dice + BCE) across 
+              all batches.
+            - metrics (dict): Subsampled pixel-level evaluation metrics containing:
+                * "accuracy": Global classification accuracy.
+                * "precision": Precision score.
+                * "sensitivity": Recall / True Positive Rate.
+                * "specificity": True Negative Rate.
+                * "iou": Intersection over Union.
+                * "dice": Dice similarity coefficient.
+                * "tp": Total true positives.
+                * "tn": Total true negatives.
+                * "fp": Total false positives.
+                * "fn": Total false negatives.
+                * "num_pix": Total number of evaluated pixels.
+                * "roc_auc": Area under the ROC curve.
+                * "optimal_threshold": The threshold used to binarize predictions.
+            - roc_data (dict): Arrays for plotting the ROC curve, containing:
+                * "fpr" (numpy.ndarray): False Positive Rates.
+                * "tpr" (numpy.ndarray): True Positive Rates.
+                * "thresholds" (numpy.ndarray): Thresholds evaluated for the curve.
+    """
+    
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = model.to(device)
 
@@ -69,12 +108,43 @@ def evaluate_patches(model, h5_path, split_type, batch_size, subsample_fraction=
 
 
 def image_threshold(image, threshold=0.5):
+    """
+    Thresholds an image into binary (0 or 255), using a single threshold value.
+
+    Args:
+        image (np.ndarray): 2D image array
+        threshold (float): Value for which values above are set to 255 and values equal or below are set to 0.
+
+    Returns:
+        binary_image (np.ndarray): Binarized 2D image array
+    """
+
     binary_image = (image > threshold)
     binary_image = binary_image.astype(np.uint8)*255
     return binary_image
 
 
 def recreate_full_field_pred(model, h5_path, split_type, source_index, batch_size=1, patch_dim=528):
+    """
+    Reassembles individual patches back into a single full-field image, complete with their corresponding predictions and ground truth masks.
+
+    Iterates through patches belonging to a specific source image, runs them through the model to get probability maps, and places them back into their original spatial coordinates.
+
+    Args:
+        model (torch.nn.Module): Trained UNet model used to generate patch predictions.
+        h5_path (str): Path to the h5 file containing the dataset and metadata.
+        split_type (str): Type of data split to evaluate. Must be "train", "val", or "test".
+        source_index (int): The unique index identifier of the full-field source image to reconstruct.
+        batch_size (int, optional): Number of patches per batch during inference. Defaults to 1.
+        patch_dim (int, optional): Spatial dimension (height and width) of the square patches. Defaults to 528.
+
+    Returns:
+        tuple: A tuple containing:
+            - full_image (numpy.ndarray): Reconstructed 2D/3D original image array.
+            - full_pred (numpy.ndarray): Reconstructed 2D probability map array containing values from 0.0 to 1.0.
+            - full_mask (numpy.ndarray): Reconstructed 2D ground truth binary mask array.
+    """
+
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = model.to(device)
 
@@ -107,7 +177,39 @@ def recreate_full_field_pred(model, h5_path, split_type, source_index, batch_siz
     return full_image, full_pred, full_mask
 
 
-def evaluate_full_field_pred(full_image, full_pred, full_mask, threshold):
+def evaluate_full_field_pred(full_pred, full_mask, threshold):
+    """
+    Evaluates segmentation performance metrics and generates ROC data on a fully reassembled image field.
+
+    Binarizes the continuous probability map using a provided threshold value and evaluates standard segmentation accuracy metrics against the complete ground truth mask.
+
+    Args:
+        full_pred (numpy.ndarray): The reassembled full-field continuous probability map array.
+        full_mask (numpy.ndarray): The reassembled full-field ground truth binary mask array.
+        threshold (float): The cutoff value used to binarize `full_pred` into a discrete pixel mask.
+
+    Returns:
+        tuple: A tuple containing:
+            - metrics (dict): Full-field pixel-level evaluation metrics containing:
+                * "accuracy": Overall classification accuracy.
+                * "precision": Precision score.
+                * "sensitivity": Recall / True Positive Rate.
+                * "specificity": True Negative Rate.
+                * "iou": Intersection over Union.
+                * "dice": Dice similarity coefficient.
+                * "tp": Total true positives.
+                * "tn": Total true negatives.
+                * "fp": Total false positives.
+                * "fn": Total false negatives.
+                * "num_pix": Total number of pixels evaluated.
+                * "roc_auc": Area under the ROC curve calculated from the full-field array.
+                * "optimal_threshold": Theoretically optimal threshold found via ROC analysis.
+            - roc_data (dict): Arrays for plotting the ROC curve, containing:
+                * "fpr" (numpy.ndarray): False Positive Rates.
+                * "tpr" (numpy.ndarray): True Positive Rates.
+                * "thresholds" (numpy.ndarray): Evaluated thresholds along the curve.
+    """
+
     fpr, tpr, thresholds, optimal_threshold, roc_auc = get_roc_auc_data(full_pred, full_mask)
     
     pred_bin = image_threshold(full_pred, threshold)
@@ -117,4 +219,4 @@ def evaluate_full_field_pred(full_image, full_pred, full_mask, threshold):
     metrics["optimal_threshold"] = optimal_threshold
     roc_data = {"fpr": fpr, "tpr": tpr, "thresholds": thresholds}
 
-    return metrics, roc_data, full_image, full_pred, full_mask
+    return metrics, roc_data

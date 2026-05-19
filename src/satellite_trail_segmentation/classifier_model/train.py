@@ -8,7 +8,7 @@ from torch.optim.lr_scheduler import CosineAnnealingLR, LinearLR, SequentialLR
 import optuna
 
 from satellite_trail_segmentation.data.dataset import H5PatchDataset
-from satellite_trail_segmentation.classifier_model.classifier import get_classifier_model, TinyGatekeeper
+from satellite_trail_segmentation.classifier_model.classifier import TrailClassifier
 from satellite_trail_segmentation.classifier_model.losses import bce_fn_penalty_loss
 from satellite_trail_segmentation.classifier_model.metrics import batch_metrics
 from satellite_trail_segmentation.utils.visualizations import plot_loss_curves
@@ -19,7 +19,34 @@ LOGGER = logging.getLogger(__name__)
 def train_classifier(model, train_ds, val_ds, optimizer, scheduler, epochs, 
                      batch_size, pos_weight, fn_penalty_weight, pred_threshold, 
                      num_workers, save_path, trial=None):
-    
+    """
+    Trains a classifier model for satellite trail detection over a specified number of epochs.
+
+    Full training workflow: manages data loading, moves tensors to the appropriate device, executes the forward and backward passes, tracks loss profiles across training and validation splits, updates the learning rate schedule, and implements custom checkpoint saving alongside Optuna trial pruning.
+
+    Args:
+        model (torch.nn.Module): The classifier neural network instance to be trained.
+        train_ds (torch.utils.data.Dataset): The dataset object containing training images and ground-truth patch labels.
+        val_ds (torch.utils.data.Dataset): The dataset object containing validation data.
+        optimizer (torch.optim.Optimizer): The torch optimization object used to update network weights.
+        scheduler (torch.optim.lr_scheduler.LRScheduler): The learning rate schedule object stepped once per epoch.
+        epochs (int): The total number of full training cycles to execute.
+        batch_size (int): Number of training/validation samples to pass through the network per iteration.
+        pos_weight (float): Positive class weighting factor passed to the classifier loss.
+        fn_penalty_weight (float): Scaling factor for the soft false-negative penalty term.
+        pred_threshold (float): Probability threshold used to binarize classifier outputs for metric tracking.
+        num_workers (int): Number of asynchronous subprocesses to allocate for data loading.
+        save_path (str): File path for saving the model.
+        trial (optuna.trial.Trial, optional): An active Optuna study trial hyperparameter hook used for validating metrics reporting and active epoch pruning. Defaults to None.
+
+    Returns:
+        tuple: A 4-element tuple containing runtime performance tracking historical data:
+            - train_loss (list of float): Cumulative running training loss calculated per epoch.
+            - val_loss (list of float): Cumulative running validation loss calculated per epoch.
+            - best_val_recall (float): The highest validation recall achieved across the run.
+            - final_epoch (int): The absolute iteration index representing the final epoch reached prior to completion or pruning interception.
+    """
+
     if save_path is not None:
         Path(save_path).parent.mkdir(parents=True, exist_ok=True)
 
@@ -119,6 +146,28 @@ def train_classifier(model, train_ds, val_ds, optimizer, scheduler, epochs,
 
 
 def create_cos_lr_sched(optimizer, epochs, warmup_epochs=5, eta_min=1e-6):
+    """
+    Creates a sequential learning rate scheduler with a linear warmup phase followed by a cosine annealing decay phase.
+
+    Warmup phase, the learning rate scales linearly from 10% of its initial value up to 100%.
+    Then cosine wave decay that smoothly pulls the learning rate down to the minimum specified value (`eta_min`) over the remaining epochs.
+
+    Args:
+        optimizer (torch.optim.Optimizer): The optimizer for which the learning rate schedule will be applied.
+        epochs (int): Total number of training epochs planned for the run.
+        warmup_epochs (int, optional): The number of initial epochs dedicated to the linear warmup phase. If set to 0 or None, the warmup is skipped, and a standard CosineAnnealingLR is returned. Defaults to 5.
+        eta_min (float, optional): The minimum bounding value that the learning rate is allowed to decay down to during the cosine annealing phase. Defaults to 1e-6.
+
+    Returns:
+        torch.optim.lr_scheduler.LRScheduler: A unified PyTorch learning rate scheduler object (either a `SequentialLR` or a standalone `CosineAnnealingLR`).
+            
+    Example:
+        >>> optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+        >>> scheduler = create_cos_lr_sched(optimizer, epochs=50, warmup_epochs=5)
+        >>> # Epochs 0-4: LR climbs from 1e-4 to 1e-3
+        >>> # Epochs 5-49: LR decays along a cosine curve from 1e-3 down to 1e-6
+    """
+
     if warmup_epochs is not None and warmup_epochs > 0:
         warmup = LinearLR(optimizer, start_factor=0.1, end_factor=1.0, total_iters=warmup_epochs)
         cos = CosineAnnealingLR(optimizer, T_max=(epochs-warmup_epochs), eta_min=eta_min)
@@ -131,7 +180,7 @@ def main(data_path, epochs, batch_size, learning_rate, pos_weight, num_workers, 
     train_ds = H5PatchDataset(data_path, split="train", return_metadata=True, return_masks=False, augment=True, p_flip=0.5, p_rot=0.75, p_shift=p_shift)
     val_ds = H5PatchDataset(data_path, split="val", return_metadata=True, return_masks=False)
 
-    model = TinyGatekeeper()
+    model = TrailClassifier()
 
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
     scheduler = create_cos_lr_sched(optimizer, epochs, warmup_epochs=warmup_epochs, eta_min=eta_min)
@@ -151,12 +200,12 @@ def parse_args():  # pragma: no cover.
     parser.add_argument("--learning-rate", type=float, required=True)
     parser.add_argument("--warmup-epochs", type=int, default=5)
     parser.add_argument("--eta-min", type=float, default=1e-6)
-    parser.add_argument("--pos-weight", type=float, default=10.0)
+    parser.add_argument("--pos-weight", type=float, default=3.0)
     parser.add_argument("--p-shift", type=float, default=0.1)
     parser.add_argument("--fn-penalty-weight", type=float, default=1)
     parser.add_argument("--pred-threshold", type=float, default=0.3)
     parser.add_argument("--save-path", type=str, default=None)
-    parser.add_argument("--verbose", action="store_true", default=True)
+    parser.add_argument("--verbose", action="store_true")
     parser.add_argument("--plot-path", type=str, default=None)
     parser.add_argument("--num-workers", type=int, default=0)
 

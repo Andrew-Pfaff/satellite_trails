@@ -5,16 +5,26 @@ import torch.nn.init as init
 
 class UNet(nn.Module):
     """
-    U-Net CNN architecture for detecting satellite trails.
+    U-Net segmentation model architecture for detecting satellite trails.
 
-    The model uses zero padding instead of valid padding so the output mask matches the spatial dimensions of the input image.
+    Consists of a 5-block encoder with max pooling and a 4-block decoder with skip connections. 
+    Uses zero padding so output spatial dimensions match the input. 
+    Output is a raw logit map; apply sigmoid for probability predictions.
+    
+    Attributes:
+        in_channels (int): Number of channels in the input image tensor.
+        out_channels (int): Number of channels in the output mask tensor.
+        kernel_size  (int): Convolution kernel size used in each block
+        base_channels (int): Number of output channels in the first encoder block
+        dropout (float): Spatial dropout probability applied after each activation
+        final (nn.Conv2d): The final 1x1 convolution layer projecting to the output channels
     """
 
     def __init__(self, in_channels=1, out_channels=1, kernel_size=3, base_channels=8, dropout=0.0):
         """
         Initializes a configurable U-Net segmentation model.
 
-        Parameters:
+        Args:
             in_channels (int): Number of channels in the input image tensor
             out_channels (int): Number of channels in the output mask tensor
             kernel_size (int): Convolution kernel size used in each block
@@ -53,6 +63,8 @@ class UNet(nn.Module):
 
 
     def _initialize_weights(self):
+        """Applies Kaiming initialization to all Conv2d and ConvTranspose2d layers."""
+
         for m in self.modules():
             if isinstance(m, (nn.Conv2d, nn.ConvTranspose2d)):
                 # Use kaiming_normal_ for weights
@@ -73,6 +85,7 @@ class UNet(nn.Module):
         Returns:
             layer (nn.Module): Dropout layer when dropout > 0, otherwise an identity layer
         """
+
         if self.dropout == 0:
             return nn.Identity()
 
@@ -83,13 +96,14 @@ class UNet(nn.Module):
         """
         Builds a two-layer convolution block for the encoder or decoder.
 
-        Parameters:
+        Args:
             conv_input_channels (int): Number of channels entering the block
             conv_output_channels (int): Number of channels produced by the block
 
         Returns:
             block (nn.Sequential): Two-convolution block with normalization, activation, and optional dropout
         """
+
         return nn.Sequential(
             nn.Conv2d(conv_input_channels, conv_output_channels, self.kernel_size, stride=1, padding=1, dilation=1),
             nn.BatchNorm2d(conv_output_channels),
@@ -106,12 +120,13 @@ class UNet(nn.Module):
         """
         Passes a batch of images through the U-Net.
 
-        Parameters:
+        Args:
             image (torch.Tensor): Tensor with shape (batch_size, in_channels, height, width)
 
         Returns:
             output (torch.Tensor): Tensor with shape (batch_size, out_channels, height, width)
         """
+
         if image.ndim != 4:
             raise ValueError(f"Expected a 4D input tensor, got shape {tuple(image.shape)}")
         if (image.shape[2] % 16) != 0 or (image.shape[3] % 16) != 0:

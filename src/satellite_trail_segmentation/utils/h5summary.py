@@ -10,6 +10,18 @@ SPLIT_NAMES = {0: "train", 1: "val", 2: "test"}
 
 
 def build_h5_summary(h5_path):
+    """
+    Builds a tabular summary of source images and patch counts from an HDF5 dataset.
+
+    Reads source-level metadata from the dataset, aggregates patch counts per source image, and returns one summary row per source.
+
+    Args:
+        h5_path (str): Path to the HDF5 dataset file.
+
+    Returns:
+        list[dict]: A list of summary rows containing source file, split, and patch counts.
+    """
+
     with h5py.File(h5_path, "r") as f:
         source_files = f["source_files"][:]
         source_split = f["source_split"][:]
@@ -42,6 +54,13 @@ def build_h5_summary(h5_path):
 
 
 def print_summary(rows):
+    """
+    Prints a formatted table of summary rows to standard output.
+
+    Args:
+        rows (list[dict]): Summary rows produced by `build_h5_summary`.
+    """
+
     headers = ["source_index", "source_file", "split", "num_patches", "num_trail_patches"]
     table = [headers] + [[str(row[h]) for h in headers] for row in rows]
     widths = [max(len(cell) for cell in col) for col in zip(*table)]
@@ -54,6 +73,16 @@ def print_summary(rows):
 
 
 def write_summary_csv(rows, csv_path):
+    """
+    Writes summary rows to a CSV file.
+
+    Creates parent directories as needed, then writes the summary table with a fixed column order.
+
+    Args:
+        rows (list[dict]): Summary rows produced by `build_h5_summary`.
+        csv_path (str): File path for the output CSV.
+    """
+
     csv_path = Path(csv_path)
     csv_path.parent.mkdir(parents=True, exist_ok=True)
 

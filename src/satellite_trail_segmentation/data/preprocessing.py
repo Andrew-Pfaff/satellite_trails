@@ -14,16 +14,16 @@ def _sort_images(image_dir, input_suffix=".fits_full.png", mask_suffix="_mask.pn
     """
     Sorts the target/mask pairs into separate lists of file paths.
 
-    Parameters:
+    Args:
         image_dir (str): Directory containing PNG files
         input_suffix (str): Suffix identifying image files
         mask_suffix (str): Suffix identifying mask files
 
     Returns:
-        input_paths (list): Sorted image file paths
-        mask_paths (list): Corresponding mask file paths
-        
+        input_files (list): Sorted image file paths
+        target_files (list): Corresponding target file paths
     """
+
     input_files = sorted(glob.glob(os.path.join(image_dir, f"*{input_suffix}")))
     target_files = sorted(glob.glob(os.path.join(image_dir, f"*{mask_suffix}")))
 
@@ -50,6 +50,20 @@ def _sort_images(image_dir, input_suffix=".fits_full.png", mask_suffix="_mask.pn
 
 
 def define_split(image_dir, val_split, test_split, output_path, seed=1):
+    """
+    Defines a train/test/val split for dataset, and writes to csv which category each example fits into.
+
+    Args:
+        image_dir (str): Path to the dir with example data
+        val_split (float): Ratio of validation data. Valid range: [0,1). Uses floor rounding when counting val examples
+        test_split (float): Ratio of test data. Valid range: [0,1). Uses floor rounding when counting test examples. val_split+test_split must be less than 1
+        output_path (str): Path to the written csv
+        seed (int): Random seed for shuffling
+
+    Returns:
+        None. Writes split labels to a CSV at output_path.
+    """
+
     if not 0 <= val_split < 1:
         raise ValueError(f"val_split must be in [0, 1), got {val_split}")
     if not 0 <= test_split < 1:
@@ -86,6 +100,18 @@ def define_split(image_dir, val_split, test_split, output_path, seed=1):
 
 
 def load_split(path):
+    """
+    Loads data split csv that defines which example data belong to test/train/val.
+
+    Args:
+        path (str): Path to the split defining csv
+
+    Returns:
+        train (list): List of the train images
+        val (list): List of the val images
+        test (list): List of the test images
+    """
+    
     train = []
     val = []
     test = []
@@ -105,6 +131,23 @@ def load_split(path):
 
 
 def prepare_subset_data(train_files, test_files, val_files, num_images, val_split, test_split, seed=1):
+    """
+    Takes a master list of train, test, and validation files, and prepares a subset of that data of defined size. 
+
+    Args:
+        train_files (list): List of train file names
+        test_files (list): List of test file names
+        val_files (list): List of validation file names
+        num_images (int): Number of images to include in the subset. Must satisfy num_images<train_files+test_files+val_files
+        val_split (float): Ratio of validation data. Uses floor rounding when counting val examples. Must satisfy len(val_files)>num_images*val_split
+        test_split (float): Ratio of test data. Uses floor rounding when counting test examples. Must satisfy len(test_split)>num_images*test_split
+
+    Returns:
+        input_files (list): List of all input files included in the created data subset
+        target_files (list): List of all target files included in the created data subset
+        split_mask (list): List of the split label of each example. 0-train, 1-val, 2-test
+    """
+    
     num_val = int(val_split*num_images)
     num_test = int(test_split*num_images)
     num_train = num_images - (num_val + num_test) 
@@ -148,7 +191,7 @@ def _create_patches(image, patch_dim=528):
     """
     Creates non-overlapping square patches from a 2D image.
 
-    Parameters:
+    Args:
         image (np.ndarray): 2D image array
         patch_dim (int): Side length of each square patch in pixels
 
@@ -174,14 +217,37 @@ def create_h5(input_files, mask_files, split_mask, output_path, patch_dim=528, o
     """
     Creates an HDF5 file containing image patches, mask patches, and metadata.
 
-    Parameters:
+    Reads paired image and mask PNG files, slices them into square patches, and writes the patches along with split labels and spatial metadata into a structured HDF5 file for use in training pipelines.
+    Metadata includes:
+    Datasets:
+    - ``images`` (N, patch_dim, patch_dim) uint8: image patches
+    - ``masks`` (N, patch_dim, patch_dim) uint8: mask patches
+    - ``source_index`` (N,) int32: index of the full-field source_file for each patch
+    - ``patch_has_trail`` (N,) uint8: 1 if patch contains trail pixels, else 0
+    - ``patch_y0`` (N,) int32: top-left y coordinate of patch in source image
+    - ``patch_x0`` (N,) int32: top-left x coordinate of patch in source image
+    - ``source_files`` (n_images,) str: basenames of source image files
+    - ``source_split`` (n_images,) uint8: split label (0=train, 1=val, 2=test)
+    Attributes:
+    - ``patch_dim``: patch side length in pixels
+    - ``full_shape``: (H, W) shape of the source images
+
+    Args:
         input_files (list): Sorted image file paths
         mask_files (list): Corresponding mask file paths
         split_mask (np.ndarray): Full-image split labels where 0=train, 1=val, 2=test
         output_path (str): Path to the output HDF5 file
         patch_dim (int): Side length of each square patch in pixels
         overwrite (bool): If True, overwrite an existing HDF5 file
+
+    Returns:
+        None. Writes H5 file to specified output_path
+
+    Raises:
+        FileExistsError: If output_path exists and overwrite is False.
+        ValueError: If input_files and mask_files have different lengths.
     """
+
     input_files = list(input_files)
     mask_files = list(mask_files)
     split_mask = np.asarray(split_mask, dtype=np.uint8)

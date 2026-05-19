@@ -7,11 +7,43 @@ from satellite_trail_segmentation.data.dataset import H5PatchDataset
 
 
 def predict(logits, threshold=0.3):
+    """
+    Converts classifier logits into binary predictions using a threshold.
+
+    Args:
+        logits (torch.Tensor): Raw classifier outputs with shape (batch_size, 1).
+        threshold (float, optional): Probability threshold used to binarize predictions. Defaults to 0.3.
+
+    Returns:
+        torch.Tensor: Binary predictions as integer tensors with the same batch shape.
+    """
+
     probabilities = torch.sigmoid(logits)
     return (probabilities >= threshold).to(dtype=torch.int64)
 
 
 def recreate_full_field(model, h5_path, split_type, source_index, batch_size=32, patch_dim=528, threshold=0.3):
+    """
+    Reassembles patch-level classifier predictions into a full-field view for a single source image.
+
+    Iterates through all patches for the requested source image, runs the classifier on each patch, and places the image content, predicted labels, and ground truth labels back into their original spatial positions.
+
+    Args:
+        model (torch.nn.Module): Trained classifier model used to generate patch predictions.
+        h5_path (str): Path to the h5 file containing the dataset and metadata.
+        split_type (str): Type of data split to evaluate. Must be "train", "val", or "test".
+        source_index (int): The unique index identifier of the full-field source image to reconstruct.
+        batch_size (int, optional): Number of patches per batch during inference. Defaults to 32.
+        patch_dim (int, optional): Spatial dimension (height and width) of the square patches. Defaults to 528.
+        threshold (float, optional): Probability cutoff used to binarize classifier outputs. Defaults to 0.3.
+
+    Returns:
+        tuple: A tuple containing:
+            - full_image (numpy.ndarray): Reconstructed image array.
+            - full_pred (numpy.ndarray): Reconstructed binary prediction array.
+            - full_mask (numpy.ndarray): Reconstructed ground truth label array.
+    """
+
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = model.to(device)
 
