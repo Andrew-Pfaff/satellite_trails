@@ -4,7 +4,7 @@ import cv2
 from satellite_trail_segmentation.unet_model.evaluate import image_threshold
 
 
-def hough_tranform(full_field_pred, hough_threshold, min_length, max_gap, binary_threshold=0.5):
+def hough_transform(full_field_pred, hough_threshold, min_length, max_gap, binary_threshold=0.5):
     """
     Applies a probabilistic Hough line transform to a segmentation prediction.
 
