@@ -10,6 +10,7 @@ import optuna
 from satellite_trail_segmentation.data.dataset import H5PatchDataset
 from satellite_trail_segmentation.classifier_model.classifier import TrailClassifier
 from satellite_trail_segmentation.classifier_model.losses import bce_fn_penalty_loss
+from satellite_trail_segmentation.classifier_model.losses import bce_fn_penalty_loss
 from satellite_trail_segmentation.classifier_model.metrics import batch_metrics
 from satellite_trail_segmentation.utils.visualizations import plot_loss_curves
 
@@ -61,6 +62,9 @@ def train_classifier(model, train_ds, val_ds, optimizer, scheduler, epochs,
     best_val_recall = 0.0
     min_val_loss = float("inf")
 
+    best_val_recall = 0.0
+    min_val_loss = float("inf")
+
 
     LOGGER.info(f"Starting classifier training for {epochs} epochs on {device} with {len(train_loader)} train batches and {len(val_loader)} val batches.")
 
@@ -73,6 +77,7 @@ def train_classifier(model, train_ds, val_ds, optimizer, scheduler, epochs,
 
             optimizer.zero_grad()
             logits = model(images)
+            loss = bce_fn_penalty_loss(logits, targets, pos_weight=pos_weight, fn_penalty_weight=fn_penalty_weight)
             loss = bce_fn_penalty_loss(logits, targets, pos_weight=pos_weight, fn_penalty_weight=fn_penalty_weight)
             loss.backward()
             optimizer.step()
@@ -93,8 +98,10 @@ def train_classifier(model, train_ds, val_ds, optimizer, scheduler, epochs,
 
                 logits = model(images)
                 loss = bce_fn_penalty_loss(logits, targets, pos_weight=pos_weight, fn_penalty_weight=fn_penalty_weight)
+                loss = bce_fn_penalty_loss(logits, targets, pos_weight=pos_weight, fn_penalty_weight=fn_penalty_weight)
                 epoch_val_loss += 1/len(val_loader) * loss.item()
 
+                metrics = batch_metrics(logits, targets, threshold=pred_threshold)
                 metrics = batch_metrics(logits, targets, threshold=pred_threshold)
                 val_true_positive += metrics["true_positive"]
                 val_false_positive += metrics["false_positive"]
@@ -121,6 +128,12 @@ def train_classifier(model, train_ds, val_ds, optimizer, scheduler, epochs,
         if is_best_recall or is_better_loss_at_max_recall:
             best_val_recall = max(best_val_recall, epoch_val_recall)
             min_val_loss = epoch_val_loss
+        is_best_recall = epoch_val_recall > best_val_recall
+        is_better_loss_at_max_recall = (epoch_val_recall >= best_val_recall and epoch_val_loss < min_val_loss)
+
+        if is_best_recall or is_better_loss_at_max_recall:
+            best_val_recall = max(best_val_recall, epoch_val_recall)
+            min_val_loss = epoch_val_loss
             if save_path is not None:
                 torch.save(
                     {
@@ -132,6 +145,8 @@ def train_classifier(model, train_ds, val_ds, optimizer, scheduler, epochs,
                         "model_config": {
                             "arch": "resnet18",
                             "pos_weight": pos_weight,
+                            "arch": "resnet18",
+                            "pos_weight": pos_weight,
                         },
                         "train_loss": train_loss,
                         "val_loss": val_loss,
@@ -140,6 +155,7 @@ def train_classifier(model, train_ds, val_ds, optimizer, scheduler, epochs,
                 )
 
         final_epoch = epoch + 1
+        LOGGER.info(f"Epoch {epoch + 1}/{epochs} | val_fnr={epoch_val_fnr:.6f} | train_loss={epoch_train_loss:.6f} | val_loss={epoch_val_loss:.6f} | val_recall={epoch_val_recall:.6f} | val_precision={epoch_val_precision:.6f}")
         LOGGER.info(f"Epoch {epoch + 1}/{epochs} | val_fnr={epoch_val_fnr:.6f} | train_loss={epoch_train_loss:.6f} | val_loss={epoch_val_loss:.6f} | val_recall={epoch_val_recall:.6f} | val_precision={epoch_val_precision:.6f}")
 
     return train_loss, val_loss, best_val_recall, final_epoch
@@ -178,13 +194,19 @@ def create_cos_lr_sched(optimizer, epochs, warmup_epochs=5, eta_min=1e-6):
 
 def main(data_path, epochs, batch_size, learning_rate, pos_weight, num_workers, warmup_epochs, eta_min, p_shift, fn_penalty_weight, pred_threshold, save_path=None): # pragma: no cover.
     train_ds = H5PatchDataset(data_path, split="train", return_metadata=True, return_masks=False, augment=True, p_flip=0.5, p_rot=0.75, p_shift=p_shift)
+def main(data_path, epochs, batch_size, learning_rate, pos_weight, num_workers, warmup_epochs, eta_min, p_shift, fn_penalty_weight, pred_threshold, save_path=None): # pragma: no cover.
+    train_ds = H5PatchDataset(data_path, split="train", return_metadata=True, return_masks=False, augment=True, p_flip=0.5, p_rot=0.75, p_shift=p_shift)
     val_ds = H5PatchDataset(data_path, split="val", return_metadata=True, return_masks=False)
 
+    model = TrailClassifier()
     model = TrailClassifier()
 
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
     scheduler = create_cos_lr_sched(optimizer, epochs, warmup_epochs=warmup_epochs, eta_min=eta_min)
 
+    train_loss, val_loss, best_val_recall, final_epoch = train_classifier(model, train_ds, val_ds, optimizer, scheduler, epochs, 
+                                                                          batch_size, pos_weight, fn_penalty_weight, pred_threshold,
+                                                                          num_workers, save_path, trial=None)
     train_loss, val_loss, best_val_recall, final_epoch = train_classifier(model, train_ds, val_ds, optimizer, scheduler, epochs, 
                                                                           batch_size, pos_weight, fn_penalty_weight, pred_threshold,
                                                                           num_workers, save_path, trial=None)
@@ -228,7 +250,11 @@ if __name__ == "__main__": # pragma: no cover.
                                                               p_shift=args.p_shift,
                                                               fn_penalty_weight=args.fn_penalty_weight,
                                                               pred_threshold=args.pred_threshold,
+                                                              p_shift=args.p_shift,
+                                                              fn_penalty_weight=args.fn_penalty_weight,
+                                                              pred_threshold=args.pred_threshold,
                                                               num_workers=args.num_workers,
+                                                              save_path=args.save_path)
                                                               save_path=args.save_path)
 
     if args.plot_path is not None:

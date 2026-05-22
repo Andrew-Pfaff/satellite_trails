@@ -45,3 +45,9 @@ def bce_fn_penalty_loss(logits, target, pos_weight=10.0, fn_penalty_weight=1.0):
 
     loss = bce + fn_penalty_weight* fn_penalty
     return loss
+    prob = torch.sigmoid(logits)
+    soft_fn = torch.sum((1.0 - prob) * target)
+    fn_penalty = soft_fn / (target.sum() + 1e-8)
+
+    loss = bce + fn_penalty_weight* fn_penalty
+    return loss

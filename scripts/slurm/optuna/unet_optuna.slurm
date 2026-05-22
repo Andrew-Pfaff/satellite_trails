@@ -8,6 +8,8 @@
 #SBATCH --mem=32G
 #SBATCH --time=06:00:00
 #SBATCH --output=results/optuna/optuna_unet_study-%j.out
+#SBATCH --time=06:00:00
+#SBATCH --output=results/optuna/optuna_unet_study-%j.out
 
 set -euo pipefail
 
@@ -19,7 +21,7 @@ module load python/3.8.11/gcc-9.4.0-yb6rzr6
 #Paths
 PROJECT_ROOT="/home/anp50/rds/hpc-work/satellite_trails"
 VENV_PATH="$PROJECT_ROOT/.venv/bin/activate"
-SCRIPT_PATH="$PROJECT_ROOT/scripts/python/optuna/hyperparam_tuning.py"
+SCRIPT_PATH="$PROJECT_ROOT/scripts/python/optuna/unet_hyperparam_tuning.py"
 
 
 cd "$PROJECT_ROOT"
@@ -40,4 +42,4 @@ DATA_PATH="$LOCAL_DATA_PATH"
 
 
 #Running the script:
-python3 "$SCRIPT_PATH" --data-path="$DATA_PATH"
+python3 "$SCRIPT_PATH" --data-path="$DATA_PATH" --verbose

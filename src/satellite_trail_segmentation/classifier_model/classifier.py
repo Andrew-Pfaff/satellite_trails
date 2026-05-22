@@ -147,6 +147,8 @@ class TrailClassifier(nn.Module):
 
         image = nn.functional.avg_pool2d(image, kernel_size=2, stride=2)
 
+        image = nn.functional.avg_pool2d(image, kernel_size=2, stride=2)
+
         features = self.features(image)
         pooled = self.pool(features)
         flattened = torch.flatten(pooled, start_dim=1)
