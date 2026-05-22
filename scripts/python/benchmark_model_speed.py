@@ -94,12 +94,12 @@ def run_benchmark():
 
     # 1. UNet Reconstruction (Baseline - usually BS=1 on laptop)
     t_unet = time_field_reconstruction(
-        lambda: unet_recreate_full_field(unet, temp_h5, split_type="val", source_index=0, batch_size=1),
-        "UNet Full-Field", batch_size=1
+        lambda: unet_recreate_full_field(unet, temp_h5, split_type="val", source_index=0, batch_size=16),
+        "UNet Full-Field", batch_size=16
     )
 
     # 2. ResNet18 Gatekeeper (Use a manageable BS for laptop, e.g. 16 or 32)
-    resnet_bs = 32 if is_cuda else 8 
+    resnet_bs = 128 if is_cuda else 8 
     t_resnet = time_field_reconstruction(
         lambda: classifier_recreate_full_field(resnet_gate, temp_h5, split_type="val", source_index=0, batch_size=resnet_bs),
         "ResNet18 Gatekeeper", batch_size=resnet_bs

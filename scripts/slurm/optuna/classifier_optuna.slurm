@@ -40,4 +40,4 @@ DATA_PATH="$LOCAL_DATA_PATH"
 
 
 #Running the script:
-python3 "$SCRIPT_PATH" --data-path="$DATA_PATH" --batch-size=128 --num-workers=8
+python3 "$SCRIPT_PATH" --data-path="$DATA_PATH" --batch-size=128 --num-workers=8 --verbose
