@@ -1,12 +1,10 @@
 import argparse
 from time import time
 
-from satellite_trail_segmentation.unet_model.evaluate import recreate_full_field
 from satellite_trail_segmentation.utils.visualizations import plot_full_field
 from satellite_trail_segmentation.utils.load_model import load_model_weights
 from satellite_trail_segmentation.postprocess.hough import hough_tranform
-from satellite_trail_segmentation.unet_model.evaluate import image_threshold
-
+from satellite_trail_segmentation.unet_model.evaluate import image_threshold, recreate_full_field_pred
 
 
 def parse_args():
@@ -32,7 +30,7 @@ if __name__ == "__main__":
     print(f'Preprocessing completed in: {prepocessing_time} s')
 
     start_pred = time()
-    images = recreate_full_field(model, args.data_path, split_type=split_type, source_index=index)
+    images = recreate_full_field_pred(model, args.data_path, split_type=split_type, source_index=index)
     pred_time = time() - start_pred
     print(f'Prediction completed in: {pred_time} s')
 

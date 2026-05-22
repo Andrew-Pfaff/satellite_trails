@@ -17,6 +17,31 @@ LOGGER = logging.getLogger(__name__)
 
 
 def train_unet(model, train_ds, val_ds, optimizer, scheduler, epochs, batch_size, sampler=None, num_workers=0, save_path=None, trial=None):
+    """Trains a UNet model for satellite trail segmentation over a specified number of epochs.
+
+    Full training workflow: manages data loading, moves tensors to the appropriate device, executes the forward and backward passes, tracks loss profiles across training and validation splits, updates the learning rate schedule, and implements custom checkpoint saving alongside Optuna trial pruning.
+
+    Args:
+        model (torch.nn.Module): The UNet neural network instance to be trained.
+        train_ds (torch.utils.data.Dataset): The dataset object containing training images and ground-truth semantic masks.
+        val_ds (torch.utils.data.Dataset): The dataset object containing validation data.
+        optimizer (torch.optim.Optimizer): The torch optimizatier object to update network weights.
+        scheduler (torch.optim.lr_scheduler.LRScheduler): The learning rate schedule object stepped once per epoch.
+        epochs (int): The total number of full training cycles to execute.
+        batch_size (int): Number of training/validation samples to pass through the network per iteration.
+        sampler (torch.utils.data.Sampler, optional): Sampler strategy (e.g., BalancedTrailSampler) to set balance of positive and negative data samples. Defaults to None.
+        num_workers (int, optional): Number of asynchronous subprocesses to allocate for data loading. Defaults to 0.
+        save_path (str, optional): File path for saving the model. Defaults to None.
+        trial (optuna.trial.Trial, optional): An active Optuna study trial hyperparameter hook used for validating metrics reporting and active epoch pruning. Defaults to None.
+
+    Returns:
+        tuple: A 4-element tuple containing runtime performance tracking historical data:
+            - train_loss (list of float): Cumulative running training loss calculated per epoch.
+            - val_loss (list of float): Cumulative running validation loss calculated per epoch.
+            - best_loss (float): The lowest historical validation loss achieved across the run.
+            - final_epoch (int): The absolute iteration index representing the final epoch reached prior to completion or pruning interception.
+    """
+
     if save_path is not None:
         Path(save_path).parent.mkdir(parents=True, exist_ok=True)
     
@@ -70,12 +95,6 @@ def train_unet(model, train_ds, val_ds, optimizer, scheduler, epochs, batch_size
         train_loss.append(epoch_train_loss)
         val_loss.append(epoch_val_loss)
 
-        if trial is not None:
-            trial.report(epoch_val_loss, epoch)
-            if trial.should_prune():
-                raise optuna.exceptions.TrialPruned()
-
-
 
         if epoch_val_loss < best_loss:
             best_loss = epoch_val_loss
@@ -89,10 +108,40 @@ def train_unet(model, train_ds, val_ds, optimizer, scheduler, epochs, batch_size
         final_epoch = (epoch+1)
         LOGGER.info(f"Epoch {epoch + 1}/{epochs} | train loss={epoch_train_loss:.6f} | val_loss={epoch_val_loss:.6f}")
 
+
+        if trial is not None:
+            trial.report(epoch_val_loss, epoch)
+            if trial.should_prune():
+                LOGGER.warning(f"Trial pruned by Optuna at epoch {epoch + 1}")
+                raise optuna.exceptions.TrialPruned()
+
     return train_loss, val_loss, best_loss, final_epoch
 
 
 def create_cos_lr_sched(optimizer, epochs, warmup_epochs=5, eta_min=1e-6):
+    """
+    Creates a sequential learning rate scheduler with a linear warmup phase followed by a cosine annealing decay phase.
+
+    Warmup phase, the learning rate scales linearly from 10% of its initial value up to 100%.
+    Then cosine wave decay that smoothly pulls the learning rate down to the minimum specified value (`eta_min`) over the remaining epochs.
+
+    Args:
+        optimizer (torch.optim.Optimizer): The optimizer for which the learning rate schedule will be applied.
+        epochs (int): Total number of training epochs planned for the run.
+        warmup_epochs (int, optional): The number of initial epochs dedicated to the linear warmup phase. If set to 0 or None, the warmup is skipped, and a standard CosineAnnealingLR is returned. Defaults to 5.
+        eta_min (float, optional): The minimum bounding value that the learning rate is allowed to decay down to during the cosine annealing phase. Defaults to 1e-6.
+
+    Returns:
+        torch.optim.lr_scheduler.LRScheduler: A unified PyTorch learning rate scheduler object (either a `SequentialLR` or a standalone `CosineAnnealingLR`).
+            
+    Example:
+        >>> optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+        >>> scheduler = create_cos_lr_sched(optimizer, epochs=50, warmup_epochs=5)
+        >>> # Epochs 0-4: LR climbs from 1e-4 to 1e-3
+        >>> # Epochs 5-49: LR decays along a cosine curve from 1e-3 down to 1e-6
+    """
+
+
     if warmup_epochs is not None and warmup_epochs > 0:
         warmup = LinearLR(optimizer, start_factor=0.1, end_factor=1.0, total_iters=warmup_epochs)
         cos = CosineAnnealingLR(optimizer, T_max=(epochs-warmup_epochs), eta_min=eta_min)

@@ -8,6 +8,8 @@
 #SBATCH --mem=32G
 #SBATCH --time=06:00:00
 #SBATCH --output=results/optuna/optuna_unet_study-%j.out
+#SBATCH --time=06:00:00
+#SBATCH --output=results/optuna/optuna_unet_study-%j.out
 
 set -euo pipefail
 
