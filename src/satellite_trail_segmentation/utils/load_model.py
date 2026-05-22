@@ -1,6 +1,7 @@
 import torch
 from torch.optim.lr_scheduler import CosineAnnealingLR
 
+from satellite_trail_segmentation.classifier_model.classifier import TrailClassifier
 from satellite_trail_segmentation.unet_model.unet import UNet
 
 
@@ -17,6 +18,23 @@ def load_model_weights(save_path):
 
     ckpt = torch.load(save_path, map_location="cpu")
     model = UNet(**ckpt["model_config"])
+    model.load_state_dict(ckpt["model_state_dict"])
+    return model
+
+
+def load_model_weights_classifier(save_path):
+    """
+    Loads a saved classifier checkpoint and returns the model with weights restored.
+
+    Args:
+        save_path (str): Path to the saved checkpoint file.
+
+    Returns:
+        torch.nn.Module: TrailClassifier model with the checkpoint weights loaded.
+    """
+
+    ckpt = torch.load(save_path, map_location="cpu")
+    model = TrailClassifier()
     model.load_state_dict(ckpt["model_state_dict"])
     return model
 

@@ -22,7 +22,7 @@ def predict(logits, threshold=0.3):
     return (probabilities >= threshold).to(dtype=torch.int64)
 
 
-def recreate_full_field(model, h5_path, split_type, source_index, batch_size=32, patch_dim=528, threshold=0.3):
+def recreate_full_field(model, h5_path, split_type, source_index, batch_size=32, patch_dim=528, threshold=0.5):
     """
     Reassembles patch-level classifier predictions into a full-field view for a single source image.
 
@@ -56,6 +56,9 @@ def recreate_full_field(model, h5_path, split_type, source_index, batch_size=32,
     full_image = np.zeros(full_shape, dtype=np.float32)
     full_pred = np.zeros(full_shape, dtype=np.float32)
     full_mask = np.zeros(full_shape, dtype=np.float32)
+  
+    square_size=100
+    full_overlay = np.zeros((*full_shape, 3), dtype=np.float32)
 
     model.eval()
     with torch.no_grad():
@@ -71,5 +74,19 @@ def recreate_full_field(model, h5_path, split_type, source_index, batch_size=32,
                 full_image[y0 : y0 + patch_dim, x0 : x0 + patch_dim] = images[i]
                 full_pred[y0 : y0 + patch_dim, x0 : x0 + patch_dim] = preds[i]
                 full_mask[y0 : y0 + patch_dim, x0 : x0 + patch_dim] = metadata["patch_has_trail"][i].item()
+                
 
-    return full_image, full_pred, full_mask
+
+                bg_color = np.array([1.0, 1.0, 1.0]) if preds[i] == 1 else np.array([0.0, 0.0, 0.0])
+                full_overlay[y0 : y0 + patch_dim, x0 : x0 + patch_dim] = bg_color
+   
+                mask_val = metadata["patch_has_trail"][i].item()
+                center_color = np.array([0.0, 1.0, 0.0]) if preds[i] == mask_val else np.array([1.0, 0.0, 0.0])
+
+                y_start = y0 + (patch_dim - square_size) // 2
+                x_start = x0 + (patch_dim - square_size) // 2
+
+                full_overlay[y_start : y_start + square_size, x_start : x_start + square_size] = center_color
+
+
+    return full_image, full_pred, full_mask, full_overlay
