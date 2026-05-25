@@ -4,6 +4,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 from satellite_trail_segmentation.unet_model.evaluate import image_threshold
 
+def _save_plot(save_path):
+    save_path = Path(save_path)
+    save_path.parent.mkdir(parents=True, exist_ok=True)
+    plt.savefig(save_path)
+
 
 def plot_loss_curves(train_loss, val_loss, save_path):
     """
@@ -27,11 +32,9 @@ def plot_loss_curves(train_loss, val_loss, save_path):
     plt.title("Training and Validation Loss")
     plt.legend()
     plt.tight_layout()
-
-    save_path = Path(save_path)
-    save_path.parent.mkdir(parents=True, exist_ok=True)
-    plt.savefig(save_path)
+    _save_plot(save_path)
     plt.close()
+
 
 def plot_full_field(full_image, full_pred, full_mask, save_path, threshold=0.5, title1="Input Image", title2=f"Prediction", title3="Ground Truth Mask"):
     """
@@ -67,10 +70,7 @@ def plot_full_field(full_image, full_pred, full_mask, save_path, threshold=0.5, 
         ax.axis("off")
 
     plt.tight_layout()
-
-    save_path = Path(save_path)
-    save_path.parent.mkdir(parents=True, exist_ok=True)
-    plt.savefig(save_path)
+    _save_plot(save_path)
     plt.close()
 
 
@@ -107,10 +107,7 @@ def plot_roc_curve(fpr, tpr, thresholds, roc_auc, optimal_threshold, save_path):
     ax.set_title("ROC Curve")
     ax.legend()
     plt.tight_layout()
-
-    save_path = Path(save_path)
-    save_path.parent.mkdir(parents=True, exist_ok=True)
-    plt.savefig(save_path)
+    _save_plot(save_path)
     plt.close()
 
 
@@ -146,7 +143,5 @@ def plot_pred_residual(full_pred, full_mask, save_path):
         ax.axis("off")
 
     plt.tight_layout()
-    save_path = Path(save_path)
-    save_path.parent.mkdir(parents=True, exist_ok=True)
-    plt.savefig(save_path)
+    _save_plot(save_path)
     plt.close()
