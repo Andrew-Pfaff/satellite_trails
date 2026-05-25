@@ -59,7 +59,7 @@ def shift(image, mask, min_shift=4, max_shift=20):
 
     aug_image = np.zeros_like(image)
     aug_mask = np.zeros_like(mask)
-    fill_value = np.mean(image).astype(np.uint8)
+    fill_value = np.mean(image)
 
     if shift_dir == 0:
         aug_image[:,shift_total:] = image[:,:-shift_total]
