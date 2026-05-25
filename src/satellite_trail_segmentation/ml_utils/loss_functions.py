@@ -60,7 +60,7 @@ def combo_loss(pred, mask, pos_weight=1.0, bce_weight=0.5, dice_weight=0.5):
     return loss
 
 
-def bce_fn_penalty_loss(logits, target, pos_weight=10.0, fn_penalty_weight=1.0):
+def bce_fn_penalty_loss(logits, target, pos_weight=1.0, fn_penalty_weight=1.0):
     """
     Computes a weighted BCE loss with an additional soft false-negative penalty term.
 
