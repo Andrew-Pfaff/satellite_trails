@@ -4,37 +4,6 @@ import torch.nn.init as init
 from torchvision.models import resnet18
 
 
-def get_classifier_model():
-    """
-    Creates a ResNet-18 binary classifier adapted for single-channel satellite trail patches.
-
-    Replaces the RGB stem with a grayscale input convolution, swaps the final fully connected layer
-    for a single-logit output head, and applies Kaiming initialization to convolutional layers.
-
-    Returns:
-        torch.nn.Module: A ResNet-18 model configured for binary classification.
-    """
-
-    model = resnet18(weights=None)
-
-    # Adapt for Grayscale (1 channel)
-    # Original: nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3, bias=False)
-    model.conv1 = nn.Conv2d(in_channels=1, out_channels=64, kernel_size=7, stride=2, padding=3, bias=False)
-
-    # 2. Adapt for Binary Classification
-    model.fc = nn.Linear(model.fc.in_features, 1)
-
-    # 3. Apply your He Initialization
-    for m in model.modules():
-        if isinstance(m, nn.Conv2d):
-            init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
-        elif isinstance(m, nn.BatchNorm2d):
-            init.constant_(m.weight, 1)
-            init.constant_(m.bias, 0)
-            
-    return model
-
-
 class TrailClassifier(nn.Module):
     """
     Lightweight CNN binary classifier for detecting whether a patch contains a satellite trail.
@@ -144,8 +113,6 @@ class TrailClassifier(nn.Module):
             raise ValueError(f"Expected a 4D input tensor, got shape {tuple(image.shape)}")
         if (image.shape[2] % 16) != 0 or (image.shape[3] % 16) != 0:
             raise ValueError(f"Input spatial dimensions {(image.shape[2], image.shape[3])} must be divisible by 16")
-
-        image = nn.functional.avg_pool2d(image, kernel_size=2, stride=2)
 
         image = nn.functional.avg_pool2d(image, kernel_size=2, stride=2)
 
