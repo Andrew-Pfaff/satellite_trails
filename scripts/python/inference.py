@@ -3,7 +3,7 @@ from time import time
 
 from satellite_trail_segmentation.utils.visualizations import plot_full_field
 from satellite_trail_segmentation.utils.load_model import load_model_weights
-from satellite_trail_segmentation.postprocess.hough import hough_tranform
+from satellite_trail_segmentation.postprocess.hough import hough_transform
 from satellite_trail_segmentation.unet_model.evaluate import image_threshold, recreate_full_field_pred
 
 
@@ -35,7 +35,7 @@ if __name__ == "__main__":
     print(f'Prediction completed in: {pred_time} s')
 
     start_hough = time()
-    image_hough = hough_tranform(images[1], hough_threshold=50, min_length=100, max_gap=250)
+    image_hough = hough_transform(images[1], hough_threshold=50, min_length=100, max_gap=250)
     hough_time = time() - start_hough
     print(f'Hough transform completed in: {hough_time} s')
 
