@@ -3,11 +3,15 @@ import csv
 import glob
 import argparse
 import random
+import logging
 from PIL import Image
 Image.MAX_IMAGE_PIXELS = 150000000
 
 import h5py
 import numpy as np
+
+
+LOGGER = logging.getLogger(__name__)
 
 
 def _sort_images(image_dir, input_suffix=".fits_full.png", mask_suffix="_mask.png"):
@@ -30,7 +34,7 @@ def _sort_images(image_dir, input_suffix=".fits_full.png", mask_suffix="_mask.pn
     if len(input_files) != len(target_files):
         raise ValueError(f"Found {len(input_files)} input files and {len(target_files)} target files in {image_dir}")
 
-    print(f"Found {len(input_files)} input files and target files in {image_dir}")
+    LOGGER.info(f"Found {len(input_files)} input files and target files in {image_dir}")
 
     for input_file, target_file in zip(input_files, target_files):
         input_name = os.path.basename(input_file)
@@ -89,7 +93,7 @@ def define_split(image_dir, val_split, test_split, output_path, seed=1):
     train_count = int(np.sum(split_mask == 0))
     val_count = int(np.sum(split_mask == 1))
     test_count = int(np.sum(split_mask == 2))
-    print(f"Split counts: train: {train_count} | val: {val_count} | test: {test_count}")
+    LOGGER.info(f"Split counts: train: {train_count} | val: {val_count} | test: {test_count}")
 
 
     
@@ -328,7 +332,7 @@ def create_h5(input_files, mask_files, split_mask, output_path, patch_dim=528, o
             patch_y0_dataset[start:end] = patch_y0
             patch_x0_dataset[start:end] = patch_x0
 
-    print(f"Wrote {total_patches} patches to {output_path}")
+    LOGGER.info(f"Wrote {total_patches} patches to {output_path}")
 
 
 def parse_args(): # pragma: no cover.
@@ -339,6 +343,7 @@ def parse_args(): # pragma: no cover.
     parser.add_argument("--val-split", type=float, default=0.15)
     parser.add_argument("--test-split", type=float, default=0.15)
     parser.add_argument("--num-images", type=int, default=None)
+    parser.add_argument("--verbose", action="store_true")
 
     
     return parser.parse_args()
@@ -346,6 +351,8 @@ def parse_args(): # pragma: no cover.
 
 if __name__ == "__main__": # pragma: no cover.
     args = parse_args()
+    
+    logging.basicConfig(level=logging.INFO if args.verbose else logging.WARNING, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
     image_dir = args.data_path
     output_path = args.output_path
