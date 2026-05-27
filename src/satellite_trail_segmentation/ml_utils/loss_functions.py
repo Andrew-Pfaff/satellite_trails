@@ -67,7 +67,7 @@ def bce_fn_penalty_loss(logits, target, pos_weight=1.0, fn_penalty_weight=1.0):
     Args:
         logits (torch.Tensor): Raw classifier outputs with shape (batch_size, 1).
         target (torch.Tensor): Ground truth binary labels with the same batch shape.
-        pos_weight (float, optional): Positive class weighting factor for BCE. Defaults to 10.0.
+        pos_weight (float, optional): Positive class weighting factor for BCE. Defaults to 1.0.
         fn_penalty_weight (float, optional): Scaling factor for the soft false-negative penalty. Defaults to 1.0.
 
     Returns:

@@ -24,6 +24,7 @@ def train_classifier(model, train_ds, val_ds, optimizer, scheduler,
     Trains a classifier model for satellite trail detection over a specified number of epochs.
 
     Full training workflow: manages data loading, moves tensors to the appropriate device, executes the forward and backward passes, tracks loss profiles across training and validation splits, updates the learning rate schedule, and implements custom checkpoint saving alongside Optuna trial pruning.
+    Uses a combo loss of weighted BCE and dice score. Saves on highest penalized specificity (specificity minus a penalty value when recall threshold is not met).
 
     Args:
         model (torch.nn.Module): The classifier neural network instance to be trained.
@@ -36,16 +37,23 @@ def train_classifier(model, train_ds, val_ds, optimizer, scheduler,
         pos_weight (float): Positive class weighting factor passed to the classifier loss.
         fn_penalty_weight (float): Scaling factor for the soft false-negative penalty term.
         pred_threshold (float): Probability threshold used to binarize classifier outputs for metric tracking.
+        min_recall
+        recall_penalty
+        sampler
         num_workers (int): Number of asynchronous subprocesses to allocate for data loading.
-        save_path (str): File path for saving the model.
+        full_save_path (str): File path for saving the full model weights and config.
+        save_path (str): File path for saving the model weights.
         trial (optuna.trial.Trial, optional): An active Optuna study trial hyperparameter hook used for validating metrics reporting and active epoch pruning. Defaults to None.
+        seed (int): Random seed.
 
     Returns:
-        tuple: A 4-element tuple containing runtime performance tracking historical data:
-            - train_loss (list of float): Cumulative running training loss calculated per epoch.
-            - val_loss (list of float): Cumulative running validation loss calculated per epoch.
-            - best_val_recall (float): The highest validation recall achieved across the run.
-            - final_epoch (int): The absolute iteration index representing the final epoch reached prior to completion or pruning interception.
+        dict: training history and best validation summary. Includes:
+            - train_loss (list): Train loss per epoch history.
+            - val_loss (list): Validation loss per epoch history.
+            - best_val_loss (float): Validation loss during epoch with the highest penalized specificity
+            - val_penalized_specificity (list): Penalized specificity per epoch history.
+            - best_penalized_specificity (float): Best penalized specificity score.
+            - final_epoch (int): Number of epochs the model trained for.
     """
 
     if seed is not None:
