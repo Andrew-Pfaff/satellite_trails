@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#SBATCH -J optuna_study
+#SBATCH -J unet_arch
 #SBATCH -p ampere
 #SBATCH -A MPHIL-DIS-SL2-GPU
 #SBATCH --nodes=1
@@ -7,13 +7,11 @@
 #SBATCH --cpus-per-task=16
 #SBATCH --mem=32G
 #SBATCH --time=06:00:00
-#SBATCH --output=results/optuna/optuna_unet_study-%j.out
-#SBATCH --time=06:00:00
-#SBATCH --output=results/optuna/optuna_unet_study-%j.out
+#SBATCH --output=results/optuna/unet_arch-%j.out
 
 set -euo pipefail
 
-#Module handling
+# Module handling
 module purge
 module load rhel8/default-amp
 module load python/3.8.11/gcc-9.4.0-yb6rzr6
@@ -21,8 +19,7 @@ module load python/3.8.11/gcc-9.4.0-yb6rzr6
 #Paths
 PROJECT_ROOT="/home/anp50/rds/hpc-work/satellite_trails"
 VENV_PATH="$PROJECT_ROOT/.venv/bin/activate"
-SCRIPT_PATH="$PROJECT_ROOT/scripts/python/optuna/unet_hyperparam_tuning.py"
-
+SCRIPT_PATH="$PROJECT_ROOT/scripts/python/optuna/unet_arch.py"
 
 cd "$PROJECT_ROOT"
 
@@ -32,7 +29,7 @@ python3 -c "import torch; assert torch.cuda.is_available(), 'No CUDA device foun
 
 
 DATA_PATH="$PROJECT_ROOT/data/h5s/small_dataset.h5"
-	
+
 mkdir -p "$TMPDIR"
 LOCAL_DATA_PATH="$TMPDIR/small_dataset.h5"
 echo "Copying dataset to local scratch..."
@@ -42,4 +39,4 @@ DATA_PATH="$LOCAL_DATA_PATH"
 
 
 #Running the script:
-python3 "$SCRIPT_PATH" --data-path="$DATA_PATH" --verbose
+python3 "$SCRIPT_PATH" --data-path="$DATA_PATH" --epochs=25 --trials=50 --verbose
