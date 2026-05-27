@@ -31,7 +31,10 @@ src/*.egg-info/
 # Machine Learning Data & Models (Crucial)
 # ---------------------------------------------------
 # Ignore all data folders so you don't push huge datasets
-/data/*
+/png
+*.zip
+*.csv
+!*master_split.csv
 datasets/
 *.png
 *.jpg
