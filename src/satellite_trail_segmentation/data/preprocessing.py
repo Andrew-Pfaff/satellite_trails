@@ -9,7 +9,7 @@ Image.MAX_IMAGE_PIXELS = 150000000
 
 import h5py
 import numpy as np
-
+from sklearn.model_selection import train_test_split
 
 LOGGER = logging.getLogger(__name__)
 
@@ -55,7 +55,7 @@ def _sort_images(image_dir, input_suffix=".fits_full.png", mask_suffix="_mask.pn
 
 def define_split(image_dir, val_split, test_split, output_path, seed=1):
     """
-    Defines a train/test/val split for dataset, and writes to csv which category each example fits into.
+    Defines a stratified train/test/val split for dataset, and writes to csv which category each example fits into.
 
     Args:
         image_dir (str): Path to the dir with example data
@@ -76,19 +76,29 @@ def define_split(image_dir, val_split, test_split, output_path, seed=1):
         raise ValueError(f"val_split + test_split must be less than 1, got {val_split + test_split}")
     
     input_files, target_files = _sort_images(image_dir) 
-
     data_len = len(input_files)
 
-    rng = np.random.default_rng(seed)
-    shuffled_indices = np.arange(data_len)
-    rng.shuffle(shuffled_indices)
+    trail_counts = []
+    for mask_path in target_files:
+        with Image.open(mask_path) as mask_file:
+            mask = np.asarray(mask_file, dtype=np.uint8)
+        mask_patches = _create_patches(mask, patch_dim=528)
+        trail_counts.append(int(np.sum(np.any(mask_patches > 0, axis=(1, 2)))))
 
+    trail_counts = np.array(trail_counts)
+    strata = np.digitize(trail_counts, np.percentile(trail_counts, [25, 50, 75]))
+
+    indices = np.arange(data_len)
     num_val = int(data_len * val_split)
     num_test = int(data_len * test_split)
+    num_temp = num_test + num_val
+
+    train_idx, temp_idx, _, temp_strata = train_test_split(indices, strata, test_size=num_temp, random_state=seed, stratify=strata)
+    val_idx, test_idx = train_test_split(temp_idx, test_size=num_test, random_state=seed, stratify=temp_strata)
 
     split_mask = np.zeros(data_len, dtype=np.uint8)
-    split_mask[shuffled_indices[:num_val]] = 1
-    split_mask[shuffled_indices[num_val : num_val + num_test]] = 2
+    split_mask[val_idx] = 1
+    split_mask[test_idx] = 2
 
     train_count = int(np.sum(split_mask == 0))
     val_count = int(np.sum(split_mask == 1))
@@ -96,11 +106,10 @@ def define_split(image_dir, val_split, test_split, output_path, seed=1):
     LOGGER.info(f"Split counts: train: {train_count} | val: {val_count} | test: {test_count}")
 
 
-    
     with open(output_path, 'w', newline='') as f:
         writer = csv.writer(f)
-        for input, target, split in zip(input_files, target_files, split_mask):
-            writer.writerow([os.path.basename(input), os.path.basename(target), split])
+        for input_f, target, split in zip(input_files, target_files, split_mask):
+            writer.writerow([os.path.basename(input_f), os.path.basename(target), split])
 
 
 def load_split(path):
@@ -356,7 +365,7 @@ if __name__ == "__main__": # pragma: no cover.
 
     image_dir = args.data_path
     output_path = args.output_path
-    master_split_mask_path = "data/master_split.csv"
+    master_split_mask_path = "data/h5s/master_split.csv"
 
 
     if not os.path.exists(master_split_mask_path):
