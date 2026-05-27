@@ -34,17 +34,24 @@ def train_unet(model, train_ds, val_ds, optimizer, scheduler,
         epochs (int): The total number of full training cycles to execute.
         batch_size (int): Number of training/validation samples to pass through the network per iteration.
         pos_weight(float): Positive class weighting factor in BCE loss.
+        bce_loss_factor (float): Weight of the BCE loss.
+        dice_loss_factor (float): Weight of the Dice loss.
+        iou_thresholds (list): List of thresholds at which metrics are calculated during training.
         sampler (torch.utils.data.Sampler, optional): Sampler strategy (e.g., BalancedTrailSampler) to set balance of positive and negative data samples. Defaults to None.
         num_workers (int, optional): Number of asynchronous subprocesses to allocate for data loading. Defaults to 0.
         save_path (str, optional): File path for saving the model. Defaults to None.
         trial (optuna.trial.Trial, optional): An active Optuna study trial hyperparameter hook used for validating metrics reporting and active epoch pruning. Defaults to None.
-
+        seed (int): Random seed.
+        
     Returns:
-        tuple: A 4-element tuple containing runtime performance tracking historical data:
-            - train_loss (list of float): Cumulative running training loss calculated per epoch.
-            - val_loss (list of float): Cumulative running validation loss calculated per epoch.
-            - best_loss (float): The lowest historical validation loss achieved across the run.
-            - final_epoch (int): The absolute iteration index representing the final epoch reached prior to completion or pruning interception.
+        dict: training history and best validation summary. Includes:
+            - train_loss (list): Train loss per epoch history.
+            - val_loss (list): Validation loss per epoch history.
+            - val_loss_at_best_iou (float): Validation loss during epoch with the best IOU.
+            - val_iou (list):  Validation max IOU per epoch history.
+            - best_iou (float): Best max validation IOU over the range of thresholds.
+            - best_threshold (float): Threshold for the best IOU value in the best IOU epoch.
+            - final_epoch (int): Number of epochs the model trained for.
     """
 
     if seed is not None:
