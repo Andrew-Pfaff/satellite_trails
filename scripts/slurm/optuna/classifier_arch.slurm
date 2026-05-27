@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#SBATCH -J classifier_tuning
+#SBATCH -J classifier_arch
 #SBATCH -p ampere
 #SBATCH -A MPHIL-DIS-SL2-GPU
 #SBATCH --nodes=1
@@ -7,7 +7,7 @@
 #SBATCH --cpus-per-task=16
 #SBATCH --mem=32G
 #SBATCH --time=06:00:00
-#SBATCH --output=results/optuna/optuna_classifier_study-%j.out
+#SBATCH --output=results/optuna/classifier_arch-%j.out
 
 set -euo pipefail
 
@@ -19,8 +19,7 @@ module load python/3.8.11/gcc-9.4.0-yb6rzr6
 #Paths
 PROJECT_ROOT="/home/anp50/rds/hpc-work/satellite_trails"
 VENV_PATH="$PROJECT_ROOT/.venv/bin/activate"
-SCRIPT_PATH="$PROJECT_ROOT/scripts/python/optuna/classifier_hyperparameter_tuning.py"
-
+SCRIPT_PATH="$PROJECT_ROOT/scripts/python/optuna/classifier_arch.py"
 
 cd "$PROJECT_ROOT"
 
@@ -40,4 +39,4 @@ DATA_PATH="$LOCAL_DATA_PATH"
 
 
 #Running the script:
-python3 "$SCRIPT_PATH" --data-path="$DATA_PATH" --batch-size=128 --num-workers=8 --verbose
+python3 "$SCRIPT_PATH" --data-path="$DATA_PATH" --epochs=25 --trials=50 --verbose

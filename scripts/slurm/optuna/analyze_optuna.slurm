@@ -6,7 +6,7 @@
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=16G
 #SBATCH --time=00:03:00
-#SBATCH --output=results/slurm/analyze_optuna-%j.out
+#SBATCH --output=results/optuna/analyze_optuna-%j.out
 
 set -euo pipefail
 
