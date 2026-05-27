@@ -8,14 +8,17 @@ from satellite_trail_segmentation.utils.visualizations import plot_loss_curves
 from satellite_trail_segmentation.classifier_model.classifier import TrailClassifier
 from satellite_trail_segmentation.classifier_model.classifier_train_function import train_classifier
 from satellite_trail_segmentation.ml_utils.lr_scheduler import create_cos_lr_sched
+from satellite_trail_segmentation.ml_utils.seed import set_seed
 
 LOGGER = logging.getLogger(__name__)
 
 
 def main(data_path, learning_rate, sampler_fraction, warmup_epochs, eta_min, p_shift, epochs, batch_size,
          pos_weight, fn_penalty_weight, pred_threshold, min_recall, recall_penalty, num_workers, 
-         full_save_path=None, weight_save_path=None): 
+         full_save_path=None, weight_save_path=None, seed=1): 
     
+    set_seed(seed)
+
     train_ds = H5PatchDataset(data_path, split="train", return_metadata=True, return_masks=False, augment=True, p_flip=0.5, p_rot=0.75, p_shift=p_shift)
     val_ds = H5PatchDataset(data_path, split="val", return_metadata=True, return_masks=False)
 
@@ -30,10 +33,12 @@ def main(data_path, learning_rate, sampler_fraction, warmup_epochs, eta_min, p_s
     scheduler = create_cos_lr_sched(optimizer, epochs, warmup_epochs=warmup_epochs, eta_min=eta_min)
 
     train_metrics = train_classifier(model, train_ds, val_ds, optimizer, scheduler, 
-                                     epochs, batch_size, pos_weight, fn_penalty_weight, 
-                                     pred_threshold, min_recall, recall_penalty, 
-                                     sampler, num_workers, full_save_path, 
-                                     weight_save_path, trial=None)
+                                     epochs, batch_size, pos_weight=pos_weight, 
+                                     fn_penalty_weight=fn_penalty_weight, 
+                                     pred_threshold=pred_threshold, min_recall=min_recall, 
+                                     recall_penalty=recall_penalty, sampler=sampler,
+                                     num_workers=num_workers, full_save_path=full_save_path, 
+                                     weight_save_path=weight_save_path, trial=None, seed=seed)
     
     LOGGER.info(f"Training completed after {train_metrics['final_epoch']} epochs. Best (recall penalized) specificity: {train_metrics['best_penalized_specificity']:.2f}. Validation loss on that  epoch: {train_metrics['best_val_loss']:.2f}")
 
@@ -59,6 +64,7 @@ def parse_args():
     parser.add_argument("--num-workers", type=int, default=0)
     parser.add_argument("--full-save-path", type=str, default=None)
     parser.add_argument("--weight-save-path", type=str, default=None)
+    parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--verbose", action="store_true")
     parser.add_argument("--plot-path", type=str, default=None)
     
@@ -86,7 +92,8 @@ if __name__ == "__main__":
                                 recall_penalty=args.recall_penalty,
                                 num_workers=args.num_workers,
                                 full_save_path=args.full_save_path,
-                                weight_save_path=args.weight_save_path)
+                                weight_save_path=args.weight_save_path,
+                                seed=args.seed)
 
     if args.plot_path is not None:
         plot_loss_curves(train_loss, val_loss, args.plot_path)

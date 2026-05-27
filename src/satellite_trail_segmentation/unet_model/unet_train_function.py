@@ -9,6 +9,7 @@ import optuna
 from satellite_trail_segmentation.ml_utils.loss_functions import combo_loss
 from satellite_trail_segmentation.ml_utils.metrics import init_conf_counts, update_conf_counts_batch, conf_counts_from_logits, metrics_from_conf_counts, threshold_sweep_from_logits, best_threshold_by_metric
 from satellite_trail_segmentation.ml_utils.checkpoints import save_checkpoint, save_weights
+from satellite_trail_segmentation.ml_utils.seed import make_generator, seed_worker
 
 
 LOGGER = logging.getLogger(__name__)
@@ -18,7 +19,7 @@ def train_unet(model, train_ds, val_ds, optimizer, scheduler,
                epochs, batch_size, pos_weight=1.0, bce_loss_factor=0.5, 
                dice_loss_factor=0.5, iou_thresholds = None, 
                sampler=None, num_workers=0, full_save_path=None, 
-               weight_save_path=None, trial=None):
+               weight_save_path=None, trial=None, seed=None):
     """
     Trains a UNet model for satellite trail segmentation over a specified number of epochs.
 
@@ -46,6 +47,14 @@ def train_unet(model, train_ds, val_ds, optimizer, scheduler,
             - final_epoch (int): The absolute iteration index representing the final epoch reached prior to completion or pruning interception.
     """
 
+    if seed is not None:
+        generator = make_generator(seed)
+        worker_init_fn = seed_worker
+    else:
+        generator = None
+        worker_init_fn = None
+
+
     if full_save_path is not None:
         Path(full_save_path).parent.mkdir(parents=True, exist_ok=True)
     if weight_save_path is not None:
@@ -60,10 +69,10 @@ def train_unet(model, train_ds, val_ds, optimizer, scheduler,
     
     use_workers = num_workers > 0
     if sampler is not None:
-        train_loader = DataLoader(train_ds, batch_size=batch_size, sampler=sampler, num_workers=num_workers, pin_memory=True, persistent_workers=use_workers, prefetch_factor=2 if use_workers else None)
+        train_loader = DataLoader(train_ds, batch_size=batch_size, sampler=sampler, num_workers=num_workers, pin_memory=True, persistent_workers=use_workers, worker_init_fn=worker_init_fn, generator=generator, prefetch_factor=2 if use_workers else None)
     else:
-        train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True, num_workers=num_workers, pin_memory=True, persistent_workers=use_workers, prefetch_factor=2 if use_workers else None)
-    val_loader = DataLoader(val_ds, batch_size=batch_size, shuffle=False, num_workers=num_workers, pin_memory=True, persistent_workers=use_workers, prefetch_factor=2 if use_workers else None)
+        train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True, num_workers=num_workers, pin_memory=True, persistent_workers=use_workers, worker_init_fn=worker_init_fn, generator=generator, prefetch_factor=2 if use_workers else None)
+    val_loader = DataLoader(val_ds, batch_size=batch_size, shuffle=False, num_workers=num_workers, pin_memory=True, persistent_workers=use_workers, worker_init_fn=worker_init_fn, generator=generator, prefetch_factor=2 if use_workers else None)
 
     if iou_thresholds is None:
         iou_thresholds = [0.5]

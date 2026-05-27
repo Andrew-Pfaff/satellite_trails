@@ -9,15 +9,17 @@ from satellite_trail_segmentation.utils.visualizations import plot_loss_curves
 from satellite_trail_segmentation.unet_model.unet import UNet
 from satellite_trail_segmentation.unet_model.unet_train_function import train_unet
 from satellite_trail_segmentation.ml_utils.lr_scheduler import create_cos_lr_sched
-
+from satellite_trail_segmentation.ml_utils.seed import set_seed
 
 LOGGER = logging.getLogger(__name__)
 
 
 def main(data_path, epochs, batch_size, learning_rate, dropout_rate, p_shift,
          pos_weight, bce_loss_factor, dice_loss_factor, num_workers, warmup_epochs, 
-         eta_min, sampler_fraction=None, full_save_path=None, weight_save_path=None):
+         eta_min, sampler_fraction=None, full_save_path=None, weight_save_path=None, seed=1):
     
+    set_seed(seed)
+
     train_ds = H5PatchDataset(data_path, split="train", augment=True, p_flip=0.5, p_rot=0.75, p_shift=p_shift)
     val_ds = H5PatchDataset(data_path, split="val")
 
@@ -32,11 +34,13 @@ def main(data_path, epochs, batch_size, learning_rate, dropout_rate, p_shift,
     scheduler = create_cos_lr_sched(optimizer, epochs, warmup_epochs=warmup_epochs, eta_min=eta_min)
 
     train_metrics = train_unet(model, train_ds, val_ds, optimizer, scheduler,
-                               epochs, batch_size, pos_weight, bce_loss_factor,
-                               dice_loss_factor, sampler, num_workers,
-                               full_save_path, weight_save_path, trial=None)
+                               epochs, batch_size, pos_weight=pos_weight, 
+                               bce_loss_factor=bce_loss_factor, dice_loss_factor=dice_loss_factor,
+                               sampler=sampler, num_workers=num_workers,
+                               full_save_path=full_save_path, weight_save_path=weight_save_path, 
+                               trial=None, seed=seed)
     
-    LOGGER.info(f"Training completed after {train_metrics['final_epoch']} epochs. Best validation IOU: {train_metrics['best_iou']:.2f} with threshold {train_metrics['best_threshold']:.2f}. Validation loss for that epoch: {train_metrics['best_val_loss']:.2f}")
+    LOGGER.info(f"Training completed after {train_metrics['final_epoch']} epochs. Best validation IOU: {train_metrics['best_iou']:.2f} with threshold {train_metrics['best_threshold']:.2f}. Validation loss for that epoch: {train_metrics['val_loss_at_best_iou']:.2f}")
     
     return train_metrics['train_loss'], train_metrics['val_loss']
 
@@ -58,7 +62,8 @@ def parse_args():
     parser.add_argument("--eta-min", type=float, default=1e-6)
     parser.add_argument("--sampler-fraction", type=float, default=None)
     parser.add_argument("--full-save-path", type=str, default=None)
-    parser.add_argument("--weights-save-path", type=str, default=None)
+    parser.add_argument("--weight-save-path", type=str, default=None)
+    parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--verbose", action="store_true")
     parser.add_argument("--plot-path", type=str, default=None)
 
@@ -85,7 +90,9 @@ if __name__ == "__main__":
                                 eta_min=args.eta_min,
                                 sampler_fraction=args.sampler_fraction,
                                 full_save_path=args.full_save_path,
-                                weight_save_path=args.weight_save_path)
+                                weight_save_path=args.weight_save_path,
+                                seed=args.seed)
     
     if args.plot_path is not None:  
         plot_loss_curves(train_loss, val_loss, args.plot_path)
+        
