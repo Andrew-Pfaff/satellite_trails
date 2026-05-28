@@ -4,18 +4,23 @@ from torch.nn.functional import binary_cross_entropy_with_logits
 
 def weighted_bce_loss(logits, target, pos_weight=1.0):
     """
-    Calculates a weighted binary cross-entropy loss for classifier logits.
+    Calculates a weighted binary cross-entropy loss.
 
     Args:
-        logits (torch.Tensor): Raw classifier outputs with shape (batch_size, 1).
-        target (torch.Tensor): Ground truth binary labels with the same batch shape.
+        logits (torch.Tensor): Raw model outputs.
+        target (torch.Tensor): Ground truth binary labels or masks with the same shape as ``logits``.
         pos_weight (float, optional): Positive class weighting factor. Defaults to 1.0 (same as no weight).
 
     Returns:
         torch.Tensor: Scalar tensor representing the weighted BCE loss.
     """
 
-    target = target.to(device=logits.device, dtype=torch.float32).view(-1, 1)
+    target = target.to(device=logits.device, dtype=logits.dtype)
+    if target.shape != logits.shape:
+        if target.numel() != logits.numel():
+            raise ValueError(f"Target shape {tuple(target.shape)} is incompatible with logits shape {tuple(logits.shape)}")
+        target = target.reshape_as(logits)
+
     weight = torch.tensor([pos_weight], device=logits.device, dtype=logits.dtype)
     
     loss =  binary_cross_entropy_with_logits(logits, target, pos_weight=weight)
