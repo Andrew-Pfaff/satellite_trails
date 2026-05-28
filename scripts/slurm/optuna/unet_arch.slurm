@@ -6,7 +6,7 @@
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=16
 #SBATCH --mem=32G
-#SBATCH --time=06:00:00
+#SBATCH --time=03:00:00
 #SBATCH --output=results/optuna/unet_arch-%j.out
 
 set -euo pipefail
@@ -39,4 +39,4 @@ DATA_PATH="$LOCAL_DATA_PATH"
 
 
 #Running the script:
-python3 "$SCRIPT_PATH" --data-path="$DATA_PATH" --epochs=25 --trials=50 --verbose
+python3 "$SCRIPT_PATH" --data-path="$DATA_PATH" --epochs=25 --trials=20 --verbose
