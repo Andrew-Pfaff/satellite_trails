@@ -4,7 +4,7 @@ from time import time
 from satellite_trail_segmentation.utils.visualizations import plot_full_field
 from satellite_trail_segmentation.ml_utils.checkpoints import load_checkpoint
 from satellite_trail_segmentation.postprocess.hough import hough_transform
-from satellite_trail_segmentation.unet_model.unet_evaluate import image_threshold, recreate_full_field_pred
+from satellite_trail_segmentation.evaluation.unet_evaluate import image_threshold, recreate_full_field_pred
 
 
 def parse_args():

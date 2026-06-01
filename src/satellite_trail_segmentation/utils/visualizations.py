@@ -2,7 +2,7 @@ from pathlib import Path
 
 import numpy as np
 import matplotlib.pyplot as plt
-from satellite_trail_segmentation.unet_model.unet_evaluate import image_threshold
+from satellite_trail_segmentation.evaluation.unet_evaluate import image_threshold
 
 def _save_plot(save_path=None):
     if save_path is not None:
