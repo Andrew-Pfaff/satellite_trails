@@ -2,12 +2,15 @@ from pathlib import Path
 
 import numpy as np
 import matplotlib.pyplot as plt
-from satellite_trail_segmentation.unet_model.evaluate import image_threshold
+from satellite_trail_segmentation.unet_model.unet_evaluate import image_threshold
 
-def _save_plot(save_path):
-    save_path = Path(save_path)
-    save_path.parent.mkdir(parents=True, exist_ok=True)
-    plt.savefig(save_path)
+def _save_plot(save_path=None):
+    if save_path is not None:
+        save_path = Path(save_path)
+        save_path.parent.mkdir(parents=True, exist_ok=True)
+        plt.savefig(save_path)
+    else:
+        plt.show()
 
 
 def plot_loss_curves(train_loss, val_loss, save_path):
@@ -36,7 +39,7 @@ def plot_loss_curves(train_loss, val_loss, save_path):
     plt.close()
 
 
-def plot_full_field(full_image, full_pred, full_mask, save_path, threshold=0.5, title1="Input Image", title2=f"Prediction", title3="Ground Truth Mask"):
+def plot_full_field(full_image, full_pred, full_mask, save_path=None, threshold=0.5, title1="Input Image", title2=f"Prediction", title3="Ground Truth Mask"):
     """
     Plots the reconstructed full image, prediction, and ground truth mask side by side.
 
@@ -55,15 +58,15 @@ def plot_full_field(full_image, full_pred, full_mask, save_path, threshold=0.5, 
 
     fig, axes = plt.subplots(1, 3, figsize=(18, 8))
 
-    axes[0].imshow(full_image, cmap="gray", origin="lower")
+    axes[0].imshow(full_image, cmap="gray")
     axes[0].set_title(title1)
     
     if threshold is not None:
         full_pred = image_threshold(full_pred, threshold=threshold)
-    axes[1].imshow(full_pred, cmap="gray", origin="lower")
+    axes[1].imshow(full_pred, cmap="gray")
     axes[1].set_title(title2)
 
-    axes[2].imshow(full_mask, cmap="gray", origin="lower")
+    axes[2].imshow(full_mask, cmap="gray")
     axes[2].set_title(title3)
 
     for ax in axes:
