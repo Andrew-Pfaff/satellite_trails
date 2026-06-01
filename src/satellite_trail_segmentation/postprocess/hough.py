@@ -1,7 +1,7 @@
 import numpy as np
 import cv2
 
-from satellite_trail_segmentation.unet_model.unet_evaluate import image_threshold
+from satellite_trail_segmentation.evaluation.unet_evaluate import image_threshold
 
 
 def hough_transform(full_field_pred, hough_threshold, min_length, max_gap, binary_threshold=0.5):
