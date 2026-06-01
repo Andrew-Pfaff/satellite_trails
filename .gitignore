@@ -42,8 +42,8 @@ datasets/
 *.tiff
 
 # Ignore trained model weights
-models/
-*.pt
+# models/
+# *.pt
 *.pth
 *.h5
 *.onnx
