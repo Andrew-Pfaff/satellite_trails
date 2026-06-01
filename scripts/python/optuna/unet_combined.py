@@ -24,9 +24,9 @@ def create_objective(data_path, epochs, batch_size, num_workers, seed):
         trial_seed = seed + trial.number
         set_seed(trial_seed)
 
-        learning_rate = trial.suggest_float("learning_rate", 1e-5, 2.5e-2, log=True)
-        dropout_rate = trial.suggest_float("dropout_rate", 0.0, 0.15)
-        sampler_fraction = trial.suggest_float("sampler_fraction", 0.25, 0.45) 
+        learning_rate = trial.suggest_float("learning_rate", 1e-3, 3e-3, log=True)
+        dropout_rate = trial.suggest_float("dropout_rate", 0.01, 0.05)
+        sampler_fraction = trial.suggest_float("sampler_fraction", 0.25, 0.5) 
         pos_weight = trial.suggest_float("pos_weight", 6.0, 10.0)
         bce_loss_factor = 1.0
         dice_loss_factor = trial.suggest_float("dice_loss_factor", 1.5, 10.0, log=True)
@@ -38,7 +38,7 @@ def create_objective(data_path, epochs, batch_size, num_workers, seed):
         optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
         scheduler = create_cos_lr_sched(optimizer, epochs)
 
-        iou_thresholds = np.linspace(0.45, 0.65, 9)
+        iou_thresholds = np.linspace(0.45, 0.65, 17)
 
         train_metrics = train_unet(model, train_ds, val_ds, optimizer, scheduler, 
                                    epochs, batch_size=batch_size, 
