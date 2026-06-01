@@ -26,7 +26,9 @@ def load_checkpoint(load_path, model, optimizer=None, scheduler=None):
     Load a checkpoint. If optimizer/scheduler are None, loads weights only.
     Returns the checkpoint dict so the caller can retrieve metrics/epoch.
     """
-    checkpoint = torch.load(load_path, weights_only=True)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        
+    checkpoint = torch.load(load_path, map_location=device, weights_only=True)
     model.load_state_dict(checkpoint["model_state_dict"])
 
     if optimizer is not None and "optimizer_state_dict" in checkpoint:

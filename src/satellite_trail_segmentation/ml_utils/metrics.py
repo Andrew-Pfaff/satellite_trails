@@ -52,10 +52,14 @@ def conf_counts_from_logits(logits, target, threshold=0.5):
     target = target.to(device=logits.device, dtype=torch.float32).view(-1)
     pred = (torch.sigmoid(logits).view(-1) >= threshold).float()
 
+    pixels = target.numel()
+    total_pred_pos = torch.sum(pred).item()
+    total_target_pos = torch.sum(target).item()
+
     tp = torch.sum(pred * target).item()
-    fp = torch.sum(pred * (1.0 - target)).item()
-    fn = torch.sum((1.0 - pred) * target).item()
-    tn = torch.sum((1.0 - pred) * (1.0 - target)).item()
+    fp = total_pred_pos - tp
+    fn = total_target_pos - tp
+    tn = pixels - tp - fn - fp
 
     return {"tp": tp, "fp": fp, "fn": fn, "tn": tn}
 
