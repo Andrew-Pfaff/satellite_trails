@@ -233,7 +233,12 @@ def _clean_mask(mask, max_size=31):
     if max_val == 0:
         return mask
     
-    cleaned_bool = remove_small_objects(mask.astype(bool), max_size=max_size)
+    try:
+        # (scikit-image >= 0.26.0)
+        cleaned_bool = remove_small_objects(mask.astype(bool), max_size=max_size)
+    except TypeError:
+        # (scikit-image < 0.26.0)
+        cleaned_bool = remove_small_objects(mask.astype(bool), min_size=max_size)
     return (cleaned_bool.astype(np.uint8) * max_val)
 
 
