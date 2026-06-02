@@ -32,4 +32,4 @@ DATA_PATH="$PROJECT_ROOT/data/h5s/dataset.h5"
 
 
 #Running the script:
-python3 "$SCRIPT_PATH" --data-path="$DATA_PATH" --epochs=25 --trials=20 --verbose --num-workers=12
+python3 "$SCRIPT_PATH" --data-path="$DATA_PATH" --epochs=25 --trials=30 --verbose --num-workers=12

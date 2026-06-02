@@ -39,4 +39,4 @@ DATA_PATH="$LOCAL_DATA_PATH"
 
 
 #Running the script:
-python3 "$SCRIPT_PATH" --data-path="$DATA_PATH" --epochs=25 --trials=50 --verbose
+python3 "$SCRIPT_PATH" --data-path="$DATA_PATH" --epochs=25 --trials=50 --verbose --num-workers=12
