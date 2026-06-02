@@ -10,6 +10,7 @@ Image.MAX_IMAGE_PIXELS = 150000000
 import h5py
 import numpy as np
 from sklearn.model_selection import train_test_split
+from skimage.morphology import remove_small_objects
 
 LOGGER = logging.getLogger(__name__)
 
@@ -226,6 +227,16 @@ def _create_patches(image, patch_dim=528):
     return patches
 
 
+def _clean_mask(mask, max_size=31):
+    """Removes stray noise clusters smaller than min_size pixels."""
+    max_val = np.max(mask)
+    if max_val == 0:
+        return mask
+    
+    cleaned_bool = remove_small_objects(mask.astype(bool), max_size=max_size)
+    return (cleaned_bool.astype(np.uint8) * max_val)
+
+
 def create_h5(input_files, mask_files, split_mask, output_path, patch_dim=528, overwrite=False):
     """
     Creates an HDF5 file containing image patches, mask patches, and metadata.
@@ -318,6 +329,8 @@ def create_h5(input_files, mask_files, split_mask, output_path, patch_dim=528, o
                 image = np.asarray(image_file, dtype=np.uint8)
             with Image.open(mask_path) as mask_file:
                 mask = np.asarray(mask_file, dtype=np.uint8)
+
+            mask = _clean_mask(mask)
 
             if image.shape != mask.shape:
                 raise ValueError(f"Image and mask shapes do not match: {input_path} {image.shape} vs {mask_path} {mask.shape}")
