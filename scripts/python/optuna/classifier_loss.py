@@ -25,7 +25,7 @@ def create_objective(data_path, epochs, batch_size, num_workers,
         trial_seed = seed + trial.number
         set_seed(trial_seed)
 
-        pos_weight = trial.suggest_float("pos_weight", 1.0, 20.0)
+        pos_weight = trial.suggest_float("pos_weight", 1.0, 10.0)
         fn_penalty_weight = trial.suggest_float("fn_penalty_weight", 1.0, 10.0)
         pred_threshold = trial.suggest_float("pred_threshold", 0.1, 0.9)
 
