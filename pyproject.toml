@@ -15,7 +15,7 @@ dependencies = [
     "numpy",
     "opencv-python-headless",
     "scikit-learn",
-    "scikit-image",
+    "scikit-image>=0.21.0",
     "torchvision",
 ]
 
