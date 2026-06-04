@@ -165,7 +165,7 @@ def train_unet(model, train_ds, val_ds, optimizer, scheduler,
                 
 
         final_epoch = (epoch+1)
-        LOGGER.info(f"Epoch {epoch + 1}/{epochs} | train loss={epoch_train_loss:.6f} | val_loss={epoch_val_loss:.6f}")
+        LOGGER.info(f"Epoch {epoch + 1}/{epochs} | train_loss={epoch_train_loss:.4f} | val_loss={epoch_val_loss:.4f} | val_iou={epoch_best_iou:.4f} (thr={epoch_best_threshold:.2f}) | best_iou={best_iou:.4f}")
 
 
         if trial is not None:
