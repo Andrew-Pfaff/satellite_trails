@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-#SBATCH -J classifier_full
+#SBATCH -J unet_eval
 #SBATCH -p ampere
 #SBATCH -A MPHIL-DIS-SL2-GPU
 #SBATCH --nodes=1
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=16
-#SBATCH --mem=64G
-#SBATCH --time=06:00:00
-#SBATCH --output=results/optuna/classifier_full-%j.out
+#SBATCH --mem=32G
+#SBATCH --time=00:30:00
+#SBATCH --output=results/models/unet/unet_eval-%j.out
 
 set -euo pipefail
 
@@ -19,7 +19,7 @@ module load python/3.8.11/gcc-9.4.0-yb6rzr6
 #Paths
 PROJECT_ROOT="/home/anp50/rds/hpc-work/satellite_trails"
 VENV_PATH="$PROJECT_ROOT/.venv/bin/activate"
-SCRIPT_PATH="$PROJECT_ROOT/scripts/python/optuna/classifier_combined.py"
+SCRIPT_PATH="$PROJECT_ROOT/test.py"
 
 cd "$PROJECT_ROOT"
 
@@ -27,9 +27,5 @@ source "$VENV_PATH"
 
 python3 -c "import torch; assert torch.cuda.is_available(), 'No CUDA device found'"
 
-
-DATA_PATH="$PROJECT_ROOT/data/h5s/dataset.h5"
-
-
 #Running the script:
-python3 "$SCRIPT_PATH" --data-path="$DATA_PATH" --epochs=25 --trials=30 --verbose --num-workers=1
+python3 "$SCRIPT_PATH"

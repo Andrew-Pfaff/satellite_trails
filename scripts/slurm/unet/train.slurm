@@ -6,8 +6,8 @@
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=16
 #SBATCH --mem=32G
-#SBATCH --time=01:00:00
-#SBATCH --output=results/train/unet_train-%j.out
+#SBATCH --time=02:20:00
+#SBATCH --output=results/models/unet/unet_train-%j.out
 
 set -euo pipefail
 
@@ -28,28 +28,20 @@ source "$VENV_PATH"
 python3 -c "import torch; assert torch.cuda.is_available(), 'No CUDA device found'"
 
 
-DATA_PATH="$PROJECT_ROOT/data/h5s/small_dataset.h5"
-EPOCHS=40
+DATA_PATH="$PROJECT_ROOT/data/h5s/dataset.h5"
+EPOCHS=50
 BATCH_SIZE=64
-LEARNING_RATE=0.0015
-DROPOUT_RATE=0.02
-POS_WEIGHT=7.5
+LEARNING_RATE=0.003
+DROPOUT_RATE=0.014
+POS_WEIGHT=6.7
 BCE_LOSS_FACTOR=1
-DICE_LOSS_FACTOR=5
-SAMPLER_FRACTION=0.35
+DICE_LOSS_FACTOR=8
+SAMPLER_FRACTION=0.26
 WARMUP_EPOCHS=5
 NUM_WORKERS=12
-CHECKPOINT_PATH="$PROJECT_ROOT/results/models/small_train/unet_train.pt"
-WEIGHT_SAVE_PATH="$PROJECT_ROOT/results/models/small_train/unet_weights.pt"
-PLOT_PATH="$PROJECT_ROOT/results/models/small_train/unet_plots"
-
-
-mkdir -p "$TMPDIR"
-LOCAL_DATA_PATH="$TMPDIR/small_dataset.h5"
-echo "Copying dataset to local scratch..."
-cp "$DATA_PATH" "$LOCAL_DATA_PATH"
-# Use local path from now on.
-DATA_PATH="$LOCAL_DATA_PATH"
+CHECKPOINT_PATH="$PROJECT_ROOT/results/models/unet/unet_train.pt"
+WEIGHT_SAVE_PATH="$PROJECT_ROOT/results/models/unet/unet_weights.pt"
+PLOT_PATH="$PROJECT_ROOT/results/models/unet/unet_plots"
 
 
 #Running the script:
