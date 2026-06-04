@@ -1,6 +1,7 @@
 import logging
 from pathlib import Path
 
+import numpy as np
 import torch
 from torch.utils.data import DataLoader
 from torch.amp import GradScaler, autocast
@@ -82,7 +83,7 @@ def train_unet(model, train_ds, val_ds, optimizer, scheduler,
     val_loader = DataLoader(val_ds, batch_size=batch_size, shuffle=False, num_workers=num_workers, pin_memory=True, persistent_workers=use_workers, worker_init_fn=worker_init_fn, generator=generator, prefetch_factor=2 if use_workers else None)
 
     if iou_thresholds is None:
-        iou_thresholds = [0.5]
+        iou_thresholds = list(np.linspace(0.3, 0.7, 9))
     train_loss = []
     val_loss = []
     val_iou = []

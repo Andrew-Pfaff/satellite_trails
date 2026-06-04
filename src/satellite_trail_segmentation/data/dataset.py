@@ -23,7 +23,7 @@ class H5PatchDataset(Dataset):
         neg_indices (np.ndarray): Subset of internal indices pointing strictly to trail-free patches.
     """
 
-    def __init__(self, h5_path, split='train', return_metadata=False, return_masks=True, source_index=None, augment=False, p_flip=0.1, p_rot=0.1, p_shift=0.1):
+    def __init__(self, h5_path, split='train', return_metadata=False, return_masks=True, source_index=None, augment=False, p_flip=0.1, p_rot=0.1):
         """
         Args:
             h5_path (str): Path to the HDF5 file created by create_h5
@@ -35,7 +35,6 @@ class H5PatchDataset(Dataset):
                 to trail-containing patches. Defaults to False.
             p_flip (float): Probability of applying a random flip. Defaults to 0.1.
             p_rot (float): Probability of applying a random rotation. Defaults to 0.1.
-            p_shift (float): Probability of applying a random shift. Defaults to 0.1.
 
         Raises:
             ValueError: If split is not one of 'train', 'val', or 'test'.
@@ -53,7 +52,6 @@ class H5PatchDataset(Dataset):
 
         self.p_flip = p_flip
         self.p_rot = p_rot
-        self.p_shift = p_shift
  
 
         self.h5_file = None
@@ -114,7 +112,7 @@ class H5PatchDataset(Dataset):
 
         if self.augment and self.patch_has_trail[idx]:
             # You can adjust these probabilities as needed
-            image, mask = augment_image(image, mask, p_flip=self.p_flip, p_rot=self.p_rot, p_shift=self.p_shift)
+            image, mask = augment_image(image, mask, p_flip=self.p_flip, p_rot=self.p_rot)
             image = np.ascontiguousarray(image)
             mask = np.ascontiguousarray(mask)
         
