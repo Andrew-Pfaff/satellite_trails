@@ -1,13 +1,14 @@
 import logging
 from pathlib import Path
 
+import numpy as np
 import torch
 from torch.utils.data import DataLoader
 from torch.amp import GradScaler, autocast
 import optuna
 
 from satellite_trail_segmentation.ml_utils.loss_functions import bce_fn_penalty_loss
-from satellite_trail_segmentation.ml_utils.metrics import init_conf_counts, update_conf_counts_batch, conf_counts_from_logits, metrics_from_conf_counts, specificity_with_recall_penalty
+from satellite_trail_segmentation.ml_utils.metrics import init_conf_counts, update_conf_counts_batch, conf_counts_from_logits, metrics_from_conf_counts, specificity_with_recall_penalty, best_threshold_by_penalized_specificity
 from satellite_trail_segmentation.ml_utils.checkpoints import save_checkpoint, save_weights
 from satellite_trail_segmentation.ml_utils.seed import make_generator, seed_worker
 
@@ -17,7 +18,7 @@ LOGGER = logging.getLogger(__name__)
 
 def train_classifier(model, train_ds, val_ds, optimizer, scheduler, 
                      epochs, batch_size, pos_weight=1.0, fn_penalty_weight=1.0, 
-                     pred_threshold=0.5, min_recall=0.98, recall_penalty=1.0, 
+                     pred_thresholds=None, min_recall=0.98, recall_penalty=1.0, 
                      sampler=None, num_workers=0, full_save_path=None, 
                      weight_save_path=None, trial=None, seed=None):
     """
@@ -36,7 +37,7 @@ def train_classifier(model, train_ds, val_ds, optimizer, scheduler,
         batch_size (int): Number of training/validation samples to pass through the network per iteration.
         pos_weight (float): Positive class weighting factor passed to the classifier loss.
         fn_penalty_weight (float): Scaling factor for the soft false-negative penalty term.
-        pred_threshold (float): Probability threshold used to binarize classifier outputs for metric tracking.
+        pred_thresholds (list): Probability thresholds used to binarize classifier outputs for metric tracking. 
         min_recall
         recall_penalty
         sampler
@@ -69,8 +70,7 @@ def train_classifier(model, train_ds, val_ds, optimizer, scheduler,
     if weight_save_path is not None:
         Path(weight_save_path).parent.mkdir(parents=True, exist_ok=True)
     
-    model_config = {"in_channels": model.in_channels, "kernel_size": model.kernel_size, "base_channels": model.base_channels, "dropout": model.dropout,
-                    "pos_weight": pos_weight, "fn_penalty_weight": fn_penalty_weight, "pred_threshold": pred_threshold}
+    
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     device_type = device.type
@@ -88,6 +88,13 @@ def train_classifier(model, train_ds, val_ds, optimizer, scheduler,
     val_penalized_specificity = []
     best_val_specificity = 0.0
     best_val_loss = float("inf")
+
+    if pred_thresholds is None:
+        pred_thresholds = list(np.linspace(0.2, 0.5, 7))
+
+    model_config = {"in_channels": model.in_channels, "kernel_size": model.kernel_size, "base_channels": model.base_channels, "dropout": model.dropout,
+                    "pos_weight": pos_weight, "fn_penalty_weight": fn_penalty_weight, "pred_thresholds": pred_thresholds}
+    
     LOGGER.info(f"Starting classifier training for {epochs} epochs on {device} with {len(train_loader)} train batches and {len(val_loader)} val batches.")
 
     scaler = GradScaler(device=device_type)
@@ -120,7 +127,7 @@ def train_classifier(model, train_ds, val_ds, optimizer, scheduler,
             model.eval()
             epoch_val_loss = 0
             val_samples = 0
-            threshold_counts = init_conf_counts()
+            threshold_counts = {t: init_conf_counts() for t in pred_thresholds}
 
             for images, metadata in val_loader:
                 images = images.to(device)
@@ -134,8 +141,9 @@ def train_classifier(model, train_ds, val_ds, optimizer, scheduler,
                 epoch_val_loss += loss.item()* batch_size_actual
                 val_samples += batch_size_actual
 
-                batch_counts = conf_counts_from_logits(logits, targets, pred_threshold)
-                update_conf_counts_batch(threshold_counts, batch_counts)
+                for t in pred_thresholds:
+                    batch_counts = conf_counts_from_logits(logits, targets, t)
+                    update_conf_counts_batch(threshold_counts[t], batch_counts)
 
             epoch_val_loss = epoch_val_loss / val_samples
 
@@ -144,8 +152,10 @@ def train_classifier(model, train_ds, val_ds, optimizer, scheduler,
         train_loss.append(epoch_train_loss)
         val_loss.append(epoch_val_loss)
 
-        epoch_metrics = metrics_from_conf_counts(threshold_counts)
-        epoch_val_specificity = specificity_with_recall_penalty(epoch_metrics, min_recall, recall_penalty)
+        
+        threshold_metrics = {t: metrics_from_conf_counts(counts) for t, counts in threshold_counts.items()}
+        best_threshold, best_metrics = best_threshold_by_penalized_specificity(threshold_metrics, min_recall, recall_penalty)
+        epoch_val_specificity = specificity_with_recall_penalty(best_metrics, min_recall, recall_penalty)
         val_penalized_specificity.append(epoch_val_specificity)
 
         is_best_specificity = epoch_val_specificity > best_val_specificity
@@ -155,14 +165,14 @@ def train_classifier(model, train_ds, val_ds, optimizer, scheduler,
             best_val_loss = epoch_val_loss
             
             if full_save_path is not None:
-                save_metrics = {"best_val_specificity": best_val_specificity, "best_val_loss": best_val_loss, "val_recall": epoch_metrics["recall"], "val_specificity": epoch_metrics["specificity"]}
+                save_metrics = {"best_val_specificity": best_val_specificity, "best_val_loss": best_val_loss, "val_recall": best_metrics["recall"], "val_specificity": best_metrics["specificity"]}
                 save_checkpoint(full_save_path, model, optimizer, scheduler, epoch=epoch+1, metrics=save_metrics, model_config=model_config)
             if weight_save_path is not None:
                 save_weights(weight_save_path, model, model_config)
 
 
         final_epoch = epoch + 1
-        LOGGER.info(f"Epoch {epoch + 1}/{epochs} | val_fnr={epoch_metrics['fnr']:.6f} | train_loss={epoch_train_loss:.6f} | val_loss={epoch_val_loss:.6f} | val_recall={epoch_metrics['recall']:.6f} | val_specificity={epoch_metrics['specificity']:.6f} | val_precision={epoch_metrics['precision']:.6f}")
+        LOGGER.info(f"Epoch {epoch + 1}/{epochs} | val_fnr={best_metrics['fnr']:.4f} | train_loss={epoch_train_loss:.4f} | val_loss={epoch_val_loss:.4f} | val_recall={best_metrics['recall']:.4f} | val_specificity={best_metrics['specificity']:.4f} | best_thr={best_threshold:.2f}")
         
 
         if trial is not None:
