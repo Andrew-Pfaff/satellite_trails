@@ -5,7 +5,7 @@ from torch.utils.data import DataLoader
 
 from satellite_trail_segmentation.ml_utils.loss_functions import combo_loss
 from satellite_trail_segmentation.data.dataset import H5PatchDataset
-from satellite_trail_segmentation.ml_utils.metrics import init_conf_counts, update_conf_counts_batch, conf_counts_from_logits, conf_counts_from_arrays
+from satellite_trail_segmentation.ml_utils.metrics import init_conf_counts, update_conf_counts_batch, conf_counts_from_logits, metrics_from_conf_counts
 
 
 def image_threshold(image, threshold=0.5):
@@ -78,14 +78,18 @@ def recreate_full_field_pred(model, h5_path, split_type, source_index, batch_siz
     return full_image, full_pred, full_mask
 
 
-def evaluate_dataset_unet(model, h5_path, split_type, pred_threshold=0.6, batch_size=1):
+def evaluate_dataset_unet(model, h5_path, split_type, pred_thresholds=None, batch_size=1):
+    if pred_thresholds is None:
+        pred_thresholds = [0.5]
+    
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = model.to(device)
 
     dataset = H5PatchDataset(h5_path, split=split_type, return_masks=True, return_metadata=False)
     loader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
 
-    test_split_counts = init_conf_counts()
+
+    threshold_counts = {t: init_conf_counts() for t in pred_thresholds}
     patches_processed = 0
 
     model.eval()
@@ -95,14 +99,17 @@ def evaluate_dataset_unet(model, h5_path, split_type, pred_threshold=0.6, batch_
             images = images.to(device)
             masks = masks.to(device)
 
-
             prediction = model(images)
 
-            batch_counts = conf_counts_from_logits(logits=prediction, target=masks, threshold=pred_threshold)
-            test_split_counts = update_conf_counts_batch(test_split_counts, batch_counts)
+            for t in pred_thresholds:
+                batch_counts = conf_counts_from_logits(logits=prediction, target=masks, threshold=t)
+                update_conf_counts_batch(threshold_counts[t], batch_counts)
 
             patches_processed += batch_size
             if patches_processed % 100 == 0:
                 print(f"{patches_processed} have been processed.")
+    
 
-    return test_split_counts
+    metrics_counts = {t: metrics_from_conf_counts(counts) for t, counts in threshold_counts.items()}
+
+    return metrics_counts
