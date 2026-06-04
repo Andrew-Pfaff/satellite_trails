@@ -16,7 +16,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 def create_objective(data_path, epochs, batch_size, num_workers, seed):
-    train_ds = H5PatchDataset(data_path, split="train", return_metadata=True, return_masks=False, augment=True, p_flip=0.5, p_rot=0.75, p_shift=0)
+    train_ds = H5PatchDataset(data_path, split="train", return_metadata=True, return_masks=False, augment=True, p_flip=0.5, p_rot=0.75)
     val_ds = H5PatchDataset(data_path, split="val", return_metadata=True, return_masks=False)
 
     def objective(trial):

@@ -17,7 +17,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 def create_objective(data_path, epochs, batch_size, num_workers, seed):
-    train_ds = H5PatchDataset(data_path, split="train", augment=True, p_flip=0.5, p_rot=0.75, p_shift=0)
+    train_ds = H5PatchDataset(data_path, split="train", augment=True, p_flip=0.5, p_rot=0.75)
     val_ds = H5PatchDataset(data_path, split="val")
 
     def objective(trial):
@@ -33,7 +33,7 @@ def create_objective(data_path, epochs, batch_size, num_workers, seed):
         dice_loss_factor = trial.suggest_float("dice_loss_factor", 0.5, 3.0)
 
         LOGGER.info(f"Trial {trial.number} | lr={learning_rate:.2e} | wd={weight_decay:.2e} | dropout={dropout_rate:.3f} | sampler={sampler_fraction:.3f} | pos_weight={pos_weight:.2f} | bce={bce_loss_factor:.1f} | dice={dice_loss_factor:.2f}")
-        
+
         sampler = BalancedTrailSampler(train_ds.pos_indices, train_ds.neg_indices, pos_fraction=sampler_fraction)
 
         model = UNet(dropout=dropout_rate)
