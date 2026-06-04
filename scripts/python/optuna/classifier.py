@@ -23,27 +23,26 @@ def create_objective(data_path, epochs, batch_size, num_workers, seed):
         trial_seed = seed + trial.number
         set_seed(trial_seed)
 
-        learning_rate = trial.suggest_float("learning_rate", 1e-4, 2e-3, log=True)
-        dropout_rate = trial.suggest_float("dropout_rate", 0.15, 0.4)
+        learning_rate = trial.suggest_float("learning_rate", 1e-4, 5e-3, log=True)
+        weight_decay = trial.suggest_float("weight_decay", 1e-5, 1e-3, log=True)
+        dropout_rate = trial.suggest_float("dropout_rate", 0.1, 0.4)
         base_channels = trial.suggest_categorical("base_channels", [16, 32])
-        sampler_fraction = trial.suggest_float("sampler_fraction", 0.2, 0.4)
-        pos_weight = trial.suggest_float("pos_weight", 1.5, 6.0)
+        sampler_fraction = trial.suggest_float("sampler_fraction", 0.05, 0.5)
+        pos_weight = trial.suggest_float("pos_weight", 3, 15.0, log=True)
         fn_penalty_weight = trial.suggest_float("fn_penalty_weight", 1.0, 6.0)
-        pred_threshold = trial.suggest_float("pred_threshold", 0.5, 0.9)
 
-        if sampler_fraction is not None:
-            sampler = BalancedTrailSampler(train_ds.pos_indices, train_ds.neg_indices, pos_fraction=sampler_fraction)
-        else:
-            sampler = None
+        LOGGER.info(f"Trial {trial.number} | lr={learning_rate:.2e} | wd={weight_decay:.2e} | dropout={dropout_rate:.3f} | base_ch={base_channels} | sampler={sampler_fraction:.3f} | pos_weight={pos_weight:.2f} | fn_penalty={fn_penalty_weight:.2f}")
+
+        sampler = BalancedTrailSampler(train_ds.pos_indices, train_ds.neg_indices, pos_fraction=sampler_fraction)
 
         model = TrailClassifier(base_channels=base_channels, dropout=dropout_rate)
 
-        optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+        optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
         scheduler = create_cos_lr_sched(optimizer, epochs)
 
 
         train_metrics = train_classifier(model, train_ds, val_ds, optimizer, scheduler, epochs, batch_size,
-                                         pos_weight=pos_weight, fn_penalty_weight=fn_penalty_weight, pred_threshold=pred_threshold,
+                                         pos_weight=pos_weight, fn_penalty_weight=fn_penalty_weight, 
                                          sampler=sampler, num_workers=num_workers, trial=trial, seed=trial_seed)
         
         score = train_metrics['best_penalized_specificity']
@@ -51,7 +50,7 @@ def create_objective(data_path, epochs, batch_size, num_workers, seed):
         LOGGER.info(f"Trial {trial.number} complete: score={score:.6f} "
                     f"lr={learning_rate:.2e} drop={dropout_rate:.2f} ch={base_channels} "
                     f"samp_frac={sampler_fraction:.2f} pos_wt={pos_weight:.2f} "
-                    f"fn_pen={fn_penalty_weight:.2f} thresh={pred_threshold:.2f}")
+                    f"fn_pen={fn_penalty_weight:.2f}")
 
 
         del model, optimizer, scheduler
