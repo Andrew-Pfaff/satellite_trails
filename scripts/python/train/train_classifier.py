@@ -59,7 +59,7 @@ def parse_args():
     parser.add_argument("--fn-penalty-weight", type=float, default=1)
     parser.add_argument("--pred-threshold", type=float, default=0.3)
     parser.add_argument("--min-recall", type=float, default=0.98)
-    parser.add_argument("--recall-penalty", type=float, default=1.0)
+    parser.add_argument("--recall-penalty", type=float, default=2.0)
     parser.add_argument("--weight-decay", type=float, default=1e-4)
     parser.add_argument("--num-workers", type=int, default=0)
     parser.add_argument("--full-save-path", type=str, default=None)
