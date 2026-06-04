@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #SBATCH -J classifier_loss
 #SBATCH -p ampere
-#SBATCH -A FERGUSSON-SL3-GPU
+#SBATCH -A MPHIL-DIS-SL2-GPU
 #SBATCH --nodes=1
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=16
@@ -39,4 +39,4 @@ DATA_PATH="$LOCAL_DATA_PATH"
 
 
 #Running the script:
-python3 "$SCRIPT_PATH" --data-path="$DATA_PATH" --epochs=25 --trials=40 --num-workers=12 --verbose --learning-rate=0.0015 --base-channels=16 --dropout-rate=0.23 --sampler-fraction=0.47
+python3 "$SCRIPT_PATH" --data-path="$DATA_PATH" --epochs=25 --trials=25 --num-workers=1 --verbose --learning-rate=0.006 --base-channels=16 --dropout-rate=0.19 --sampler-fraction=0.11
