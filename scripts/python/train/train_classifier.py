@@ -13,13 +13,13 @@ from satellite_trail_segmentation.ml_utils.seed import set_seed
 LOGGER = logging.getLogger(__name__)
 
 
-def main(data_path, learning_rate, sampler_fraction, warmup_epochs, eta_min, p_shift, epochs, batch_size,
-         pos_weight, fn_penalty_weight, pred_threshold, min_recall, recall_penalty, num_workers, 
-         full_save_path=None, weight_save_path=None, seed=1): 
+def main(data_path, learning_rate, sampler_fraction, warmup_epochs, eta_min, epochs, batch_size,
+         pos_weight, fn_penalty_weight, pred_threshold, min_recall, recall_penalty, weight_decay,
+         num_workers, full_save_path=None, weight_save_path=None, seed=1): 
     
     set_seed(seed)
 
-    train_ds = H5PatchDataset(data_path, split="train", return_metadata=True, return_masks=False, augment=True, p_flip=0.5, p_rot=0.75, p_shift=p_shift)
+    train_ds = H5PatchDataset(data_path, split="train", return_metadata=True, return_masks=False, augment=True, p_flip=0.5, p_rot=0.75)
     val_ds = H5PatchDataset(data_path, split="val", return_metadata=True, return_masks=False)
 
     if sampler_fraction is not None:
@@ -29,7 +29,7 @@ def main(data_path, learning_rate, sampler_fraction, warmup_epochs, eta_min, p_s
 
     model = TrailClassifier()
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
     scheduler = create_cos_lr_sched(optimizer, epochs, warmup_epochs=warmup_epochs, eta_min=eta_min)
 
     train_metrics = train_classifier(model, train_ds, val_ds, optimizer, scheduler, 
@@ -53,14 +53,14 @@ def parse_args():
     parser.add_argument("--sampler-fraction", type=float, default=None)
     parser.add_argument("--warmup-epochs", type=int, default=5)
     parser.add_argument("--eta-min", type=float, default=1e-6)
-    parser.add_argument("--p-shift", type=float, default=0)
     parser.add_argument("--epochs", type=int, required=True)
     parser.add_argument("--batch-size", type=int, required=True)
     parser.add_argument("--pos-weight", type=float, default=3.0)
     parser.add_argument("--fn-penalty-weight", type=float, default=1)
     parser.add_argument("--pred-threshold", type=float, default=0.3)
-    parser.add_argument("--min-recall", type=float, default=0.95)
+    parser.add_argument("--min-recall", type=float, default=0.98)
     parser.add_argument("--recall-penalty", type=float, default=1.0)
+    parser.add_argument("--weight-decay", type=float, default=1e-4)
     parser.add_argument("--num-workers", type=int, default=0)
     parser.add_argument("--full-save-path", type=str, default=None)
     parser.add_argument("--weight-save-path", type=str, default=None)
@@ -82,7 +82,6 @@ if __name__ == "__main__":
                                 sampler_fraction=args.sampler_fraction,
                                 warmup_epochs=args.warmup_epochs,
                                 eta_min=args.eta_min,
-                                p_shift=args.p_shift,
                                 epochs=args.epochs,
                                 batch_size=args.batch_size,                                            
                                 pos_weight=args.pos_weight,
@@ -90,6 +89,7 @@ if __name__ == "__main__":
                                 pred_threshold=args.pred_threshold,
                                 min_recall=args.min_recall,
                                 recall_penalty=args.recall_penalty,
+                                weight_decay=args.weight_decay,
                                 num_workers=args.num_workers,
                                 full_save_path=args.full_save_path,
                                 weight_save_path=args.weight_save_path,
