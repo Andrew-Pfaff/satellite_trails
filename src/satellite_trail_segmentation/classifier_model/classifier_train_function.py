@@ -18,7 +18,7 @@ LOGGER = logging.getLogger(__name__)
 
 def train_classifier(model, train_ds, val_ds, optimizer, scheduler, 
                      epochs, batch_size, pos_weight=1.0, fn_penalty_weight=1.0, 
-                     pred_thresholds=None, min_recall=0.98, recall_penalty=1.0, 
+                     pred_thresholds=None, min_recall=0.98, recall_penalty=2.0, 
                      sampler=None, num_workers=0, full_save_path=None, 
                      weight_save_path=None, trial=None, seed=None):
     """
