@@ -13,7 +13,7 @@ from satellite_trail_segmentation.ml_utils.seed import set_seed
 LOGGER = logging.getLogger(__name__)
 
 
-def main(data_path, learning_rate, sampler_fraction, warmup_epochs, eta_min, epochs, batch_size,
+def main(data_path, learning_rate, sampler_fraction, base_channels, warmup_epochs, eta_min, epochs, batch_size,
          pos_weight, fn_penalty_weight, pred_threshold, min_recall, recall_penalty, weight_decay,
          num_workers, full_save_path=None, weight_save_path=None, seed=1): 
     
@@ -27,7 +27,7 @@ def main(data_path, learning_rate, sampler_fraction, warmup_epochs, eta_min, epo
     else:
         sampler = None
 
-    model = TrailClassifier()
+    model = TrailClassifier(base_channels=base_channels)
 
     optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
     scheduler = create_cos_lr_sched(optimizer, epochs, warmup_epochs=warmup_epochs, eta_min=eta_min)
@@ -51,6 +51,7 @@ def parse_args():
     parser.add_argument("--data-path", type=str, required=True)
     parser.add_argument("--learning-rate", type=float, required=True)
     parser.add_argument("--sampler-fraction", type=float, default=None)
+    parser.add_argument("--base-channels", type=float, default=None)
     parser.add_argument("--warmup-epochs", type=int, default=5)
     parser.add_argument("--eta-min", type=float, default=1e-6)
     parser.add_argument("--epochs", type=int, required=True)
@@ -80,6 +81,7 @@ if __name__ == "__main__":
     train_loss, val_loss = main(data_path=args.data_path,
                                 learning_rate=args.learning_rate,
                                 sampler_fraction=args.sampler_fraction,
+                                base_channnels=args.base_channels,
                                 warmup_epochs=args.warmup_epochs,
                                 eta_min=args.eta_min,
                                 epochs=args.epochs,

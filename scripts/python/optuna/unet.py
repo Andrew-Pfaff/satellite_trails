@@ -24,18 +24,21 @@ def create_objective(data_path, epochs, batch_size, num_workers, seed):
         trial_seed = seed + trial.number
         set_seed(trial_seed)
 
-        learning_rate = trial.suggest_float("learning_rate", 1e-3, 3e-3, log=True)
-        dropout_rate = trial.suggest_float("dropout_rate", 0.01, 0.05)
-        sampler_fraction = trial.suggest_float("sampler_fraction", 0.25, 0.5) 
-        pos_weight = trial.suggest_float("pos_weight", 6.0, 10.0)
+        learning_rate = trial.suggest_float("learning_rate", 5e-4, 5e-3, log=True)
+        weight_decay = trial.suggest_float("weight_decay", 1e-5, 1e-3, log=True)
+        dropout_rate = trial.suggest_float("dropout_rate", 0.01, 0.1)
+        sampler_fraction = trial.suggest_float("sampler_fraction", 0.1, 0.5) 
+        pos_weight = trial.suggest_float("pos_weight", 5.0, 50.0, log=True)
         bce_loss_factor = 1.0
-        dice_loss_factor = trial.suggest_float("dice_loss_factor", 1.5, 10.0, log=True)
+        dice_loss_factor = trial.suggest_float("dice_loss_factor", 0.5, 3.0)
 
+        LOGGER.info(f"Trial {trial.number} | lr={learning_rate:.2e} | wd={weight_decay:.2e} | dropout={dropout_rate:.3f} | sampler={sampler_fraction:.3f} | pos_weight={pos_weight:.2f} | bce={bce_loss_factor:.1f} | dice={dice_loss_factor:.2f}")
+        
         sampler = BalancedTrailSampler(train_ds.pos_indices, train_ds.neg_indices, pos_fraction=sampler_fraction)
 
         model = UNet(dropout=dropout_rate)
 
-        optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+        optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
         scheduler = create_cos_lr_sched(optimizer, epochs)
 
         iou_thresholds = np.linspace(0.45, 0.65, 17)
