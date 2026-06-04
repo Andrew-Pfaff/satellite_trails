@@ -196,3 +196,7 @@ def specificity_with_recall_penalty(metrics, min_recall, penalty):
     sub_recall_value = max(0.0, min_recall - recall)
 
     return specificity - sub_recall_value * penalty
+
+
+def best_threshold_by_penalized_specificity(threshold_metrics, min_recall, penalty):
+    return max(threshold_metrics.items(), key=lambda item: specificity_with_recall_penalty(item[1], min_recall, penalty))
