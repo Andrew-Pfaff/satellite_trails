@@ -51,14 +51,13 @@ def parse_args():
     parser.add_argument("--data-path", type=str, required=True)
     parser.add_argument("--learning-rate", type=float, required=True)
     parser.add_argument("--sampler-fraction", type=float, default=None)
-    parser.add_argument("--base-channels", type=float, default=None)
+    parser.add_argument("--base-channels", type=int, default=None)
     parser.add_argument("--warmup-epochs", type=int, default=5)
     parser.add_argument("--eta-min", type=float, default=1e-6)
     parser.add_argument("--epochs", type=int, required=True)
     parser.add_argument("--batch-size", type=int, required=True)
     parser.add_argument("--pos-weight", type=float, default=3.0)
     parser.add_argument("--fn-penalty-weight", type=float, default=1)
-    parser.add_argument("--pred-threshold", type=float, default=0.3)
     parser.add_argument("--min-recall", type=float, default=0.98)
     parser.add_argument("--recall-penalty", type=float, default=2.0)
     parser.add_argument("--weight-decay", type=float, default=1e-4)
@@ -81,14 +80,13 @@ if __name__ == "__main__":
     train_loss, val_loss = main(data_path=args.data_path,
                                 learning_rate=args.learning_rate,
                                 sampler_fraction=args.sampler_fraction,
-                                base_channnels=args.base_channels,
+                                base_channels=args.base_channels,
                                 warmup_epochs=args.warmup_epochs,
                                 eta_min=args.eta_min,
                                 epochs=args.epochs,
                                 batch_size=args.batch_size,                                            
                                 pos_weight=args.pos_weight,
                                 fn_penalty_weight=args.fn_penalty_weight,
-                                pred_threshold=args.pred_threshold,
                                 min_recall=args.min_recall,
                                 recall_penalty=args.recall_penalty,
                                 weight_decay=args.weight_decay,
