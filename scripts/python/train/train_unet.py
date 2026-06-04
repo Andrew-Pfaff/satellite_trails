@@ -14,13 +14,13 @@ from satellite_trail_segmentation.ml_utils.seed import set_seed
 LOGGER = logging.getLogger(__name__)
 
 
-def main(data_path, epochs, batch_size, learning_rate, dropout_rate, p_shift,
-         pos_weight, bce_loss_factor, dice_loss_factor, num_workers, warmup_epochs, 
+def main(data_path, epochs, batch_size, learning_rate, dropout_rate,
+         pos_weight, bce_loss_factor, dice_loss_factor, weight_decay, num_workers, warmup_epochs, 
          eta_min, sampler_fraction=None, full_save_path=None, weight_save_path=None, seed=1):
     
     set_seed(seed)
 
-    train_ds = H5PatchDataset(data_path, split="train", augment=True, p_flip=0.5, p_rot=0.75, p_shift=p_shift)
+    train_ds = H5PatchDataset(data_path, split="train", augment=True, p_flip=0.5, p_rot=0.75)
     val_ds = H5PatchDataset(data_path, split="val")
 
     if sampler_fraction is not None:
@@ -30,7 +30,7 @@ def main(data_path, epochs, batch_size, learning_rate, dropout_rate, p_shift,
     
     model = UNet(dropout=dropout_rate)
     
-    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
     scheduler = create_cos_lr_sched(optimizer, epochs, warmup_epochs=warmup_epochs, eta_min=eta_min)
 
     train_metrics = train_unet(model, train_ds, val_ds, optimizer, scheduler,
@@ -53,10 +53,10 @@ def parse_args():
     parser.add_argument("--batch-size", type=int, required=True)
     parser.add_argument("--learning-rate", type=float, required=True)
     parser.add_argument("--dropout-rate", type=float, default=0.0)
-    parser.add_argument("--shift-prob", type=float, default=0.0)
     parser.add_argument("--pos-weight", type=float, default=1.0)
     parser.add_argument("--bce-loss-factor", type=float, default=0.5)
     parser.add_argument("--dice-loss-factor", type=float, default=0.5)
+    parser.add_argument("--weight-decay", type=float, default=1e-4)
     parser.add_argument("--num-workers", type=int, default=0)
     parser.add_argument("--warmup-epochs", type=int, default=5)
     parser.add_argument("--eta-min", type=float, default=1e-6)
@@ -81,10 +81,10 @@ if __name__ == "__main__":
                                 batch_size=args.batch_size,
                                 learning_rate=args.learning_rate,
                                 dropout_rate=args.dropout_rate,
-                                p_shift=args.shift_prob,
                                 pos_weight=args.pos_weight,
                                 bce_loss_factor=args.bce_loss_factor,
                                 dice_loss_factor=args.dice_loss_factor,
+                                weight_decay=args.weight_decay,
                                 num_workers=args.num_workers,
                                 warmup_epochs=args.warmup_epochs,
                                 eta_min=args.eta_min,
