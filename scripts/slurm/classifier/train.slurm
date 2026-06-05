@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 #SBATCH -J classifier_train
 #SBATCH -p ampere
-#SBATCH -A MPHIL-DIS-SL2-GPU
+#SBATCH -A FERGUSSON-SL3-GPU
 #SBATCH --nodes=1
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=16
 #SBATCH --mem=64G
-#SBATCH --time=01:00:00
+#SBATCH --time=02:30:00
 #SBATCH --output=results/models/classifier/classifier_train-%j.out
 
 set -euo pipefail
@@ -29,13 +29,15 @@ python3 -c "import torch; assert torch.cuda.is_available(), 'No CUDA device foun
 
 
 DATA_PATH="$PROJECT_ROOT/data/h5s/dataset.h5"
-EPOCHS=40
+EPOCHS=100
 BATCH_SIZE=128
-LEARNING_RATE=0.0016
-SAMPLER_FRACTION=0.25
-POS_WEIGHT=4.0
-FN_PENALTY_WEIGHT=2.1
-PRED_THRESHOLD=0.67
+LEARNING_RATE=0.005
+SAMPLER_FRACTION=0.06
+DROPOUT_RATE=0.272
+BASE_CHANNELS=16
+POS_WEIGHT=14.8
+FN_PENALTY_WEIGHT=3.9
+WEIGHT_DECAY=1.38e-05
 NUM_WORKERS=12
 CHECKPOINT_PATH="$PROJECT_ROOT/results/models/classifier/classifier_train.pt"
 WEIGHT_SAVE_PATH="$PROJECT_ROOT/results/models/classifier/classifier_weights.pt"
@@ -49,9 +51,11 @@ python3 "$SCRIPT_PATH" \
     --batch-size="$BATCH_SIZE" \
     --learning-rate="$LEARNING_RATE" \
     --sampler-fraction="$SAMPLER_FRACTION" \
+    --base-channels="$BASE_CHANNELS" \
+    --dropout-rate="$DROPOUT_RATE" \
     --pos-weight="$POS_WEIGHT" \
     --fn-penalty-weight="$FN_PENALTY_WEIGHT" \
-    --pred-threshold="$PRED_THRESHOLD" \
+    --weight-decay="$WEIGHT_DECAY" \
     --num-workers="$NUM_WORKERS" \
     --full-save-path="$CHECKPOINT_PATH" \
     --weight-save-path="$WEIGHT_SAVE_PATH" \

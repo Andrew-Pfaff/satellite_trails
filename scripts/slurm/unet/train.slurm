@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 #SBATCH -J unet_train
 #SBATCH -p ampere
-#SBATCH -A MPHIL-DIS-SL2-GPU
+#SBATCH -A FERGUSSON-SL3-GPU
 #SBATCH --nodes=1
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=16
 #SBATCH --mem=32G
-#SBATCH --time=02:20:00
+#SBATCH --time=06:00:00
 #SBATCH --output=results/models/unet/unet_train-%j.out
 
 set -euo pipefail
@@ -29,14 +29,15 @@ python3 -c "import torch; assert torch.cuda.is_available(), 'No CUDA device foun
 
 
 DATA_PATH="$PROJECT_ROOT/data/h5s/dataset.h5"
-EPOCHS=50
+EPOCHS=100
 BATCH_SIZE=64
-LEARNING_RATE=0.003
-DROPOUT_RATE=0.014
-POS_WEIGHT=6.7
+LEARNING_RATE=0.002
+DROPOUT_RATE=0.016
+POS_WEIGHT=11.1
 BCE_LOSS_FACTOR=1
-DICE_LOSS_FACTOR=8
-SAMPLER_FRACTION=0.26
+DICE_LOSS_FACTOR=2.5
+WEIGHT_DECAY=0.00099
+SAMPLER_FRACTION=0.154
 WARMUP_EPOCHS=5
 NUM_WORKERS=12
 CHECKPOINT_PATH="$PROJECT_ROOT/results/models/unet/unet_train.pt"
@@ -54,6 +55,7 @@ python3 "$SCRIPT_PATH" \
     --pos-weight="$POS_WEIGHT" \
     --bce-loss-factor="$BCE_LOSS_FACTOR" \
     --dice-loss-factor="$DICE_LOSS_FACTOR" \
+    --weight-decay="$WEIGHT_DECAY" \
     --num-workers="$NUM_WORKERS" \
     --warmup-epochs="$WARMUP_EPOCHS" \
     --sampler-fraction="$SAMPLER_FRACTION" \

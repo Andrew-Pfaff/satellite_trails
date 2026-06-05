@@ -5,7 +5,7 @@
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=16G
-#SBATCH --time=00:03:00
+#SBATCH --time=00:05:00
 #SBATCH --output=results/optuna/analyze_optuna-%j.out
 
 set -euo pipefail
@@ -26,5 +26,14 @@ cd "$PROJECT_ROOT"
 source "$VENV_PATH"
 
 #Running the script:
-python3 "$SCRIPT_PATH"
+python3 "$SCRIPT_PATH" \
+    --model-type="unet" \
+    --db-path="sqlite:///$PROJECT_ROOT/results/optuna/unet_full_tuning.db" \
+    --csv-path="$PROJECT_ROOT/results/optuna/analysis/unet_summary.csv" \
+    --plot-path="$PROJECT_ROOT/results/optuna/analysis/unet_plots"
 
+python3 "$SCRIPT_PATH" \
+    --model-type="classifier" \
+    --db-path="sqlite:///$PROJECT_ROOT/results/optuna/classifier_full_tuning.db" \
+    --csv-path="$PROJECT_ROOT/results/optuna/analysis/classifier_summary.csv" \
+    --plot-path="$PROJECT_ROOT/results/optuna/analysis/classifier_plots"
