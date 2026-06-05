@@ -13,8 +13,8 @@ from satellite_trail_segmentation.ml_utils.seed import set_seed
 LOGGER = logging.getLogger(__name__)
 
 
-def main(data_path, learning_rate, sampler_fraction, base_channels, warmup_epochs, eta_min, epochs, batch_size,
-         pos_weight, fn_penalty_weight, pred_threshold, min_recall, recall_penalty, weight_decay,
+def main(data_path, learning_rate, sampler_fraction, base_channels, dropout_rate, warmup_epochs, eta_min, epochs, batch_size,
+         pos_weight, fn_penalty_weight, min_recall, recall_penalty, weight_decay,
          num_workers, full_save_path=None, weight_save_path=None, seed=1): 
     
     set_seed(seed)
@@ -27,7 +27,7 @@ def main(data_path, learning_rate, sampler_fraction, base_channels, warmup_epoch
     else:
         sampler = None
 
-    model = TrailClassifier(base_channels=base_channels)
+    model = TrailClassifier(base_channels=base_channels, dropout=dropout_rate)
 
     optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
     scheduler = create_cos_lr_sched(optimizer, epochs, warmup_epochs=warmup_epochs, eta_min=eta_min)
@@ -35,10 +35,10 @@ def main(data_path, learning_rate, sampler_fraction, base_channels, warmup_epoch
     train_metrics = train_classifier(model, train_ds, val_ds, optimizer, scheduler, 
                                      epochs, batch_size, pos_weight=pos_weight, 
                                      fn_penalty_weight=fn_penalty_weight, 
-                                     pred_threshold=pred_threshold, min_recall=min_recall, 
-                                     recall_penalty=recall_penalty, sampler=sampler,
-                                     num_workers=num_workers, full_save_path=full_save_path, 
-                                     weight_save_path=weight_save_path, trial=None, seed=seed)
+                                     min_recall=min_recall, recall_penalty=recall_penalty, 
+                                     sampler=sampler, num_workers=num_workers, 
+                                     full_save_path=full_save_path, weight_save_path=weight_save_path, 
+                                     trial=None, seed=seed)
     
     LOGGER.info(f"Training completed after {train_metrics['final_epoch']} epochs. Best (recall penalized) specificity: {train_metrics['best_penalized_specificity']:.2f}. Validation loss on that  epoch: {train_metrics['best_val_loss']:.2f}")
 
@@ -52,6 +52,7 @@ def parse_args():
     parser.add_argument("--learning-rate", type=float, required=True)
     parser.add_argument("--sampler-fraction", type=float, default=None)
     parser.add_argument("--base-channels", type=int, default=None)
+    parser.add_argument("--dropout-rate", type=float, default=0.0)
     parser.add_argument("--warmup-epochs", type=int, default=5)
     parser.add_argument("--eta-min", type=float, default=1e-6)
     parser.add_argument("--epochs", type=int, required=True)
@@ -81,6 +82,7 @@ if __name__ == "__main__":
                                 learning_rate=args.learning_rate,
                                 sampler_fraction=args.sampler_fraction,
                                 base_channels=args.base_channels,
+                                dropout_rate=args.dropout_rate,
                                 warmup_epochs=args.warmup_epochs,
                                 eta_min=args.eta_min,
                                 epochs=args.epochs,

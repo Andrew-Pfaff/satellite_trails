@@ -38,4 +38,4 @@ cp "$DATA_PATH" "$LOCAL_DATA_PATH"
 DATA_PATH="$LOCAL_DATA_PATH"
 
 #Running the script:
-python3 "$SCRIPT_PATH" --data-path="$DATA_PATH" --epochs=40 --trials=80 --verbose --num-workers=1
+python3 "$SCRIPT_PATH" --data-path="$DATA_PATH" --epochs=40 --trials=20 --verbose --num-workers=1
