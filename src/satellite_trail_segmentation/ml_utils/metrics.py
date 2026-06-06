@@ -1,7 +1,5 @@
 import numpy as np
 import torch
-from sklearn.metrics import roc_curve, auc
-
 
 def init_conf_counts():
     """
@@ -164,31 +162,6 @@ def best_threshold_by_metric(threshold_metrics, metric_name):
     return max(threshold_metrics.items(), key=lambda item: item[1][metric_name])
 
 
-def roc_auc_data(pred_prob, target):
-    """
-    Computes Receiver Operating Characteristic curve data and area under the curve.
-
-    Flattens continuous prediction probabilities and binary targets, calculates the ROC curve and AUC, then selects the threshold that maximizes Youden's J statistic.
-
-    Args:
-        pred_prob (np.ndarray or torch.Tensor): Continuous prediction probabilities.
-        target (np.ndarray or torch.Tensor): Binary target array or tensor.
-
-    Returns:
-        tuple: A 5-element tuple containing false-positive rates, true-positive rates, thresholds, optimal threshold, and ROC-AUC.
-    """
-
-    pred_prob_f = np.asarray(pred_prob).flatten()
-    target_f = np.asarray(target).flatten()
-
-    fpr, tpr, thresholds = roc_curve(target_f, pred_prob_f)
-    idx = np.argmax(tpr - fpr)
-    optimal_threshold = thresholds[idx]
-    roc_auc = auc(fpr, tpr)
-
-    return fpr, tpr, thresholds, optimal_threshold, roc_auc
-
-
 def specificity_with_recall_penalty(metrics, min_recall, penalty):
     specificity = metrics['specificity']
     recall = metrics['recall']
@@ -200,3 +173,60 @@ def specificity_with_recall_penalty(metrics, min_recall, penalty):
 
 def best_threshold_by_penalized_specificity(threshold_metrics, min_recall, penalty):
     return max(threshold_metrics.items(), key=lambda item: specificity_with_recall_penalty(item[1], min_recall, penalty))
+
+
+def calculate_patch_wise_metrics(all_patch_counts, epsilon=1e-8):
+    accuracies = []
+    precisions = []
+    recalls = []
+    specificities = []
+    ious = []
+    dices = []
+    fnrs = []
+    fprs = []   
+
+    for counts in all_patch_counts:
+        tp = counts["tp"]
+        fp = counts["fp"]
+        fn = counts["fn"]
+        tn = counts["tn"]
+
+        if (tp + fn) == 0 and fp == 0:
+            acc = 1.0   
+            prec = 1.0         
+            rec = 1.0         
+            spec = 1.0         
+            iou = 1.0         
+            dice = 1.0         
+            fnr = 0.0          
+            fpr = 0.0          
+        else:
+            
+            acc = (tp + tn) / (tp + fp + fn + tn + epsilon)
+            prec = tp / (tp + fp + epsilon)
+            rec = tp / (tp + fn + epsilon)
+            spec = tn / (tn + fp + epsilon)
+            iou = tp / (tp + fp + fn + epsilon)
+            dice = (2 * tp) / (2 * tp + fp + fn + epsilon)
+            fnr = fn / (tp + fn + epsilon)
+            fpr = fp / (fp + tn + epsilon)
+
+        accuracies.append(acc)
+        precisions.append(prec)
+        recalls.append(rec)
+        specificities.append(spec)
+        ious.append(iou)
+        dices.append(dice)
+        fnrs.append(fnr)
+        fprs.append(fpr)
+
+
+    return {"accuracy": float(np.mean(accuracies)),
+            "precision": float(np.mean(precisions)),
+            "recall": float(np.mean(recalls)),
+            "sensitivity": float(np.mean(recalls)),
+            "specificity": float(np.mean(specificities)),
+            "iou": float(np.mean(ious)),
+            "dice": float(np.mean(dices)),
+            "fnr": float(np.mean(fnrs)),
+            "fpr": float(np.mean(fprs))}

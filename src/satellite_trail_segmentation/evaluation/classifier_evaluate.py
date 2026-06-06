@@ -8,7 +8,8 @@ from satellite_trail_segmentation.ml_utils.metrics import (
     init_conf_counts, 
     update_conf_counts_batch, 
     conf_counts_from_logits,
-    conf_counts_from_arrays
+    conf_counts_from_arrays,
+    metrics_from_conf_counts
 )
 
 
@@ -98,15 +99,18 @@ def recreate_full_field(model, h5_path, split_type, source_index, batch_size=32,
     return full_image, full_pred, full_mask, full_overlay
 
 
-def evaluate_dataset(model, h5_path, split_type, pred_threshold=0.67, batch_size=4):
+def evaluate_dataset_classifier(model, h5_path, split_type, pred_thresholds=None, batch_size=4):
+    if pred_thresholds is None:
+        pred_thresholds = [0.5]
+    
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = model.to(device)
 
     dataset = H5PatchDataset(h5_path, split=split_type, return_metadata=True, return_masks=False)
     loader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
 
-    test_split_counts = init_conf_counts()
-    image_wise_counts = {}
+    threshold_counts = {t: init_conf_counts() for t in pred_thresholds}
+    image_wise_counts = {t: {} for t in pred_thresholds}
 
     model.eval()
     with torch.no_grad():
@@ -115,27 +119,30 @@ def evaluate_dataset(model, h5_path, split_type, pred_threshold=0.67, batch_size
             targets = metadata["patch_has_trail"].to(device=device, dtype=torch.float32).view(-1, 1)
 
             prediction = model(images)
-
-            #Batch-wise counts
-            batch_counts = conf_counts_from_logits(logits=prediction, target= targets, threshold=pred_threshold)
-            test_split_counts = update_conf_counts_batch(test_split_counts, batch_counts)
-           
-            #Image-wise counts
-            preds_bin = (torch.sigmoid(prediction) >= pred_threshold).cpu().numpy().flatten()
-            targets_np = targets.cpu().numpy().flatten()
-            source_indices = metadata['source_index']
-            for i, img_id in enumerate(source_indices):
-                img_key = int(img_id)
-
-                single_pred = preds_bin[i]
-                single_target = targets_np[i]
+        
+            for t in pred_thresholds:
+                #Batch-wise counts
+                batch_counts = conf_counts_from_logits(logits=prediction, target= targets, threshold=t)
+                threshold_counts[t] = update_conf_counts_batch(threshold_counts[t], batch_counts)
             
-                patch_counts = conf_counts_from_arrays(single_pred, single_target)
+                #Image-wise counts
+                preds_bin = (torch.sigmoid(prediction) >= t).cpu().numpy().flatten()
+                targets_np = targets.cpu().numpy().flatten()
+                source_indices = metadata['source_index']
+                for i, img_id in enumerate(source_indices):
+                    img_key = int(img_id)
 
-                if img_key not in image_wise_counts:
-                    image_wise_counts[img_key] = init_conf_counts()
+                    single_pred = preds_bin[i]
+                    single_target = targets_np[i]
                 
-                image_wise_counts[img_key] = update_conf_counts_batch(image_wise_counts[img_key], patch_counts)
+                    patch_counts = conf_counts_from_arrays(single_pred, single_target)
+
+                    if img_key not in image_wise_counts[t]:
+                        image_wise_counts[t][img_key] = init_conf_counts()
+                    
+                    image_wise_counts[t][img_key] = update_conf_counts_batch(image_wise_counts[t][img_key], patch_counts)
 
 
-    return test_split_counts, image_wise_counts
+    metrics = {t: metrics_from_conf_counts(counts) for t, counts in threshold_counts.items()}
+
+    return metrics, image_wise_counts

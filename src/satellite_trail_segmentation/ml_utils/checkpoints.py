@@ -28,7 +28,7 @@ def load_checkpoint(load_path, model, optimizer=None, scheduler=None):
     """
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         
-    checkpoint = torch.load(load_path, map_location=device, weights_only=True)
+    checkpoint = torch.load(load_path, map_location=device, weights_only=False)
     model.load_state_dict(checkpoint["model_state_dict"])
 
     if optimizer is not None and "optimizer_state_dict" in checkpoint:

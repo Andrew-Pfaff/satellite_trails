@@ -19,7 +19,7 @@ module load python/3.8.11/gcc-9.4.0-yb6rzr6
 #Paths
 PROJECT_ROOT="/home/anp50/rds/hpc-work/satellite_trails"
 VENV_PATH="$PROJECT_ROOT/.venv/bin/activate"
-SCRIPT_PATH="$PROJECT_ROOT/test.py"
+SCRIPT_PATH="$PROJECT_ROOT/scripts/python/evaluate_models.py"
 
 cd "$PROJECT_ROOT"
 

@@ -148,3 +148,29 @@ def plot_pred_residual(full_pred, full_mask, save_path):
     plt.tight_layout()
     _save_plot(save_path)
     plt.close()
+
+
+def plot_threshold_metrics(threshold_metrics, save_path=None, title='Performance Metrics Across Threshold Levels'):
+    thresholds = sorted(threshold_metrics.keys())
+    
+    iou = [threshold_metrics[t]["iou"] for t in thresholds]
+    precision = [threshold_metrics[t]["precision"] for t in thresholds]
+    recall = [threshold_metrics[t]["recall"] for t in thresholds]
+    dice = [threshold_metrics[t]["dice"] for t in thresholds] 
+
+    plt.figure(figsize=(8, 5))
+    plt.plot(thresholds, iou, label='IoU', color='royalblue', marker='.')
+    plt.plot(thresholds, precision, label='Precision', color='darkorange', marker='.')
+    plt.plot(thresholds, recall, label='Recall', color='green', marker='.')
+    plt.plot(thresholds, dice, label='F1', color='crimson', marker='.')
+
+    plt.xlabel('Threshold')
+    plt.ylabel('Metric Values')
+    plt.title(title)
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+    plt.xlim(0.0, 1.0)
+    
+    plt.tight_layout()
+    _save_plot(save_path)
+    plt.close()
