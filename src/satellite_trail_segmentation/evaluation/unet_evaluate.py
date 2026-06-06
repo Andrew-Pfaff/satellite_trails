@@ -2,10 +2,11 @@ import numpy as np
 import h5py
 import torch
 from torch.utils.data import DataLoader
+from torchmetrics.classification import BinaryROC
+from sklearn.metrics import auc
 
-from satellite_trail_segmentation.ml_utils.loss_functions import combo_loss
 from satellite_trail_segmentation.data.dataset import H5PatchDataset
-from satellite_trail_segmentation.ml_utils.metrics import init_conf_counts, update_conf_counts_batch, conf_counts_from_logits, metrics_from_conf_counts
+from satellite_trail_segmentation.ml_utils.metrics import init_conf_counts, update_conf_counts_batch, conf_counts_from_logits, metrics_from_conf_counts, calculate_patch_wise_metrics
 
 
 def image_threshold(image, threshold=0.5):
@@ -78,7 +79,7 @@ def recreate_full_field_pred(model, h5_path, split_type, source_index, batch_siz
     return full_image, full_pred, full_mask
 
 
-def evaluate_dataset_unet(model, h5_path, split_type, pred_thresholds=None, batch_size=1):
+def evaluate_dataset_unet(model, h5_path, split_type, pred_thresholds=None, batch_size=1, ):
     if pred_thresholds is None:
         pred_thresholds = [0.5]
     
@@ -86,11 +87,13 @@ def evaluate_dataset_unet(model, h5_path, split_type, pred_thresholds=None, batc
     model = model.to(device)
 
     dataset = H5PatchDataset(h5_path, split=split_type, return_masks=True, return_metadata=False)
-    loader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
-
+    loader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=4, pin_memory=True)
 
     threshold_counts = {t: init_conf_counts() for t in pred_thresholds}
-    patches_processed = 0
+
+    roc_metric = BinaryROC(thresholds=500).to(device)
+
+    threshold_patch_histories = {t: [] for t in pred_thresholds}
 
     model.eval()
     with torch.no_grad():
@@ -100,16 +103,41 @@ def evaluate_dataset_unet(model, h5_path, split_type, pred_thresholds=None, batc
             masks = masks.to(device)
 
             prediction = model(images)
+            probs = torch.sigmoid(prediction)
 
+            roc_metric.update(probs.flatten(), masks.flatten().long())
+            
             for t in pred_thresholds:
-                batch_counts = conf_counts_from_logits(logits=prediction, target=masks, threshold=t)
-                update_conf_counts_batch(threshold_counts[t], batch_counts)
+                for i in range(prediction.size(0)):
+                    single_patch_logits = prediction[i : i + 1]
+                    single_patch_mask = masks[i : i + 1]
 
-            patches_processed += batch_size
-            if patches_processed % 100 == 0:
-                print(f"{patches_processed} have been processed.")
-    
+                    patch_dict = conf_counts_from_logits(logits=single_patch_logits, target=single_patch_mask, threshold=t)
+
+                    threshold_patch_histories[t].append(patch_dict)
+
+                    update_conf_counts_batch(threshold_counts[t], patch_dict)
 
     metrics_counts = {t: metrics_from_conf_counts(counts) for t, counts in threshold_counts.items()}
 
-    return metrics_counts
+    fpr_tensor, tpr_tensor, thresholds_tensor = roc_metric.compute()
+
+    fpr = fpr_tensor.cpu().numpy()
+    tpr = tpr_tensor.cpu().numpy()
+    thresholds = thresholds_tensor.cpu().numpy()
+
+    idx = np.argmax(tpr - fpr)
+    optimal_threshold = thresholds[idx]
+
+    sort_idx = np.argsort(fpr)
+    fpr = fpr[sort_idx]
+    tpr = tpr[sort_idx]
+    thresholds = thresholds[sort_idx]
+
+    roc_auc = auc(fpr, tpr)
+
+    roc_metric.reset()
+
+    patch_metrics_counts = {t: calculate_patch_wise_metrics(history_list) for t, history_list in threshold_patch_histories.items()}
+
+    return metrics_counts, patch_metrics_counts, fpr, tpr, thresholds, optimal_threshold, roc_auc

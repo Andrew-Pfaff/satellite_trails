@@ -17,6 +17,7 @@ dependencies = [
     "scikit-learn",
     "scikit-image>=0.21.0",
     "torchvision",
+    "torchmetrics",
 ]
 
 [project.optional-dependencies]
