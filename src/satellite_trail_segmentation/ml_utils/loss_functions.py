@@ -45,7 +45,7 @@ def dice_loss(pred, mask):
     return loss
 
 
-def combo_loss(pred, mask, pos_weight=1.0, bce_weight=0.5, dice_weight=0.5):
+def combo_loss(pred, mask, pos_weight=1.0, bce_weight=0.5, dice_weight=0.5, label_smoothing=0.0):
     """
     Computes a weighted combination of Binary Cross-Entropy and Soft Dice Loss.
 
@@ -60,7 +60,9 @@ def combo_loss(pred, mask, pos_weight=1.0, bce_weight=0.5, dice_weight=0.5):
     Returns:
         loss (torch.Tensor): Scalar tensor representing the total combined loss.
     """
-
+    if label_smoothing > 0.0:
+        mask = mask * (1 - label_smoothing) + 0.5 * label_smoothing
+    
     loss = bce_weight*weighted_bce_loss(pred,mask,pos_weight) + dice_weight*dice_loss(pred,mask)
     return loss
 
