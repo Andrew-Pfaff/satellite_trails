@@ -15,13 +15,13 @@ LOGGER = logging.getLogger(__name__)
 
 
 def main(data_path, epochs, batch_size, learning_rate, dropout_rate,
-         pos_weight, bce_loss_factor, dice_loss_factor, weight_decay, num_workers, warmup_epochs, 
+         pos_weight, bce_loss_factor, dice_loss_factor, label_smoothing, weight_decay, num_workers, warmup_epochs, 
          eta_min, sampler_fraction=None, full_save_path=None, weight_save_path=None, seed=1):
     
     set_seed(seed)
 
-    train_ds = H5PatchDataset(data_path, split="train", augment=True, p_flip=0.5, p_rot=0.75)
-    val_ds = H5PatchDataset(data_path, split="val")
+    train_ds = H5PatchDataset(data_path, split="train", augment=True, p_flip=0.5, p_rot=0.75, zscore_standardization=True)
+    val_ds = H5PatchDataset(data_path, split="val", zscore_standardization=True)
 
     if sampler_fraction is not None:
         sampler = BalancedTrailSampler(train_ds.pos_indices, train_ds.neg_indices, pos_fraction=sampler_fraction)
@@ -36,7 +36,7 @@ def main(data_path, epochs, batch_size, learning_rate, dropout_rate,
     train_metrics = train_unet(model, train_ds, val_ds, optimizer, scheduler,
                                epochs, batch_size, pos_weight=pos_weight, 
                                bce_loss_factor=bce_loss_factor, dice_loss_factor=dice_loss_factor,
-                               sampler=sampler, num_workers=num_workers,
+                               label_smoothing=label_smoothing, sampler=sampler, num_workers=num_workers,
                                full_save_path=full_save_path, weight_save_path=weight_save_path, 
                                trial=None, seed=seed)
     
@@ -56,6 +56,7 @@ def parse_args():
     parser.add_argument("--pos-weight", type=float, default=1.0)
     parser.add_argument("--bce-loss-factor", type=float, default=0.5)
     parser.add_argument("--dice-loss-factor", type=float, default=0.5)
+    parser.add_argument("--label-smoothing", type=float, default=0.0)
     parser.add_argument("--weight-decay", type=float, default=1e-4)
     parser.add_argument("--num-workers", type=int, default=0)
     parser.add_argument("--warmup-epochs", type=int, default=5)
@@ -84,6 +85,7 @@ if __name__ == "__main__":
                                 pos_weight=args.pos_weight,
                                 bce_loss_factor=args.bce_loss_factor,
                                 dice_loss_factor=args.dice_loss_factor,
+                                label_smoothing=args.label_smoothing,
                                 weight_decay=args.weight_decay,
                                 num_workers=args.num_workers,
                                 warmup_epochs=args.warmup_epochs,

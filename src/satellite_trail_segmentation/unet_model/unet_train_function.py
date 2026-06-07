@@ -18,7 +18,7 @@ LOGGER = logging.getLogger(__name__)
 
 def train_unet(model, train_ds, val_ds, optimizer, scheduler, 
                epochs, batch_size, pos_weight=1.0, bce_loss_factor=0.5, 
-               dice_loss_factor=0.5, iou_thresholds = None, 
+               dice_loss_factor=0.5, label_smoothing=0.0, iou_thresholds = None, 
                sampler=None, num_workers=0, full_save_path=None, 
                weight_save_path=None, trial=None, seed=None):
     """
@@ -108,7 +108,7 @@ def train_unet(model, train_ds, val_ds, optimizer, scheduler,
             
             with autocast(device_type=device_type):
                 logits = model(images)
-                loss = combo_loss(logits, masks, pos_weight, bce_loss_factor, dice_loss_factor)
+                loss = combo_loss(logits, masks, pos_weight, bce_loss_factor, dice_loss_factor, label_smoothing)
 
             scaler.scale(loss).backward()
             scaler.step(optimizer)
@@ -131,7 +131,7 @@ def train_unet(model, train_ds, val_ds, optimizer, scheduler,
                 
                 with autocast(device_type=device_type):
                     logits = model(images)
-                    loss = combo_loss(logits, masks, pos_weight, bce_loss_factor, dice_loss_factor)
+                    loss = combo_loss(logits, masks, pos_weight, bce_loss_factor, dice_loss_factor, label_smoothing=0)
 
                 batch_size_actual = images.size(0)
                 epoch_val_loss += loss.item() * batch_size_actual

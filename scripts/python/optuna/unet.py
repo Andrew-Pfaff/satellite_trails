@@ -17,22 +17,23 @@ LOGGER = logging.getLogger(__name__)
 
 
 def create_objective(data_path, epochs, batch_size, num_workers, seed):
-    train_ds = H5PatchDataset(data_path, split="train", augment=True, p_flip=0.5, p_rot=0.75)
-    val_ds = H5PatchDataset(data_path, split="val")
+    train_ds = H5PatchDataset(data_path, split="train", augment=True, p_flip=0.5, p_rot=0.75, zscore_standardization=True)
+    val_ds = H5PatchDataset(data_path, split="val", zscore_standardization=True)
 
     def objective(trial):
         trial_seed = seed + trial.number
         set_seed(trial_seed)
 
-        learning_rate = trial.suggest_float("learning_rate", 5e-4, 5e-3, log=True)
+        learning_rate = trial.suggest_float("learning_rate", 1e-4, 5e-3, log=True)
         weight_decay = trial.suggest_float("weight_decay", 1e-5, 1e-3, log=True)
+        label_smoothing = trial.suggest_float("label_smoothing", 0.0, 0.1, step=0.025)
         dropout_rate = trial.suggest_float("dropout_rate", 0.01, 0.1)
         sampler_fraction = trial.suggest_float("sampler_fraction", 0.1, 0.5) 
-        pos_weight = trial.suggest_float("pos_weight", 5.0, 50.0, log=True)
+        pos_weight = trial.suggest_float("pos_weight", 1.0, 50.0, log=True)
         bce_loss_factor = 1.0
-        dice_loss_factor = trial.suggest_float("dice_loss_factor", 0.5, 3.0)
+        dice_loss_factor = trial.suggest_float("dice_loss_factor", 0.75, 1.5)
 
-        LOGGER.info(f"Trial {trial.number} | lr={learning_rate:.2e} | wd={weight_decay:.2e} | dropout={dropout_rate:.3f} | sampler={sampler_fraction:.3f} | pos_weight={pos_weight:.2f} | bce={bce_loss_factor:.1f} | dice={dice_loss_factor:.2f}")
+        LOGGER.info(f"Trial {trial.number} | lr={learning_rate:.2e} | wd={weight_decay:.2e} | smoothing={label_smoothing} | dropout={dropout_rate:.3f} | sampler={sampler_fraction:.3f} | pos_weight={pos_weight:.2f} | bce={bce_loss_factor:.1f} | dice={dice_loss_factor:.2f}")
 
         sampler = BalancedTrailSampler(train_ds.pos_indices, train_ds.neg_indices, pos_fraction=sampler_fraction)
 
@@ -41,18 +42,17 @@ def create_objective(data_path, epochs, batch_size, num_workers, seed):
         optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
         scheduler = create_cos_lr_sched(optimizer, epochs)
 
-        iou_thresholds = np.linspace(0.45, 0.65, 17)
+        iou_thresholds = [0.5]
 
         train_metrics = train_unet(model, train_ds, val_ds, optimizer, scheduler, 
                                    epochs, batch_size=batch_size, 
                                    pos_weight=pos_weight, bce_loss_factor=bce_loss_factor, dice_loss_factor=dice_loss_factor,
-                                   iou_thresholds=iou_thresholds, sampler=sampler,
+                                   label_smoothing=label_smoothing, iou_thresholds=iou_thresholds, sampler=sampler,
                                    num_workers=num_workers, trial=trial, seed=trial_seed)
         
         score = train_metrics["best_iou"]
-        threshold = train_metrics["best_threshold"]
 
-        LOGGER.info(f"Trial {trial.number} complete after {train_metrics['final_epoch']} epochs. \n Parameters: lr={learning_rate:.2e} | dropout={dropout_rate:.3f} | sampler_frac={sampler_fraction:.3f} | pos_weight={pos_weight:.2f} | dice_factor={dice_loss_factor:.2f}\nBest validation IOU: {score:.4f} with threshold: {threshold:.2f}.")
+        LOGGER.info(f"Trial {trial.number} complete after {train_metrics['final_epoch']} epochs. \n Parameters: lr={learning_rate:.2e} | dropout={dropout_rate:.3f} | sampler_frac={sampler_fraction:.3f} | pos_weight={pos_weight:.2f} | dice_factor={dice_loss_factor:.2f}\nBest validation IOU: {score:.4f}.")
         
         return score
     return objective
@@ -87,7 +87,7 @@ if __name__ == "__main__":
                                 load_if_exists=True, 
                                 direction="maximize", 
                                 sampler=optuna.samplers.TPESampler(seed=args.seed),
-                                pruner=optuna.pruners.MedianPruner(n_startup_trials=5, n_warmup_steps=10))
+                                pruner=optuna.pruners.MedianPruner(n_startup_trials=5, n_warmup_steps=5))
 
     objective = create_objective(args.data_path, args.epochs, args.batch_size, args.num_workers, args.seed)
     study.optimize(objective, n_trials=args.trials)
