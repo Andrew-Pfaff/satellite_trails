@@ -23,7 +23,7 @@ class H5PatchDataset(Dataset):
         neg_indices (np.ndarray): Subset of internal indices pointing strictly to trail-free patches.
     """
 
-    def __init__(self, h5_path, split='train', return_metadata=False, return_masks=True, source_index=None, augment=False, p_flip=0.1, p_rot=0.1):
+    def __init__(self, h5_path, split='train', return_metadata=False, return_masks=True, source_index=None, augment=False, p_flip=0.1, p_rot=0.1, zscore_standardization=False):
         """
         Args:
             h5_path (str): Path to the HDF5 file created by create_h5
@@ -44,6 +44,7 @@ class H5PatchDataset(Dataset):
         self.split = split
         self.return_metadata = return_metadata
         self.return_masks = return_masks
+        self.zscore_standardization=zscore_standardization
 
         if self.split=='train' and augment:
             self.augment = True
@@ -105,10 +106,10 @@ class H5PatchDataset(Dataset):
             self.masks = self.h5_file['masks']
             
         real_idx = self.valid_indices[idx]
-        
-        image = self.images[real_idx].astype(np.float32) / 255.0
+
+        image = self.images[real_idx].astype(np.float32)
         need_mask = self.return_masks or (self.augment and self.patch_has_trail[idx])
-        mask = (self.masks[real_idx] > 0).astype(np.float32) if need_mask else None
+        mask = np.ascontiguousarray(self.masks[real_idx] > 0).astype(np.float32) if need_mask else None
 
         if self.augment and self.patch_has_trail[idx]:
             # You can adjust these probabilities as needed
@@ -116,6 +117,17 @@ class H5PatchDataset(Dataset):
             image = np.ascontiguousarray(image)
             mask = np.ascontiguousarray(mask)
         
+
+        if self.zscore_standardization:
+            patch_mean = image.mean()
+            patch_std = image.std()
+            eps = 1e-6
+            if patch_std < eps:
+                patch_std = 1.0
+            image = (image - patch_mean) / patch_std
+        else:
+            image = image / 255.0
+
         x_tensor = torch.from_numpy(image).float().unsqueeze(0)
         y_tensor = torch.from_numpy(mask).float().unsqueeze(0) if self.return_masks else None
 
