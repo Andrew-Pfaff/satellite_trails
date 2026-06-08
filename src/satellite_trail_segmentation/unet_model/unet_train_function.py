@@ -69,7 +69,7 @@ def train_unet(model, train_ds, val_ds, optimizer, scheduler,
         Path(weight_save_path).parent.mkdir(parents=True, exist_ok=True)
     
     model_config = {"in_channels": model.in_channels, "out_channels": model.out_channels, "kernel_size": model.kernel_size, "base_channels": model.base_channels, "dropout": model.dropout,
-                    "pos_weight": pos_weight, "bce_loss_factor": bce_loss_factor, "dice_loss_factor": dice_loss_factor}
+                    "pos_weight": pos_weight, "bce_loss_factor": bce_loss_factor, "dice_loss_factor": dice_loss_factor, "label_smoothing": label_smoothing, "batch_size": batch_size, "seed": seed}
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     device_type = device.type 
@@ -83,7 +83,7 @@ def train_unet(model, train_ds, val_ds, optimizer, scheduler,
     val_loader = DataLoader(val_ds, batch_size=batch_size, shuffle=False, num_workers=num_workers, pin_memory=True, persistent_workers=use_workers, worker_init_fn=worker_init_fn, generator=generator, prefetch_factor=2 if use_workers else None)
 
     if iou_thresholds is None:
-        iou_thresholds = list(np.linspace(0.3, 0.7, 9))
+        iou_thresholds = [0.5]
     train_loss = []
     val_loss = []
     val_iou = []
@@ -160,7 +160,7 @@ def train_unet(model, train_ds, val_ds, optimizer, scheduler,
             
             if full_save_path is not None:
                 save_metrics = {'best_iou': best_iou, 'best_threshold': best_threshold, 'val_loss_at_best_iou': best_loss}
-                save_checkpoint(full_save_path, model, optimizer, scheduler, epoch=epoch+1, metrics=save_metrics, model_config=model_config)
+                save_checkpoint(full_save_path, model, optimizer, scheduler, sampler=sampler, epoch=epoch+1, metrics=save_metrics, model_config=model_config)
             if weight_save_path is not None:
                 save_weights(weight_save_path, model, model_config)
                 

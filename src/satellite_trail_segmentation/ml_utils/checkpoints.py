@@ -1,13 +1,14 @@
 import torch
 
 
-def save_checkpoint(save_path, model, optimizer, scheduler, epoch, metrics, model_config):
+def save_checkpoint(save_path, model, optimizer, scheduler, sampler, epoch, metrics, model_config):
     """Full resumable checkpoint."""
     torch.save({
         "epoch": epoch,
         "model_state_dict": model.state_dict(),
         "optimizer_state_dict": optimizer.state_dict(),
         "scheduler_state_dict": scheduler.state_dict(),
+        "sampler": sampler.pos_fraction,
         "metrics": metrics,         
         "model_config": model_config,
     }, save_path)
