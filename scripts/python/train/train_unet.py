@@ -59,7 +59,7 @@ def parse_args():
     parser.add_argument("--label-smoothing", type=float, default=0.0)
     parser.add_argument("--weight-decay", type=float, default=1e-4)
     parser.add_argument("--num-workers", type=int, default=0)
-    parser.add_argument("--warmup-epochs", type=int, default=5)
+    parser.add_argument("--warmup-epochs", type=int, default=10)
     parser.add_argument("--eta-min", type=float, default=1e-6)
     parser.add_argument("--sampler-fraction", type=float, default=None)
     parser.add_argument("--full-save-path", type=str, default=None)

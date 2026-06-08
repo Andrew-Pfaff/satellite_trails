@@ -53,7 +53,7 @@ def parse_args():
     parser.add_argument("--sampler-fraction", type=float, default=None)
     parser.add_argument("--base-channels", type=int, default=None)
     parser.add_argument("--dropout-rate", type=float, default=0.0)
-    parser.add_argument("--warmup-epochs", type=int, default=5)
+    parser.add_argument("--warmup-epochs", type=int, default=10)
     parser.add_argument("--eta-min", type=float, default=1e-6)
     parser.add_argument("--epochs", type=int, required=True)
     parser.add_argument("--batch-size", type=int, required=True)

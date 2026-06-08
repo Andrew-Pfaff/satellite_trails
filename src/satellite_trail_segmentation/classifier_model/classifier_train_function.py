@@ -90,10 +90,11 @@ def train_classifier(model, train_ds, val_ds, optimizer, scheduler,
     best_val_loss = float("inf")
 
     if pred_thresholds is None:
-        pred_thresholds = list(np.linspace(0.2, 0.5, 7))
+        pred_thresholds = [0.5]
 
     model_config = {"in_channels": model.in_channels, "kernel_size": model.kernel_size, "base_channels": model.base_channels, "dropout": model.dropout,
-                    "pos_weight": pos_weight, "fn_penalty_weight": fn_penalty_weight, "pred_thresholds": pred_thresholds}
+                    "pos_weight": pos_weight, "fn_penalty_weight": fn_penalty_weight, "pred_thresholds": pred_thresholds,
+                    "min_recall": min_recall, "recall_penalty": recall_penalty, "batch_size": batch_size, "seed": seed}
     
     LOGGER.info(f"Starting classifier training for {epochs} epochs on {device} with {len(train_loader)} train batches and {len(val_loader)} val batches.")
 
@@ -166,13 +167,13 @@ def train_classifier(model, train_ds, val_ds, optimizer, scheduler,
             
             if full_save_path is not None:
                 save_metrics = {"best_val_specificity": best_val_specificity, "best_val_loss": best_val_loss, "val_recall": best_metrics["recall"], "val_specificity": best_metrics["specificity"]}
-                save_checkpoint(full_save_path, model, optimizer, scheduler, epoch=epoch+1, metrics=save_metrics, model_config=model_config)
+                save_checkpoint(full_save_path, model, optimizer, scheduler, sampler, epoch=epoch+1, metrics=save_metrics, model_config=model_config)
             if weight_save_path is not None:
                 save_weights(weight_save_path, model, model_config)
 
 
         final_epoch = epoch + 1
-        LOGGER.info(f"Epoch {epoch + 1}/{epochs} | val_fnr={best_metrics['fnr']:.4f} | train_loss={epoch_train_loss:.4f} | val_loss={epoch_val_loss:.4f} | val_recall={best_metrics['recall']:.4f} | val_specificity={best_metrics['specificity']:.4f} | best_thr={best_threshold:.2f}")
+        LOGGER.info(f"Epoch {epoch + 1}/{epochs} | penalized specificity={epoch_val_specificity:.4f} | val_fnr={best_metrics['fnr']:.4f} | train_loss={epoch_train_loss:.4f} | val_loss={epoch_val_loss:.4f} | val_recall={best_metrics['recall']:.4f} | val_specificity={best_metrics['specificity']:.4f} | best_thr={best_threshold:.2f}")
         
 
         if trial is not None:
