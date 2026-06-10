@@ -2,11 +2,11 @@ import math
 
 import torch
 
-from satellite_trail_segmentation.unet_model.unet_train_function import train_unet
+from satellite_trail_segmentation.classifier_model.classifier_train_function import train_classifier
 
 
-def test_train_unet_runs_and_saves(monkeypatch, tiny_seg_dataset, tiny_unet_model, tmp_path):
-    optimizer = torch.optim.Adam(tiny_unet_model.parameters(), lr=1e-3)
+def test_train_classifier_runs_and_saves(monkeypatch, tiny_classifier_dataset, tiny_classifier, tmp_path):
+    optimizer = torch.optim.Adam(tiny_classifier.parameters(), lr=1e-3)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=1)
     checkpoint_calls = []
     weight_calls = []
@@ -28,61 +28,61 @@ def test_train_unet_runs_and_saves(monkeypatch, tiny_seg_dataset, tiny_unet_mode
     def fake_weights(save_path, model, model_config):
         weight_calls.append({"save_path": save_path, "model": model, "model_config": model_config})
 
-    monkeypatch.setattr("satellite_trail_segmentation.unet_model.unet_train_function.save_checkpoint", fake_checkpoint)
-    monkeypatch.setattr("satellite_trail_segmentation.unet_model.unet_train_function.save_weights", fake_weights)
+    monkeypatch.setattr("satellite_trail_segmentation.classifier_model.classifier_train_function.save_checkpoint", fake_checkpoint)
+    monkeypatch.setattr("satellite_trail_segmentation.classifier_model.classifier_train_function.save_weights", fake_weights)
 
-    history = train_unet(
-        tiny_unet_model,
-        tiny_seg_dataset,
-        tiny_seg_dataset,
+    history = train_classifier(
+        tiny_classifier,
+        tiny_classifier_dataset,
+        tiny_classifier_dataset,
         optimizer,
         scheduler,
         epochs=1,
         batch_size=2,
-        iou_thresholds=[0.3, 0.7],
+        pred_thresholds=[0.2, 0.8],
+        min_recall=0.0,
+        recall_penalty=0.0,
         num_workers=0,
         full_save_path=str(tmp_path / "full.pt"),
         weight_save_path=str(tmp_path / "weights.pt"),
         seed=0,
     )
 
-    assert set(history) == {"train_loss", "val_loss", "val_loss_at_best_iou", "val_iou", "best_iou", "best_threshold", "final_epoch"}
+    assert set(history) == {"train_loss", "val_loss", "best_val_loss", "val_penalized_specificity", "best_penalized_specificity", "final_epoch"}
     assert len(history["train_loss"]) == 1
     assert len(history["val_loss"]) == 1
-    assert len(history["val_iou"]) == 1
+    assert len(history["val_penalized_specificity"]) == 1
     assert history["final_epoch"] == 1
-    assert history["best_threshold"] in {0.3, 0.7}
-    assert math.isfinite(history["best_iou"])
-    assert math.isfinite(history["val_loss_at_best_iou"])
+    assert math.isfinite(history["best_val_loss"])
+    assert math.isfinite(history["best_penalized_specificity"])
     assert scheduler.last_epoch == 1
     assert len(checkpoint_calls) == 1
     assert len(weight_calls) == 1
 
     checkpoint = checkpoint_calls[0]
     assert checkpoint["save_path"] == str(tmp_path / "full.pt")
-    assert checkpoint["model"] is tiny_unet_model
+    assert checkpoint["model"] is tiny_classifier
     assert checkpoint["optimizer"] is optimizer
     assert checkpoint["scheduler"] is scheduler
     assert checkpoint["sampler"] is None
     assert checkpoint["epoch"] == 1
-    assert set(checkpoint["metrics"]) == {"best_iou", "best_threshold", "val_loss_at_best_iou"}
-    assert checkpoint["metrics"]["best_threshold"] in {0.3, 0.7}
+    assert set(checkpoint["metrics"]) == {"best_val_specificity", "best_val_loss", "val_recall", "val_specificity"}
     assert all(math.isfinite(float(value)) for value in checkpoint["metrics"].values())
     assert checkpoint["model_config"] == {
         "in_channels": 1,
-        "out_channels": 1,
         "kernel_size": 3,
         "base_channels": 4,
-        "dropout": 0.0,
+        "dropout": 0.2,
         "pos_weight": 1.0,
-        "bce_loss_factor": 0.5,
-        "dice_loss_factor": 0.5,
-        "label_smoothing": 0.0,
+        "fn_penalty_weight": 1.0,
+        "pred_thresholds": [0.2, 0.8],
+        "min_recall": 0.0,
+        "recall_penalty": 0.0,
         "batch_size": 2,
         "seed": 0,
     }
 
     weights = weight_calls[0]
     assert weights["save_path"] == str(tmp_path / "weights.pt")
-    assert weights["model"] is tiny_unet_model
+    assert weights["model"] is tiny_classifier
     assert weights["model_config"] == checkpoint["model_config"]
