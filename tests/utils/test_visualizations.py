@@ -1,0 +1,61 @@
+import matplotlib
+
+matplotlib.use("Agg")
+
+import matplotlib.pyplot as plt
+import numpy as np
+
+from satellite_trail_segmentation.utils.visualizations import (
+    plot_full_field,
+    plot_loss_curves,
+    plot_pred_residual,
+    plot_roc_curve,
+    plot_threshold_metrics,
+)
+
+
+def test_plot_loss_curves_creates_file(tmp_path):
+    path = tmp_path / "loss.png"
+    plot_loss_curves([1.0, 0.5], [1.2, 0.6], path)
+    assert path.exists()
+    assert plt.get_fignums() == []
+
+
+def test_plot_full_field_thresholds_and_creates_file(tmp_path):
+    path = tmp_path / "full_field.png"
+    full_image = np.zeros((8, 8), dtype=np.float32)
+    full_pred = np.array([[0.1, 0.7] * 4] * 8, dtype=np.float32)
+    full_mask = np.ones((8, 8), dtype=np.float32)
+    plot_full_field(full_image, full_pred, full_mask, save_path=path, threshold=0.5)
+    assert path.exists()
+    assert plt.get_fignums() == []
+
+
+def test_plot_roc_curve_creates_file(tmp_path):
+    path = tmp_path / "roc.png"
+    fpr = np.array([0.0, 0.5, 1.0])
+    tpr = np.array([0.0, 0.8, 1.0])
+    thresholds = np.array([0.9, 0.5, 0.1])
+    plot_roc_curve(fpr, tpr, thresholds, 0.83, 0.5, path)
+    assert path.exists()
+    assert plt.get_fignums() == []
+
+
+def test_plot_pred_residual_creates_file(tmp_path):
+    path = tmp_path / "residual.png"
+    full_pred = np.full((8, 8), 0.7, dtype=np.float32)
+    full_mask = np.zeros((8, 8), dtype=np.float32)
+    plot_pred_residual(full_pred, full_mask, path)
+    assert path.exists()
+    assert plt.get_fignums() == []
+
+
+def test_plot_threshold_metrics_creates_file(tmp_path):
+    path = tmp_path / "thresholds.png"
+    metrics = {
+        0.2: {"iou": 0.1, "precision": 0.2, "recall": 0.3, "dice": 0.4},
+        0.8: {"iou": 0.5, "precision": 0.6, "recall": 0.7, "dice": 0.8},
+    }
+    plot_threshold_metrics(metrics, save_path=path)
+    assert path.exists()
+    assert plt.get_fignums() == []
