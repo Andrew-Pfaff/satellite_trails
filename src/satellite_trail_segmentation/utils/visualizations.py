@@ -2,13 +2,14 @@ from pathlib import Path
 
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.patches import Patch
 from satellite_trail_segmentation.evaluation.unet_evaluate import image_threshold
 
 def _save_plot(save_path=None):
     if save_path is not None:
         save_path = Path(save_path)
         save_path.parent.mkdir(parents=True, exist_ok=True)
-        plt.savefig(save_path)
+        plt.savefig(save_path, bbox_inches="tight")
     else:
         plt.show()
 
@@ -75,6 +76,118 @@ def plot_full_field(full_image, full_pred, full_mask, save_path=None, threshold=
     plt.tight_layout()
     _save_plot(save_path)
     plt.close()
+
+
+def _binary_mask(array, threshold=None):
+    array = np.asarray(array)
+    if threshold is not None:
+        return array > threshold
+    return array > 0
+
+
+def _normalize_grayscale(array):
+    array = np.asarray(array, dtype=np.float32)
+    min_value = np.nanmin(array)
+    max_value = np.nanmax(array)
+    if np.isclose(max_value, min_value):
+        return np.zeros_like(array, dtype=np.float32)
+    return (array - min_value) / (max_value - min_value)
+
+
+def _error_color_image(prediction, mask, threshold=None):
+    pred_bin = _binary_mask(prediction, threshold=threshold)
+    mask_bin = _binary_mask(mask)
+
+    base = _normalize_grayscale(prediction)
+    rgb = np.repeat(base[..., np.newaxis], 3, axis=2)
+
+    false_negatives = mask_bin & ~pred_bin
+    false_positives = pred_bin & ~mask_bin
+
+    rgb[false_negatives] = [1.0, 0.0, 0.0]
+    rgb[false_positives] = [0.0, 1.0, 0.0]
+    return rgb
+
+
+def plot_segmentation_postprocess_comparison(
+    image,
+    mask,
+    prediction,
+    postprocessed,
+    save_path=None,
+    threshold=None,
+    title="Segmentation Postprocessing Comparison",
+):
+    """
+    Plots an image, ground-truth mask, raw prediction, and postprocessed mask.
+
+    Args:
+        image (np.ndarray): Input image array.
+        mask (np.ndarray or None): Ground-truth mask array. If None, the mask panel is omitted.
+        prediction (np.ndarray): Raw segmentation prediction or mask.
+        postprocessed (np.ndarray): Postprocessed segmentation mask.
+        save_path (str or Path, optional): File path for saving the plot image.
+        threshold (float, optional): Threshold applied to prediction before plotting.
+        title (str, optional): Figure title.
+    """
+
+    panels = [("Image", image, "gray", None)]
+    if mask is not None:
+        panels.append(("Mask", mask, "gray", None))
+
+    if threshold is not None:
+        prediction = image_threshold(prediction, threshold=threshold)
+
+    if mask is not None:
+        prediction_panel = _error_color_image(prediction, mask)
+        postprocessed_panel = _error_color_image(postprocessed, mask)
+        prediction_cmap = None
+        postprocessed_cmap = None
+        prediction_subtitle = "FN red, FP green"
+        postprocessed_subtitle = "FN red, FP green"
+    else:
+        prediction_panel = prediction
+        postprocessed_panel = postprocessed
+        prediction_cmap = "gray"
+        postprocessed_cmap = "gray"
+        prediction_subtitle = None
+        postprocessed_subtitle = None
+
+    panels.extend(
+        [
+            ("Prediction", prediction_panel, prediction_cmap, prediction_subtitle),
+            ("Postprocessed", postprocessed_panel, postprocessed_cmap, postprocessed_subtitle),
+        ]
+    )
+
+    if len(panels) == 4:
+        fig, axes = plt.subplots(2, 2, figsize=(12, 12), constrained_layout=True)
+    else:
+        fig, axes = plt.subplots(1, len(panels), figsize=(6 * len(panels), 6), constrained_layout=True)
+    axes = np.atleast_1d(axes).ravel()
+
+    for ax, (panel_title, array, cmap, subtitle) in zip(axes, panels):
+        if cmap is None:
+            ax.imshow(array)
+        else:
+            ax.imshow(array, cmap=cmap)
+        if subtitle is not None:
+            panel_title = f"{panel_title}\n{subtitle}"
+        ax.set_title(panel_title, pad=10)
+        ax.axis("off")
+
+    if title is not None:
+        fig.suptitle(title, y=1.04)
+
+    if mask is not None:
+        legend_handles = [
+            Patch(facecolor="red", edgecolor="red", label="False negatives"),
+            Patch(facecolor="green", edgecolor="green", label="False positives"),
+        ]
+        fig.legend(handles=legend_handles, loc="upper center", bbox_to_anchor=(0.5, 1.0), ncol=2)
+
+    _save_plot(save_path)
+    plt.close(fig)
 
 
 def plot_roc_curve(fpr, tpr, thresholds, roc_auc, optimal_threshold, save_path):

@@ -5,11 +5,13 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 
+import satellite_trail_segmentation.utils.visualizations as visualizations
 from satellite_trail_segmentation.utils.visualizations import (
     plot_full_field,
     plot_loss_curves,
     plot_pred_residual,
     plot_roc_curve,
+    plot_segmentation_postprocess_comparison,
     plot_threshold_metrics,
 )
 
@@ -29,6 +31,41 @@ def test_plot_full_field_thresholds_and_creates_file(tmp_path):
     plot_full_field(full_image, full_pred, full_mask, save_path=path, threshold=0.5)
     assert path.exists()
     assert plt.get_fignums() == []
+
+
+def test_plot_segmentation_postprocess_comparison_creates_file(tmp_path):
+    path = tmp_path / "postprocess_comparison.png"
+    image = np.zeros((8, 8), dtype=np.float32)
+    mask = np.ones((8, 8), dtype=np.uint8)
+    prediction = np.eye(8, dtype=np.uint8)
+    postprocessed = np.fliplr(prediction)
+
+    plot_segmentation_postprocess_comparison(image, mask, prediction, postprocessed, save_path=path)
+
+    assert path.exists()
+    assert plt.get_fignums() == []
+
+
+def test_plot_segmentation_postprocess_comparison_without_mask_creates_file(tmp_path):
+    path = tmp_path / "postprocess_comparison_no_mask.png"
+    image = np.zeros((8, 8), dtype=np.float32)
+    prediction = np.eye(8, dtype=np.float32)
+    postprocessed = np.fliplr(prediction)
+
+    plot_segmentation_postprocess_comparison(image, None, prediction, postprocessed, save_path=path, threshold=0.5)
+
+    assert path.exists()
+    assert plt.get_fignums() == []
+
+
+def test_error_color_image_marks_false_negative_and_false_positive():
+    prediction = np.array([[0, 1], [0, 0]], dtype=np.uint8)
+    mask = np.array([[1, 0], [0, 0]], dtype=np.uint8)
+
+    color_image = visualizations._error_color_image(prediction, mask)
+
+    np.testing.assert_array_equal(color_image[0, 0], np.array([1.0, 0.0, 0.0]))
+    np.testing.assert_array_equal(color_image[0, 1], np.array([0.0, 1.0, 0.0]))
 
 
 def test_plot_roc_curve_creates_file(tmp_path):
