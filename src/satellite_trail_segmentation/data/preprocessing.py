@@ -4,7 +4,6 @@ import glob
 import argparse
 import random
 import logging
-import inspect
 from PIL import Image
 Image.MAX_IMAGE_PIXELS = 150000000
 
@@ -14,7 +13,6 @@ from sklearn.model_selection import train_test_split
 from skimage.morphology import remove_small_objects
 
 LOGGER = logging.getLogger(__name__)
-REMOVE_SMALL_OBJECTS_HAS_MAX_SIZE = "max_size" in inspect.signature(remove_small_objects).parameters
 
 
 def _sort_images(image_dir, input_suffix=".fits_full.png", mask_suffix="_mask.png"):
@@ -235,9 +233,11 @@ def _clean_mask(mask, max_size=31):
     if max_val == 0:
         return mask
     
-    if REMOVE_SMALL_OBJECTS_HAS_MAX_SIZE:
+    try:
+        # scikit-image >= 0.26.0
         cleaned_bool = remove_small_objects(mask.astype(bool), max_size=max_size, connectivity=2)
-    else:
+    except TypeError:
+        # scikit-image < 0.26.0
         cleaned_bool = remove_small_objects(mask.astype(bool), min_size=max_size, connectivity=2)
     return (cleaned_bool.astype(np.uint8) * max_val)
 
