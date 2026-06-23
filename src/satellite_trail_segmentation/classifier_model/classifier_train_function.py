@@ -20,7 +20,8 @@ def train_classifier(model, train_ds, val_ds, optimizer, scheduler,
                      epochs, batch_size, pos_weight=1.0, fn_penalty_weight=1.0, 
                      pred_thresholds=None, min_recall=0.98, recall_penalty=2.0, 
                      sampler=None, num_workers=0, full_save_path=None, 
-                     weight_save_path=None, trial=None, seed=None):
+                     weight_save_path=None, trial=None, seed=None, grad_clip_max_norm=1.0,
+                     early_stopping_patience=None, early_stopping_min_delta=0.0):
     """
     Trains a classifier model for satellite trail detection over a specified number of epochs.
 
@@ -46,6 +47,9 @@ def train_classifier(model, train_ds, val_ds, optimizer, scheduler,
         save_path (str): File path for saving the model weights.
         trial (optuna.trial.Trial, optional): An active Optuna study trial hyperparameter hook used for validating metrics reporting and active epoch pruning. Defaults to None.
         seed (int): Random seed.
+        grad_clip_max_norm (float, optional): Maximum gradient norm. Set to None or <=0 to disable clipping. Defaults to 1.0.
+        early_stopping_patience (int, optional): Consecutive epochs without sufficient penalized-specificity improvement before stopping. Set to None to disable.
+        early_stopping_min_delta (float, optional): Minimum penalized-specificity increase required to reset early-stopping patience. Defaults to 0.0.
 
     Returns:
         dict: training history and best validation summary. Includes:
@@ -69,8 +73,21 @@ def train_classifier(model, train_ds, val_ds, optimizer, scheduler,
         Path(full_save_path).parent.mkdir(parents=True, exist_ok=True)
     if weight_save_path is not None:
         Path(weight_save_path).parent.mkdir(parents=True, exist_ok=True)
-    
-    
+
+    if pred_thresholds is None:
+        pred_thresholds = [0.5]
+    pred_thresholds = [float(threshold) for threshold in pred_thresholds]
+
+    sampler_config = None
+    if sampler is not None:
+        sampler_num_samples = getattr(sampler, "num_samples", None)
+        if sampler_num_samples is None:
+            sampler_num_samples = len(sampler)
+        sampler_config = {
+            "class_name": sampler.__class__.__name__,
+            "pos_fraction": getattr(sampler, "pos_fraction", None),
+            "num_samples": sampler_num_samples,
+        }
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     device_type = device.type
@@ -86,15 +103,21 @@ def train_classifier(model, train_ds, val_ds, optimizer, scheduler,
     train_loss = []
     val_loss = []
     val_penalized_specificity = []
-    best_val_specificity = 0.0
+    best_val_specificity = -float("inf")
     best_val_loss = float("inf")
-
-    if pred_thresholds is None:
-        pred_thresholds = [0.5]
+    final_epoch = 0
+    early_stopping_best_specificity = -float("inf")
+    early_stopping_wait = 0
+    use_early_stopping = early_stopping_patience is not None and early_stopping_patience > 0
 
     model_config = {"in_channels": model.in_channels, "kernel_size": model.kernel_size, "base_channels": model.base_channels, "dropout": model.dropout,
                     "pos_weight": pos_weight, "fn_penalty_weight": fn_penalty_weight, "pred_thresholds": pred_thresholds,
-                    "min_recall": min_recall, "recall_penalty": recall_penalty, "batch_size": batch_size, "seed": seed}
+                    "loss": {"name": "bce_fn_penalty_loss", "pos_weight": pos_weight, "fn_penalty_weight": fn_penalty_weight},
+                    "min_recall": min_recall, "recall_penalty": recall_penalty, "batch_size": batch_size, "seed": seed,
+                    "normalization": getattr(train_ds, "normalization", None), "sampler": sampler_config,
+                    "augmentation": {"p_flip": getattr(train_ds, "p_flip", None), "p_rot": getattr(train_ds, "p_rot", None)},
+                    "grad_clip_max_norm": grad_clip_max_norm,
+                    "early_stopping": {"patience": early_stopping_patience, "min_delta": early_stopping_min_delta}}
     
     LOGGER.info(f"Starting classifier training for {epochs} epochs on {device} with {len(train_loader)} train batches and {len(val_loader)} val batches.")
 
@@ -115,6 +138,9 @@ def train_classifier(model, train_ds, val_ds, optimizer, scheduler,
                 loss = bce_fn_penalty_loss(logits, targets, pos_weight=pos_weight, fn_penalty_weight=fn_penalty_weight)
 
             scaler.scale(loss).backward()
+            if grad_clip_max_norm is not None and grad_clip_max_norm > 0:
+                scaler.unscale_(optimizer)
+                torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=grad_clip_max_norm)
             scaler.step(optimizer)
             scaler.update()
 
@@ -180,6 +206,16 @@ def train_classifier(model, train_ds, val_ds, optimizer, scheduler,
             trial.report(epoch_val_specificity, epoch)
             if trial.should_prune():
                 raise optuna.exceptions.TrialPruned()
+
+        if use_early_stopping:
+            if epoch_val_specificity > early_stopping_best_specificity + early_stopping_min_delta:
+                early_stopping_best_specificity = epoch_val_specificity
+                early_stopping_wait = 0
+            else:
+                early_stopping_wait += 1
+                if early_stopping_wait >= early_stopping_patience:
+                    LOGGER.info(f"Early stopping after {epoch + 1} epochs. No penalized-specificity improvement greater than {early_stopping_min_delta} for {early_stopping_patience} consecutive epochs.")
+                    break
     
     return {"train_loss": train_loss,
             "val_loss": val_loss,
