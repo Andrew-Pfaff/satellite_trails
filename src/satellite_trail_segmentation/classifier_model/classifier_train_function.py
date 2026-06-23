@@ -115,7 +115,7 @@ def train_classifier(model, train_ds, val_ds, optimizer, scheduler,
                     "loss": {"name": "bce_fn_penalty_loss", "pos_weight": pos_weight, "fn_penalty_weight": fn_penalty_weight},
                     "min_recall": min_recall, "recall_penalty": recall_penalty, "batch_size": batch_size, "seed": seed,
                     "normalization": getattr(train_ds, "normalization", None), "sampler": sampler_config,
-                    "augmentation": {"p_flip": getattr(train_ds, "p_flip", None), "p_rot": getattr(train_ds, "p_rot", None)},
+                    "augmentation": {"p_flip": getattr(train_ds, "p_flip", None), "p_rot": getattr(train_ds, "p_rot", None), "p_shift": getattr(train_ds, "p_shift", None), "min_shift": getattr(train_ds, "min_shift", None), "max_shift": getattr(train_ds, "max_shift", None)},
                     "grad_clip_max_norm": grad_clip_max_norm,
                     "early_stopping": {"patience": early_stopping_patience, "min_delta": early_stopping_min_delta}}
     
