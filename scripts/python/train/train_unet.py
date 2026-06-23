@@ -17,7 +17,7 @@ LOGGER = logging.getLogger(__name__)
 def main(data_path, epochs, batch_size, learning_rate, dropout_rate,
          pos_weight, bce_weight_factor, label_smoothing, weight_decay, num_workers, warmup_epochs, 
          eta_min, sampler_fraction=None, full_save_path=None, weight_save_path=None, seed=1,
-         normalization="source_zscore"):
+         normalization="source_zscore", use_batchnorm=True):
     
     set_seed(seed)
 
@@ -29,7 +29,7 @@ def main(data_path, epochs, batch_size, learning_rate, dropout_rate,
     else:
         sampler = None
     
-    model = UNet(dropout=dropout_rate)
+    model = UNet(dropout=dropout_rate, use_batchnorm=use_batchnorm)
     
     optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
     scheduler = create_cos_lr_sched(optimizer, epochs, warmup_epochs=warmup_epochs, eta_min=eta_min)
@@ -63,6 +63,8 @@ def parse_args():
     parser.add_argument("--eta-min", type=float, default=1e-6)
     parser.add_argument("--sampler-fraction", type=float, default=None)
     parser.add_argument("--normalization", type=str, default="source_zscore", choices=["source_zscore", "patch_zscore", "uint8"])
+    parser.add_argument("--use-batchnorm", dest="use_batchnorm", action="store_true", default=True)
+    parser.add_argument("--no-batchnorm", dest="use_batchnorm", action="store_false")
     parser.add_argument("--full-save-path", type=str, default=None)
     parser.add_argument("--weight-save-path", type=str, default=None)
     parser.add_argument("--seed", type=int, default=1)
@@ -94,7 +96,8 @@ if __name__ == "__main__":
                                 full_save_path=args.full_save_path,
                                 weight_save_path=args.weight_save_path,
                                 seed=args.seed,
-                                normalization=args.normalization)
+                                normalization=args.normalization,
+                                use_batchnorm=args.use_batchnorm)
     
     if args.plot_path is not None:  
         plot_loss_curves(train_loss, val_loss, args.plot_path)

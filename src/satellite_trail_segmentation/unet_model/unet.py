@@ -7,7 +7,7 @@ class UNet(nn.Module):
     """
     U-Net segmentation model architecture for detecting satellite trails.
 
-    Consists of a 5-block encoder with max pooling and a 4-block decoder with skip connections. 
+    Consists of a 5-block encoder with average pooling and a 4-block decoder with skip connections. 
     Uses zero padding so output spatial dimensions match the input. 
     Output is a raw logit map; apply sigmoid for probability predictions.
     
@@ -17,10 +17,11 @@ class UNet(nn.Module):
         kernel_size  (int): Convolution kernel size used in each block
         base_channels (int): Number of output channels in the first encoder block
         dropout (float): Spatial dropout probability applied after each activation
+        use_batchnorm (bool): Whether to apply batch normalization inside convolution blocks
         final (nn.Conv2d): The final 1x1 convolution layer projecting to the output channels
     """
 
-    def __init__(self, in_channels=1, out_channels=1, kernel_size=3, base_channels=8, dropout=0.0):
+    def __init__(self, in_channels=1, out_channels=1, kernel_size=3, base_channels=8, dropout=0.0, use_batchnorm=True):
         """
         Initializes a configurable U-Net segmentation model.
 
@@ -30,6 +31,7 @@ class UNet(nn.Module):
             kernel_size (int): Convolution kernel size used in each block
             base_channels (int): Number of output channels in the first encoder block
             dropout (float): Spatial dropout probability applied after each activation
+            use_batchnorm (bool): Whether to apply batch normalization inside convolution blocks
         """
         
         super().__init__()
@@ -39,11 +41,12 @@ class UNet(nn.Module):
         self.kernel_size = kernel_size
         self.base_channels = base_channels
         self.dropout = dropout
+        self.use_batchnorm = use_batchnorm
 
 
         # Encoder
         self.down1 = self._conv_block(self.in_channels, self.base_channels)
-        self.pool = nn.MaxPool2d(2, stride=2)
+        self.pool = nn.AvgPool2d(2, stride=2)
         self.down2 = self._conv_block(self.base_channels, self.base_channels * 2)
         self.down3 = self._conv_block(self.base_channels * 2, self.base_channels * 4)
         self.down4 = self._conv_block(self.base_channels * 4, self.base_channels * 8)
@@ -68,7 +71,7 @@ class UNet(nn.Module):
         for m in self.modules():
             if isinstance(m, (nn.Conv2d, nn.ConvTranspose2d)):
                 # Use kaiming_normal_ for weights
-                init.kaiming_normal_(m.weight, a=0.01, mode='fan_out', nonlinearity='leaky_relu')
+                init.kaiming_normal_(m.weight, a=0.1, mode='fan_out', nonlinearity='leaky_relu')
                 if m.bias is not None:
                     init.constant_(m.bias, 0)
             
@@ -104,16 +107,24 @@ class UNet(nn.Module):
             block (nn.Sequential): Two-convolution block with normalization, activation, and optional dropout
         """
 
-        return nn.Sequential(
+        layers = [
             nn.Conv2d(conv_input_channels, conv_output_channels, self.kernel_size, stride=1, padding=1, dilation=1),
-            nn.BatchNorm2d(conv_output_channels),
-            nn.LeakyReLU(inplace=True),
+        ]
+        if self.use_batchnorm:
+            layers.append(nn.BatchNorm2d(conv_output_channels))
+        layers.extend([
+            nn.LeakyReLU(negative_slope=0.1, inplace=True),
             self._dropout_layer(),
             nn.Conv2d(conv_output_channels, conv_output_channels, self.kernel_size, stride=1, padding=1, dilation=1),
-            nn.BatchNorm2d(conv_output_channels),
-            nn.LeakyReLU(inplace=True),
+        ])
+        if self.use_batchnorm:
+            layers.append(nn.BatchNorm2d(conv_output_channels))
+        layers.extend([
+            nn.LeakyReLU(negative_slope=0.1, inplace=True),
             self._dropout_layer(),
-        )
+        ])
+
+        return nn.Sequential(*layers)
 
 
     def forward(self,image):
