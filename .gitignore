@@ -63,4 +63,4 @@ runs/
 *.db
 *.ipynb
 
-archive_models/
+archive/

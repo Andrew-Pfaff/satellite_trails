@@ -1,4 +1,5 @@
 import argparse
+import csv
 import gc
 import logging
 import os
@@ -26,7 +27,7 @@ LABEL_SMOOTHING = 0.0
 USE_BATCHNORM = True
 
 
-def create_objective(data_path, epochs, warmup_epochs, batch_size, num_workers, seed, steps_per_epoch, early_stopping_patience):
+def create_objective(data_path, epochs, warmup_epochs, batch_size, num_workers, seed, steps_per_epoch, early_stopping_patience, trial_results_path):
     train_ds = H5PatchDataset(data_path, split="train", augment=True, p_shift=P_SHIFT, min_shift=MIN_SHIFT, max_shift=MAX_SHIFT, normalization=NORMALIZATION)
     val_ds = H5PatchDataset(data_path, split="val", normalization=NORMALIZATION)
 
@@ -61,6 +62,12 @@ def create_objective(data_path, epochs, warmup_epochs, batch_size, num_workers, 
 
         score = train_metrics["best_iou"]
         LOGGER.info(f"Trial {trial.number} complete | score={score:.6f} | final_epoch={train_metrics['final_epoch']} | best_threshold={train_metrics['best_threshold']:.3f}")
+        row = {"trial_number": trial.number, "score": score, "final_epoch": train_metrics["final_epoch"], "best_threshold": train_metrics["best_threshold"], "learning_rate": learning_rate, "bce_weight_factor": bce_weight_factor, "weight_decay": weight_decay, "dropout_rate": dropout_rate, "pos_weight": pos_weight, "sampler_pos_fraction": sampler_pos_fraction}
+        with open(trial_results_path, "a", newline="") as f:
+            writer = csv.DictWriter(f, fieldnames=list(row.keys()))
+            if f.tell() == 0:
+                writer.writeheader()
+            writer.writerow(row)
 
         del model, optimizer, scheduler
         gc.collect()
@@ -84,7 +91,7 @@ def parse_args():
     parser.add_argument("--early-stopping-patience", type=int, default=8)
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--study-name", type=str, default="unet_tuning")
-    parser.add_argument("--db-dir", type=str, default="results/optuna/dbs")
+    parser.add_argument("--db-dir", type=str, default="results/hyperparameter_tuning/dbs")
     parser.add_argument("--verbose", action="store_true")
 
     return parser.parse_args()
@@ -105,11 +112,15 @@ if __name__ == "__main__":
 
     LOGGER.info(f"Using fixed steps per epoch: {args.steps_per_epoch}")
     LOGGER.info(f"Study storage: {args.db_dir}/{args.study_name}.db")
+    trial_results_path = os.path.join(os.path.dirname(os.path.normpath(args.db_dir)) or ".", "summaries", f"{args.study_name}_trials.csv")
+    os.makedirs(os.path.dirname(trial_results_path), exist_ok=True)
+    LOGGER.info(f"Trial results CSV: {trial_results_path}")
 
     LOGGER.info(f"Fixed settings: normalization={NORMALIZATION} | p_shift={P_SHIFT:.3f} | min_shift={MIN_SHIFT} | max_shift={MAX_SHIFT} | grad_clip={GRAD_CLIP_MAX_NORM:.2f} | min_delta={EARLY_STOPPING_MIN_DELTA:.3f} | use_batchnorm={USE_BATCHNORM}")
 
     objective = create_objective(args.data_path, args.epochs, args.warmup_epochs, args.batch_size, args.num_workers, args.seed,
-                                 args.steps_per_epoch, args.early_stopping_patience)
+                                 args.steps_per_epoch, args.early_stopping_patience, trial_results_path)
+
     study.optimize(objective, n_trials=args.trials)
 
     print("\n" + "=" * 30)
