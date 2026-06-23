@@ -15,12 +15,13 @@ LOGGER = logging.getLogger(__name__)
 
 def main(data_path, learning_rate, sampler_fraction, base_channels, dropout_rate, warmup_epochs, eta_min, epochs, batch_size,
          pos_weight, fn_penalty_weight, min_recall, recall_penalty, weight_decay,
-         num_workers, full_save_path=None, weight_save_path=None, seed=1): 
+         num_workers, full_save_path=None, weight_save_path=None, seed=1,
+         normalization="source_zscore"): 
     
     set_seed(seed)
 
-    train_ds = H5PatchDataset(data_path, split="train", return_metadata=True, return_masks=False, augment=True, p_flip=0.5, p_rot=0.75)
-    val_ds = H5PatchDataset(data_path, split="val", return_metadata=True, return_masks=False)
+    train_ds = H5PatchDataset(data_path, split="train", return_metadata=True, return_masks=False, augment=True, p_flip=0.5, p_rot=0.75, normalization=normalization)
+    val_ds = H5PatchDataset(data_path, split="val", return_metadata=True, return_masks=False, normalization=normalization)
 
     if sampler_fraction is not None:
         sampler = BalancedTrailSampler(train_ds.pos_indices, train_ds.neg_indices, pos_fraction=sampler_fraction)
@@ -66,6 +67,7 @@ def parse_args():
     parser.add_argument("--full-save-path", type=str, default=None)
     parser.add_argument("--weight-save-path", type=str, default=None)
     parser.add_argument("--seed", type=int, default=1)
+    parser.add_argument("--normalization", type=str, default="source_zscore", choices=["source_zscore", "patch_zscore", "uint8"])
     parser.add_argument("--verbose", action="store_true")
     parser.add_argument("--plot-path", type=str, default=None)
     
@@ -95,7 +97,8 @@ if __name__ == "__main__":
                                 num_workers=args.num_workers,
                                 full_save_path=args.full_save_path,
                                 weight_save_path=args.weight_save_path,
-                                seed=args.seed)
+                                seed=args.seed,
+                                normalization=args.normalization)
 
     if args.plot_path is not None:
         plot_loss_curves(train_loss, val_loss, args.plot_path)

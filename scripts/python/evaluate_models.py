@@ -11,6 +11,7 @@ from satellite_trail_segmentation.utils.visualizations import plot_threshold_met
 if __name__ == "__main__":
     h5_path = "/home/anp50/rds/hpc-work/satellite_trails/data/h5s/dataset.h5"
     split = "val"
+    normalization = "source_zscore"
 
     unet_batch = 64
     classifier_batch = 128 
@@ -28,12 +29,12 @@ if __name__ == "__main__":
 
     test_thresholds = list(np.linspace(0.05, 0.95, 19))
 
-    unet_metrics_counts, fpr, tpr, thresholds, optimal_threshold, roc_auc = evaluate_dataset_unet(unet_model, h5_path, split, test_thresholds, unet_batch)
+    unet_metrics_counts, fpr, tpr, thresholds, optimal_threshold, roc_auc = evaluate_dataset_unet(unet_model, h5_path, split, test_thresholds, unet_batch, normalization=normalization)
 
     print("Unet metrics: ")
     print(unet_metrics_counts)
 
-    classifier_metrics, classifier_image_wise_counts = evaluate_dataset_classifier(classifier_model, h5_path, split, test_thresholds, classifier_batch)
+    classifier_metrics, classifier_image_wise_counts = evaluate_dataset_classifier(classifier_model, h5_path, split, test_thresholds, classifier_batch, normalization=normalization)
 
     print("\nClassifier metrics: ")
     print(classifier_metrics)
