@@ -90,7 +90,7 @@ def train_unet(model, train_ds, val_ds, optimizer, scheduler,
                     "pos_weight": pos_weight, "bce_weight_factor": bce_weight_factor, "label_smoothing": label_smoothing,
                     "loss": {"name": "combo_loss", "pos_weight": pos_weight, "bce_weight_factor": bce_weight_factor, "label_smoothing": label_smoothing},
                     "batch_size": batch_size, "seed": seed, "sampler": sampler_config,
-                    "augmentation": {"p_flip": getattr(train_ds, "p_flip", None), "p_rot": getattr(train_ds, "p_rot", None)},
+                    "augmentation": {"p_flip": getattr(train_ds, "p_flip", None), "p_rot": getattr(train_ds, "p_rot", None), "p_shift": getattr(train_ds, "p_shift", None), "min_shift": getattr(train_ds, "min_shift", None), "max_shift": getattr(train_ds, "max_shift", None)},
                     "iou_thresholds": iou_thresholds, "grad_clip_max_norm": grad_clip_max_norm,
                     "early_stopping": {"patience": early_stopping_patience, "min_delta": early_stopping_min_delta}}
 

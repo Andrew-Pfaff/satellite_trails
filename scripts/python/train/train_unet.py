@@ -18,11 +18,11 @@ def main(data_path, epochs, batch_size, learning_rate, dropout_rate,
          pos_weight, bce_weight_factor, label_smoothing, weight_decay, num_workers, warmup_epochs, 
          eta_min, sampler_fraction=None, full_save_path=None, weight_save_path=None, seed=1,
          normalization="source_zscore", use_batchnorm=True, steps_per_epoch=800,
-         grad_clip_max_norm=1.0, early_stopping_patience=None, early_stopping_min_delta=0.0):
+         grad_clip_max_norm=1.0, early_stopping_patience=None, early_stopping_min_delta=0.0, p_shift=0.0, min_shift=4, max_shift=20):
     
     set_seed(seed)
 
-    train_ds = H5PatchDataset(data_path, split="train", augment=True, p_flip=0.5, p_rot=0.75, normalization=normalization)
+    train_ds = H5PatchDataset(data_path, split="train", augment=True, p_shift=p_shift, min_shift=min_shift, max_shift=max_shift, normalization=normalization)
     val_ds = H5PatchDataset(data_path, split="val", normalization=normalization)
 
     if sampler_fraction is not None:
@@ -76,6 +76,9 @@ def parse_args():
     parser.add_argument("--grad-clip-max-norm", type=float, default=1.0)
     parser.add_argument("--early-stopping-patience", type=int, default=None)
     parser.add_argument("--early-stopping-min-delta", type=float, default=0.0)
+    parser.add_argument("--p-shift", type=float, default=0.0)
+    parser.add_argument("--min-shift", type=int, default=4)
+    parser.add_argument("--max-shift", type=int, default=20)
     parser.add_argument("--full-save-path", type=str, default=None)
     parser.add_argument("--weight-save-path", type=str, default=None)
     parser.add_argument("--seed", type=int, default=1)
@@ -112,7 +115,10 @@ if __name__ == "__main__":
                                 steps_per_epoch=args.steps_per_epoch,
                                 grad_clip_max_norm=args.grad_clip_max_norm,
                                 early_stopping_patience=args.early_stopping_patience,
-                                early_stopping_min_delta=args.early_stopping_min_delta)
+                                early_stopping_min_delta=args.early_stopping_min_delta,
+                                p_shift=args.p_shift,
+                                min_shift=args.min_shift,
+                                max_shift=args.max_shift)
     
     if args.plot_path is not None:  
         plot_loss_curves(train_loss, val_loss, args.plot_path)

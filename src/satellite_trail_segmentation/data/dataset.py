@@ -23,7 +23,7 @@ class H5PatchDataset(Dataset):
         neg_indices (np.ndarray): Subset of internal indices pointing strictly to trail-free patches.
     """
 
-    def __init__(self, h5_path, split='train', return_metadata=False, return_masks=True, source_index=None, augment=False, p_flip=0.1, p_rot=0.1, normalization="source_zscore"):
+    def __init__(self, h5_path, split='train', return_metadata=False, return_masks=True, source_index=None, augment=False, p_flip=0.66, p_rot=0.75, p_shift=0.0, min_shift=4, max_shift=20, normalization="source_zscore"):
         """
         Args:
             h5_path (str): Path to the HDF5 file created by create_h5
@@ -33,8 +33,11 @@ class H5PatchDataset(Dataset):
             source_index (int): If provided, restricts dataset to patches from a single source image. Defaults to None.
             augment (bool): If True and split is 'train', applies random augmentation
                 to trail-containing patches. Defaults to False.
-            p_flip (float): Probability of applying a random flip. Defaults to 0.1.
-            p_rot (float): Probability of applying a random rotation. Defaults to 0.1.
+            p_flip (float): Probability of applying a random flip. Defaults to 0.66.
+            p_rot (float): Probability of applying a random rotation. Defaults to 0.75.
+            p_shift (float): Probability of applying a random shift. Defaults to 0.0.
+            min_shift (int): Minimum shift in pixels. Defaults to 4.
+            max_shift (int): Maximum shift in pixels inclusive. Defaults to 20.
             normalization (str): One of 'source_zscore', 'patch_zscore', or 'uint8'.
 
         Raises:
@@ -57,6 +60,9 @@ class H5PatchDataset(Dataset):
 
         self.p_flip = p_flip
         self.p_rot = p_rot
+        self.p_shift = p_shift
+        self.min_shift = min_shift
+        self.max_shift = max_shift
  
 
         self.h5_file = None
@@ -138,14 +144,12 @@ class H5PatchDataset(Dataset):
         image = self.images[real_idx].astype(np.float32)
         need_mask = self.return_masks or (self.augment and self.patch_has_trail[idx])
         mask = np.ascontiguousarray(self.masks[real_idx] > 0).astype(np.float32) if need_mask else None
+        image = self._normalize_image(image, patch_source_index)
 
         if self.augment and self.patch_has_trail[idx]:
-            # You can adjust these probabilities as needed
-            image, mask = augment_image(image, mask, p_flip=self.p_flip, p_rot=self.p_rot)
+            image, mask = augment_image(image, mask, p_flip=self.p_flip, p_rot=self.p_rot, p_shift=self.p_shift, min_shift=self.min_shift, max_shift=self.max_shift)
             image = np.ascontiguousarray(image)
             mask = np.ascontiguousarray(mask)
-        
-        image = self._normalize_image(image, patch_source_index)
 
         x_tensor = torch.from_numpy(image).float().unsqueeze(0)
         y_tensor = torch.from_numpy(mask).float().unsqueeze(0) if self.return_masks else None
