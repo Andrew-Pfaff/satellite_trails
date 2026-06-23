@@ -4,7 +4,7 @@ import logging
 import torch
 
 from satellite_trail_segmentation.data.dataset import H5PatchDataset
-from satellite_trail_segmentation.data.sampler import BalancedTrailSampler
+from satellite_trail_segmentation.data.sampler import FixedStepWeightedTrailSampler
 from satellite_trail_segmentation.utils.visualizations import plot_loss_curves
 from satellite_trail_segmentation.unet_model.unet import UNet
 from satellite_trail_segmentation.unet_model.unet_train_function import train_unet
@@ -17,7 +17,8 @@ LOGGER = logging.getLogger(__name__)
 def main(data_path, epochs, batch_size, learning_rate, dropout_rate,
          pos_weight, bce_weight_factor, label_smoothing, weight_decay, num_workers, warmup_epochs, 
          eta_min, sampler_fraction=None, full_save_path=None, weight_save_path=None, seed=1,
-         normalization="source_zscore", use_batchnorm=True):
+         normalization="source_zscore", use_batchnorm=True, steps_per_epoch=800,
+         grad_clip_max_norm=1.0, early_stopping_patience=None, early_stopping_min_delta=0.0):
     
     set_seed(seed)
 
@@ -25,7 +26,12 @@ def main(data_path, epochs, batch_size, learning_rate, dropout_rate,
     val_ds = H5PatchDataset(data_path, split="val", normalization=normalization)
 
     if sampler_fraction is not None:
-        sampler = BalancedTrailSampler(train_ds.pos_indices, train_ds.neg_indices, pos_fraction=sampler_fraction)
+        sampler = FixedStepWeightedTrailSampler(
+            train_ds.pos_indices,
+            train_ds.neg_indices,
+            pos_fraction=sampler_fraction,
+            num_samples=steps_per_epoch * batch_size,
+        )
     else:
         sampler = None
     
@@ -39,7 +45,9 @@ def main(data_path, epochs, batch_size, learning_rate, dropout_rate,
                                bce_weight_factor=bce_weight_factor,
                                label_smoothing=label_smoothing, sampler=sampler, num_workers=num_workers,
                                full_save_path=full_save_path, weight_save_path=weight_save_path, 
-                               trial=None, seed=seed)
+                               trial=None, seed=seed, grad_clip_max_norm=grad_clip_max_norm,
+                               early_stopping_patience=early_stopping_patience,
+                               early_stopping_min_delta=early_stopping_min_delta)
     
     LOGGER.info(f"Training completed after {train_metrics['final_epoch']} epochs. Best validation IOU: {train_metrics['best_iou']:.2f} with threshold {train_metrics['best_threshold']:.2f}. Validation loss for that epoch: {train_metrics['val_loss_at_best_iou']:.2f}")
     
@@ -62,9 +70,13 @@ def parse_args():
     parser.add_argument("--warmup-epochs", type=int, default=10)
     parser.add_argument("--eta-min", type=float, default=1e-6)
     parser.add_argument("--sampler-fraction", type=float, default=None)
+    parser.add_argument("--steps-per-epoch", type=int, default=800)
     parser.add_argument("--normalization", type=str, default="source_zscore", choices=["source_zscore", "patch_zscore", "uint8"])
     parser.add_argument("--use-batchnorm", dest="use_batchnorm", action="store_true", default=True)
     parser.add_argument("--no-batchnorm", dest="use_batchnorm", action="store_false")
+    parser.add_argument("--grad-clip-max-norm", type=float, default=1.0)
+    parser.add_argument("--early-stopping-patience", type=int, default=None)
+    parser.add_argument("--early-stopping-min-delta", type=float, default=0.0)
     parser.add_argument("--full-save-path", type=str, default=None)
     parser.add_argument("--weight-save-path", type=str, default=None)
     parser.add_argument("--seed", type=int, default=1)
@@ -97,7 +109,11 @@ if __name__ == "__main__":
                                 weight_save_path=args.weight_save_path,
                                 seed=args.seed,
                                 normalization=args.normalization,
-                                use_batchnorm=args.use_batchnorm)
+                                use_batchnorm=args.use_batchnorm,
+                                steps_per_epoch=args.steps_per_epoch,
+                                grad_clip_max_norm=args.grad_clip_max_norm,
+                                early_stopping_patience=args.early_stopping_patience,
+                                early_stopping_min_delta=args.early_stopping_min_delta)
     
     if args.plot_path is not None:  
         plot_loss_curves(train_loss, val_loss, args.plot_path)
