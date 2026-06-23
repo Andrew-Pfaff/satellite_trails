@@ -40,9 +40,12 @@ class SatelliteTrailPipeline:
             self.times = {}
 
 
-    def _load_and_patch(self, image_path, zscore_standardization=True):
+    def _load_and_patch(self, image_path, normalization="source_zscore"):
         if not os.path.exists(image_path):
             raise FileNotFoundError(f"Target image path does not exist: {image_path}")
+        valid_normalizations = {"source_zscore", "patch_zscore", "uint8"}
+        if normalization not in valid_normalizations:
+            raise ValueError(f"normalization must be one of {tuple(sorted(valid_normalizations))}, got {normalization!r}")
         
         with Image.open(image_path) as img:
             raw_img_array = np.array(img, dtype=np.float32)
@@ -53,16 +56,24 @@ class SatelliteTrailPipeline:
         if (original_shape[0] % self.patch_dim != 0) or (original_shape[1] % self.patch_dim != 0):
             raise ValueError(f"Invalid image dimensions {original_shape} for patch dimension {self.patch_dim}. Both height and width must be perfectly divisible by {self.patch_dim}.")
         
+        eps = 1e-6
+        source_mean = raw_img_array.mean()
+        source_std = raw_img_array.std()
+        if source_std < eps:
+            source_std = 1.0
+
         patches = []
         patch_indices = []
 
         for row in range(0, original_shape[0], self.patch_dim):   
             for col in range(0, original_shape[1], self.patch_dim):
-                if zscore_standardization:
-                    patch = raw_img_array[row:row+self.patch_dim, col:col+self.patch_dim]
+                raw_patch = raw_img_array[row:row+self.patch_dim, col:col+self.patch_dim]
+                if normalization == "source_zscore":
+                    patch = (raw_patch - source_mean) / source_std
+                elif normalization == "patch_zscore":
+                    patch = raw_patch
                     patch_mean = patch.mean()
                     patch_std = patch.std()
-                    eps = 1e-6
                     if patch_std < eps:
                         patch_std = 1.0
                     patch = (patch - patch_mean) / patch_std
@@ -75,17 +86,17 @@ class SatelliteTrailPipeline:
         return img_array, patches, patch_indices, original_shape
 
 
-    def preprocessing(self, source_path, mask_path=None, zscore_standardization=True):
+    def preprocessing(self, source_path, mask_path=None, normalization="source_zscore"):
         start_time = time()
         
-        image, patches, patch_indicies, original_shape = self._load_and_patch(source_path, zscore_standardization=zscore_standardization)
+        image, patches, patch_indicies, original_shape = self._load_and_patch(source_path, normalization=normalization)
         
         patch_data = {"source_patches":patches,  "source_indicies":patch_indicies, "shape":original_shape}
 
         return_dict = {"image": image, "patch_data":patch_data, "time": time()-start_time}
 
         if mask_path is not None:
-            mask, mask_patches, mask_coords, mask_original_shape = self._load_and_patch(mask_path, zscore_standardization=False)
+            mask, mask_patches, mask_coords, mask_original_shape = self._load_and_patch(mask_path, normalization="uint8")
             if mask_original_shape != original_shape:
                 raise ValueError(f"Given mask image does not match the shape of the input image.")
             
@@ -250,11 +261,11 @@ class SatelliteTrailPipeline:
     #     pass
 
 
-def main(unet_model,source_path, mask_path=None, classifier_model=None, timing=True, use_classifier=True, zscore_standardization=True):
+def main(unet_model,source_path, mask_path=None, classifier_model=None, timing=True, use_classifier=True, normalization="source_zscore"):
     times = {}
     pipeline = SatelliteTrailPipeline(unet_model, classifier_model=classifier_model, timing=timing)
     
-    preprocessing_data = pipeline.preprocessing(source_path, mask_path, zscore_standardization=zscore_standardization)
+    preprocessing_data = pipeline.preprocessing(source_path, mask_path, normalization=normalization)
     times["preprocessing"] = preprocessing_data["time"]
     
     pred_data, segmentation_times = pipeline.segmentation(preprocessing_data["patch_data"], use_classifier=use_classifier, save_intermediate_results=True)

@@ -9,7 +9,7 @@ class H5PatchDataset(Dataset):
     """
     PyTorch Dataset for loading image and mask patches from an HDF5 file.
 
-    Supports train/val/test splitting, optional augmentation on trail-containing patches, and optional metadata and mask returns. Augmentation is only applied to the train split.
+    Supports train/val/test splitting, optional augmentation on trail-containing patches, source-level normalization, and optional metadata and mask returns. Augmentation is only applied to the train split.
     The HDF5 file is opened lazily on the first call to __getitem__ and held open for the lifetime of the dataset.
     
     Attributes:
@@ -23,7 +23,7 @@ class H5PatchDataset(Dataset):
         neg_indices (np.ndarray): Subset of internal indices pointing strictly to trail-free patches.
     """
 
-    def __init__(self, h5_path, split='train', return_metadata=False, return_masks=True, source_index=None, augment=False, p_flip=0.1, p_rot=0.1, zscore_standardization=False):
+    def __init__(self, h5_path, split='train', return_metadata=False, return_masks=True, source_index=None, augment=False, p_flip=0.1, p_rot=0.1, normalization="source_zscore"):
         """
         Args:
             h5_path (str): Path to the HDF5 file created by create_h5
@@ -35,6 +35,7 @@ class H5PatchDataset(Dataset):
                 to trail-containing patches. Defaults to False.
             p_flip (float): Probability of applying a random flip. Defaults to 0.1.
             p_rot (float): Probability of applying a random rotation. Defaults to 0.1.
+            normalization (str): One of 'source_zscore', 'patch_zscore', or 'uint8'.
 
         Raises:
             ValueError: If split is not one of 'train', 'val', or 'test'.
@@ -44,7 +45,10 @@ class H5PatchDataset(Dataset):
         self.split = split
         self.return_metadata = return_metadata
         self.return_masks = return_masks
-        self.zscore_standardization=zscore_standardization
+        valid_normalizations = {"source_zscore", "patch_zscore", "uint8"}
+        if normalization not in valid_normalizations:
+            raise ValueError(f"normalization must be one of {tuple(sorted(valid_normalizations))}, got {normalization!r}")
+        self.normalization = normalization
 
         if self.split=='train' and augment:
             self.augment = True
@@ -56,12 +60,19 @@ class H5PatchDataset(Dataset):
  
 
         self.h5_file = None
+        self.source_mean = None
+        self.source_std = None
         split_map = {'train': 0, 'val': 1, 'test': 2}
         if split not in split_map: 
             raise ValueError(f"split must be one of {tuple(split_map)}, got {split!r}")
         split_idx = split_map[split]
 
         with h5py.File(self.h5_path, 'r') as f:
+            if self.normalization == "source_zscore":
+                if "source_mean" not in f or "source_std" not in f:
+                    raise ValueError("normalization='source_zscore' requires H5 datasets 'source_mean' and 'source_std'. Regenerate the H5 file with the current preprocessing pipeline.")
+                self.source_mean = f["source_mean"][:].astype(np.float32)
+                self.source_std = f["source_std"][:].astype(np.float32)
             source_splits = f['source_split'][:]
             patch_source_indices = f['source_index'][:]
             valid_mask = source_splits[patch_source_indices] == split_idx
@@ -76,6 +87,22 @@ class H5PatchDataset(Dataset):
         self.pos_indices = np.where(self.patch_has_trail == True)[0]
         self.neg_indices = np.where(self.patch_has_trail == False)[0]
 
+    def _normalize_image(self, image, source_index):
+        if self.normalization == "source_zscore":
+            eps = 1e-6
+            source_std = self.source_std[source_index]
+            if source_std < eps:
+                source_std = 1.0
+            return (image - self.source_mean[source_index]) / source_std
+        if self.normalization == "patch_zscore":
+            patch_mean = image.mean()
+            patch_std = image.std()
+            eps = 1e-6
+            if patch_std < eps:
+                patch_std = 1.0
+            return (image - patch_mean) / patch_std
+        return image / 255.0
+
 
     def __len__(self):
         """Returns the number of patches in the split."""
@@ -87,7 +114,7 @@ class H5PatchDataset(Dataset):
         """
         Returns data for a single patch.
 
-        Images are normalized to [0, 1] and returned as float tensors with a channel dimension added. Masks are binarized and returned as float tensors with a channel dimension added.
+        Images are normalized according to ``normalization`` and returned as float tensors with a channel dimension added. Masks are binarized and returned as float tensors with a channel dimension added.
 
         Args:
             idx (int): Index into the split-filtered patch list
@@ -106,6 +133,7 @@ class H5PatchDataset(Dataset):
             self.masks = self.h5_file['masks']
             
         real_idx = self.valid_indices[idx]
+        patch_source_index = int(self.source_indices[idx])
 
         image = self.images[real_idx].astype(np.float32)
         need_mask = self.return_masks or (self.augment and self.patch_has_trail[idx])
@@ -117,21 +145,12 @@ class H5PatchDataset(Dataset):
             image = np.ascontiguousarray(image)
             mask = np.ascontiguousarray(mask)
         
-
-        if self.zscore_standardization:
-            patch_mean = image.mean()
-            patch_std = image.std()
-            eps = 1e-6
-            if patch_std < eps:
-                patch_std = 1.0
-            image = (image - patch_mean) / patch_std
-        else:
-            image = image / 255.0
+        image = self._normalize_image(image, patch_source_index)
 
         x_tensor = torch.from_numpy(image).float().unsqueeze(0)
         y_tensor = torch.from_numpy(mask).float().unsqueeze(0) if self.return_masks else None
 
-        metadata = {"h5_index": int(real_idx), "source_index": int(self.source_indices[idx]), "patch_has_trail": bool(self.patch_has_trail[idx]), "patch_y0": int(self.patch_y0[idx]), "patch_x0": int(self.patch_x0[idx])}
+        metadata = {"h5_index": int(real_idx), "source_index": patch_source_index, "patch_has_trail": bool(self.patch_has_trail[idx]), "patch_y0": int(self.patch_y0[idx]), "patch_x0": int(self.patch_x0[idx])}
 
         if self.return_metadata and self.return_masks:
             return x_tensor, y_tensor, metadata

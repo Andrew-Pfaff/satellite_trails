@@ -26,7 +26,7 @@ def image_threshold(image, threshold=0.5):
     return binary_image
 
 
-def recreate_full_field_pred(model, h5_path, split_type, source_index, batch_size=1, patch_dim=528):
+def recreate_full_field_pred(model, h5_path, split_type, source_index, batch_size=1, patch_dim=528, normalization="source_zscore"):
     """
     Reassembles individual patches back into a single full-field image, complete with their corresponding predictions and ground truth masks.
 
@@ -39,6 +39,7 @@ def recreate_full_field_pred(model, h5_path, split_type, source_index, batch_siz
         source_index (int): The unique index identifier of the full-field source image to reconstruct.
         batch_size (int, optional): Number of patches per batch during inference. Defaults to 1.
         patch_dim (int, optional): Spatial dimension (height and width) of the square patches. Defaults to 528.
+        normalization (str, optional): Dataset normalization mode. Defaults to "source_zscore".
 
     Returns:
         tuple: A tuple containing:
@@ -53,7 +54,7 @@ def recreate_full_field_pred(model, h5_path, split_type, source_index, batch_siz
     with h5py.File(h5_path, "r") as f:
         full_shape = tuple(f.attrs["full_shape"])
 
-    dataset = H5PatchDataset(h5_path, split=split_type, return_metadata=True, source_index=source_index)
+    dataset = H5PatchDataset(h5_path, split=split_type, return_metadata=True, source_index=source_index, normalization=normalization)
     loader  = DataLoader(dataset, batch_size=batch_size, shuffle=False)
 
     full_image = np.zeros(full_shape, dtype=np.float32)
@@ -79,14 +80,14 @@ def recreate_full_field_pred(model, h5_path, split_type, source_index, batch_siz
     return full_image, full_pred, full_mask
 
 
-def evaluate_dataset_unet(model, h5_path, split_type, pred_thresholds=None, batch_size=1, ):
+def evaluate_dataset_unet(model, h5_path, split_type, pred_thresholds=None, batch_size=1, normalization="source_zscore"):
     if pred_thresholds is None:
         pred_thresholds = [0.5]
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = model.to(device)
 
-    dataset = H5PatchDataset(h5_path, split=split_type, return_masks=True, return_metadata=False, zscore_standardization=True)
+    dataset = H5PatchDataset(h5_path, split=split_type, return_masks=True, return_metadata=False, normalization=normalization)
     loader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=4, pin_memory=True)
 
     threshold_counts = {t: init_conf_counts() for t in pred_thresholds}
