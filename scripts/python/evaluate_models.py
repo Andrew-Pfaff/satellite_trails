@@ -1,48 +1,128 @@
-import numpy as np
+import argparse
+import csv
+from pathlib import Path
 
-from satellite_trail_segmentation.evaluation.unet_evaluate import evaluate_dataset_unet
-from satellite_trail_segmentation.evaluation.classifier_evaluate import evaluate_dataset_classifier
-from satellite_trail_segmentation.ml_utils.checkpoints import load_checkpoint
-from satellite_trail_segmentation.unet_model.unet import UNet
+import numpy as np
+import torch
+
 from satellite_trail_segmentation.classifier_model.classifier import TrailClassifier
-from satellite_trail_segmentation.utils.visualizations import plot_threshold_metrics, plot_roc_curve
+from satellite_trail_segmentation.evaluation.classifier_evaluate import evaluate_dataset_classifier
+from satellite_trail_segmentation.evaluation.unet_evaluate import evaluate_dataset_unet
+from satellite_trail_segmentation.ml_utils.checkpoints import load_checkpoint
+from satellite_trail_segmentation.ml_utils.metrics import best_threshold_by_metric, best_threshold_by_penalized_specificity, specificity_with_recall_penalty
+from satellite_trail_segmentation.unet_model.unet import UNet
+from satellite_trail_segmentation.utils.visualizations import plot_roc_curve, plot_threshold_metrics
+
+
+def checkpoint_model_config(model_path):
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    checkpoint = torch.load(model_path, map_location=device, weights_only=False)
+    return checkpoint.get("model_config", {})
+
+
+def build_model(model_type, model_path):
+    model_config = checkpoint_model_config(model_path)
+
+    if model_type == "unet":
+        allowed_keys = ("in_channels", "out_channels", "kernel_size", "base_channels", "dropout", "use_batchnorm")
+        model_kwargs = {key: model_config[key] for key in allowed_keys if key in model_config}
+        model = UNet(**model_kwargs)
+    else:
+        allowed_keys = ("in_channels", "kernel_size", "base_channels", "dropout")
+        model_kwargs = {key: model_config[key] for key in allowed_keys if key in model_config}
+        model = TrailClassifier(**model_kwargs)
+
+    load_checkpoint(model_path, model)
+    model.eval()
+    return model, model_config
+
+
+def write_summary(summary_csv_path, row):
+    if summary_csv_path is None:
+        return
+
+    summary_csv_path = Path(summary_csv_path)
+    summary_csv_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(summary_csv_path, "w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=list(row.keys()))
+        writer.writeheader()
+        writer.writerow(row)
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Evaluate satellite trail models.")
+
+    parser.add_argument("--model-type", type=str, required=True, choices=["unet", "classifier"])
+    parser.add_argument("--model-path", type=str, required=True)
+    parser.add_argument("--h5-path", type=str, default="/home/anp50/rds/hpc-work/satellite_trails/data/h5s/dataset.h5")
+    parser.add_argument("--split", type=str, default="val", choices=["train", "val", "test"])
+    parser.add_argument("--batch-size", type=int, default=None)
+    parser.add_argument("--normalization", type=str, default="source_zscore", choices=["source_zscore", "patch_zscore", "uint8"])
+    parser.add_argument("--threshold-min", type=float, default=0.05)
+    parser.add_argument("--threshold-max", type=float, default=0.95)
+    parser.add_argument("--threshold-count", type=int, default=19)
+    parser.add_argument("--min-recall", type=float, default=0.99)
+    parser.add_argument("--recall-penalty", type=float, default=3.0)
+    parser.add_argument("--threshold-metrics-save-path", type=str, default=None)
+    parser.add_argument("--roc-save-path", type=str, default=None)
+    parser.add_argument("--summary-csv-path", type=str, default=None)
+
+    return parser.parse_args()
 
 
 if __name__ == "__main__":
-    h5_path = "/home/anp50/rds/hpc-work/satellite_trails/data/h5s/dataset.h5"
-    split = "val"
-    normalization = "source_zscore"
+    args = parse_args()
+    thresholds = list(np.linspace(args.threshold_min, args.threshold_max, args.threshold_count))
+    model, model_config = build_model(args.model_type, args.model_path)
 
-    unet_batch = 64
-    classifier_batch = 128 
+    print(f"Loaded {args.model_type} model from {args.model_path}")
+    print(f"Model config: {model_config}")
+    print(f"Evaluating split={args.split} normalization={args.normalization} thresholds={thresholds[0]:.2f}..{thresholds[-1]:.2f} n={len(thresholds)}")
 
-    unet_model_path = "/home/anp50/rds/hpc-work/satellite_trails/results/models/unet/unet_weights.pt"
-    classifier_model_path = "/home/anp50/rds/hpc-work/satellite_trails/results/models/classifier/classifier_weights.pt"
+    if args.model_type == "unet":
+        batch_size = args.batch_size or 64
+        metrics_by_threshold, fpr, tpr, roc_thresholds, optimal_threshold, roc_auc = evaluate_dataset_unet(
+            model, args.h5_path, args.split, thresholds, batch_size, normalization=args.normalization
+        )
+        best_threshold, best_metrics = best_threshold_by_metric(metrics_by_threshold, "iou")
+        ranking_score = best_metrics["iou"]
 
-    unet_model = UNet()
-    load_checkpoint(unet_model_path, unet_model)
-    unet_model.eval()
+        print("UNet threshold metrics:")
+        print(metrics_by_threshold)
+        print(f"Best IOU: {ranking_score:.6f} at threshold {best_threshold:.3f}")
+        print(f"ROC AUC: {roc_auc:.6f} | ROC optimal threshold: {optimal_threshold:.6f}")
 
-    classifier_model = TrailClassifier()
-    load_checkpoint(classifier_model_path, classifier_model)
-    classifier_model.eval()
+        if args.roc_save_path:
+            plot_roc_curve(fpr, tpr, roc_thresholds, roc_auc, optimal_threshold, save_path=args.roc_save_path)
+        if args.threshold_metrics_save_path:
+            plot_threshold_metrics(metrics_by_threshold, save_path=args.threshold_metrics_save_path)
 
-    test_thresholds = list(np.linspace(0.05, 0.95, 19))
+        summary = {"model_type": args.model_type, "model_path": args.model_path, "h5_path": args.h5_path,
+                   "split": args.split, "normalization": args.normalization, "batch_size": batch_size,
+                   "best_threshold": best_threshold, "ranking_metric": "iou", "ranking_score": ranking_score,
+                   "roc_auc": roc_auc, "roc_optimal_threshold": optimal_threshold, **best_metrics}
+    else:
+        batch_size = args.batch_size or 128
+        metrics_by_threshold, image_wise_counts = evaluate_dataset_classifier(
+            model, args.h5_path, args.split, thresholds, batch_size, normalization=args.normalization
+        )
+        best_threshold, best_metrics = best_threshold_by_penalized_specificity(metrics_by_threshold, args.min_recall, args.recall_penalty)
+        ranking_score = specificity_with_recall_penalty(best_metrics, args.min_recall, args.recall_penalty)
 
-    unet_metrics_counts, fpr, tpr, thresholds, optimal_threshold, roc_auc = evaluate_dataset_unet(unet_model, h5_path, split, test_thresholds, unet_batch, normalization=normalization)
+        print("Classifier threshold metrics:")
+        print(metrics_by_threshold)
+        print()
+        print("Classifier image-wise counts:")
+        print(image_wise_counts)
+        print(f"Best penalized specificity: {ranking_score:.6f} at threshold {best_threshold:.3f}")
 
-    print("Unet metrics: ")
-    print(unet_metrics_counts)
+        if args.threshold_metrics_save_path:
+            plot_threshold_metrics(metrics_by_threshold, save_path=args.threshold_metrics_save_path)
 
-    classifier_metrics, classifier_image_wise_counts = evaluate_dataset_classifier(classifier_model, h5_path, split, test_thresholds, classifier_batch, normalization=normalization)
+        summary = {"model_type": args.model_type, "model_path": args.model_path, "h5_path": args.h5_path,
+                   "split": args.split, "normalization": args.normalization, "batch_size": batch_size,
+                   "best_threshold": best_threshold, "ranking_metric": "penalized_specificity",
+                   "ranking_score": ranking_score, "min_recall": args.min_recall,
+                   "recall_penalty": args.recall_penalty, **best_metrics}
 
-    print("\nClassifier metrics: ")
-    print(classifier_metrics)
-    print()
-    print(classifier_image_wise_counts)
-
-
-    plot_roc_curve(fpr, tpr, thresholds, roc_auc, optimal_threshold, save_path="/home/anp50/rds/hpc-work/satellite_trails/results/models/unet/unet_val_roc_metrics.png")
-    plot_threshold_metrics(unet_metrics_counts, save_path="/home/anp50/rds/hpc-work/satellite_trails/results/models/unet/unet_val_metrics.png")
-    plot_threshold_metrics(classifier_metrics, save_path="/home/anp50/rds/hpc-work/satellite_trails/results/models/classifier/classifier_val_metrics.png")
-    
+    write_summary(args.summary_csv_path, summary)
