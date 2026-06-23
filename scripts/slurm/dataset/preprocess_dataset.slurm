@@ -33,14 +33,22 @@ TEST_SPLIT=0.15
 SMALL_OUTPUT_PATH="$PROJECT_ROOT/data/h5s/small_dataset.h5"
 SMALL_VAL_SPLIT=0.25
 SMALL_TEST_SPLIT=0.0
-NUM_IMAGES=40
+SMALL_NUM_IMAGES=40
+
+MED_OUTPUT_PATH="$PROJECT_ROOT/data/h5s/half_dataset.h5"
+MED_VAL_SPLIT=0.18
+MED_TEST_SPLIT=0.0
+MED_NUM_IMAGES=76
 	
 
 #Full dataset
 python3 "$SCRIPT_PATH" --data-path="$DATA_PATH" --output-path="$OUTPUT_PATH" --val-split="$VAL_SPLIT" --test-split="$TEST_SPLIT" --verbose
 
 #Small dataset
-python3 "$SCRIPT_PATH" --data-path="$DATA_PATH" --output-path="$SMALL_OUTPUT_PATH" --val-split="$SMALL_VAL_SPLIT" --test-split="$SMALL_TEST_SPLIT" --num-images="$NUM_IMAGES" --verbose
+python3 "$SCRIPT_PATH" --data-path="$DATA_PATH" --output-path="$SMALL_OUTPUT_PATH" --val-split="$SMALL_VAL_SPLIT" --test-split="$SMALL_TEST_SPLIT" --num-images="$SMALL_NUM_IMAGES" --verbose
+
+#Medium dataset
+python3 "$SCRIPT_PATH" --data-path="$DATA_PATH" --output-path="$MED_OUTPUT_PATH" --val-split="$MED_VAL_SPLIT" --test-split="$MED_TEST_SPLIT" --num-images="$MED_NUM_IMAGES" --verbose
 
 
 
@@ -49,6 +57,7 @@ python3 "$SCRIPT_PATH" --data-path="$DATA_PATH" --output-path="$SMALL_OUTPUT_PAT
 #Dataset summary
 CSV_PATH="$PROJECT_ROOT/data/h5s/dataset_summary.csv"
 SMALL_CSV_PATH="$PROJECT_ROOT/data/h5s/small_dataset_summary.csv"
+MED_CSV_PATH="$PROJECT_ROOT/data/h5s/half_dataset_summary.csv"
 
 SUMMARY_SCRIPT_PATH="$PROJECT_ROOT/src/satellite_trail_segmentation/utils/h5summary.py"
 
@@ -57,3 +66,6 @@ python3 "$SUMMARY_SCRIPT_PATH" --data-path="$OUTPUT_PATH" --csv-path="$CSV_PATH"
 
 #Small dataset
 python3 "$SUMMARY_SCRIPT_PATH" --data-path="$SMALL_OUTPUT_PATH" --csv-path="$SMALL_CSV_PATH"
+
+#Medium dataset
+python3 "$SUMMARY_SCRIPT_PATH" --data-path="$MED_OUTPUT_PATH" --csv-path="$MED_CSV_PATH"
