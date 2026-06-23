@@ -35,7 +35,7 @@ def test_dice_loss_extremes():
 def test_combo_loss_combines_terms_and_smoothing():
     logits = torch.tensor([[1.0, -1.0]])
     mask = torch.tensor([[1.0, 0.0]])
-    loss = combo_loss(logits, mask, pos_weight=2.0, bce_weight=0.7, dice_weight=0.3, label_smoothing=0.1)
+    loss = combo_loss(logits, mask, pos_weight=2.0, bce_weight_factor=0.7, label_smoothing=0.1)
     smoothed = mask * 0.9 + 0.05
     expected = 0.7 * weighted_bce_loss(logits, smoothed, pos_weight=2.0) + 0.3 * dice_loss(logits, smoothed)
     assert torch.isclose(loss, expected)

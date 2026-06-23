@@ -68,19 +68,24 @@ def test_train_classifier_runs_and_saves(monkeypatch, tiny_classifier_dataset, t
     assert checkpoint["epoch"] == 1
     assert set(checkpoint["metrics"]) == {"best_val_specificity", "best_val_loss", "val_recall", "val_specificity"}
     assert all(math.isfinite(float(value)) for value in checkpoint["metrics"].values())
-    assert checkpoint["model_config"] == {
-        "in_channels": 1,
-        "kernel_size": 3,
-        "base_channels": 4,
-        "dropout": 0.2,
-        "pos_weight": 1.0,
-        "fn_penalty_weight": 1.0,
-        "pred_thresholds": [0.2, 0.8],
-        "min_recall": 0.0,
-        "recall_penalty": 0.0,
-        "batch_size": 2,
-        "seed": 0,
-    }
+    config = checkpoint["model_config"]
+    assert config["in_channels"] == 1
+    assert config["kernel_size"] == 3
+    assert config["base_channels"] == 4
+    assert config["dropout"] == 0.2
+    assert config["pos_weight"] == 1.0
+    assert config["fn_penalty_weight"] == 1.0
+    assert config["pred_thresholds"] == [0.2, 0.8]
+    assert config["loss"] == {"name": "bce_fn_penalty_loss", "pos_weight": 1.0, "fn_penalty_weight": 1.0}
+    assert config["min_recall"] == 0.0
+    assert config["recall_penalty"] == 0.0
+    assert config["batch_size"] == 2
+    assert config["seed"] == 0
+    assert config["normalization"] is None
+    assert config["sampler"] is None
+    assert config["grad_clip_max_norm"] == 1.0
+    assert config["early_stopping"] == {"patience": None, "min_delta": 0.0}
+    assert config["augmentation"] == {"p_flip": None, "p_rot": None, "p_shift": None, "min_shift": None, "max_shift": None}
 
     weights = weight_calls[0]
     assert weights["save_path"] == str(tmp_path / "weights.pt")

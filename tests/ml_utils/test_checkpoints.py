@@ -52,6 +52,21 @@ def test_checkpoint_restores_fresh_training_objects(tmp_path):
     assert loaded["sampler"] == 0.35
 
 
+def test_checkpoint_allows_missing_sampler(tmp_path):
+    model = torch.nn.Linear(2, 1)
+    opt = torch.optim.SGD(model.parameters(), lr=0.1)
+    sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=2)
+    path = tmp_path / "ckpt_no_sampler.pt"
+
+    save_checkpoint(path, model, opt, sched, None, 1, {"score": 0.5}, {"model": "linear"})
+    loaded = load_checkpoint(path, torch.nn.Linear(2, 1))
+
+    assert loaded["sampler"] is None
+    assert loaded["epoch"] == 1
+    assert loaded["metrics"] == {"score": 0.5}
+    assert loaded["model_config"] == {"model": "linear"}
+
+
 def test_weights_only_round_trip(tmp_path):
     model = torch.nn.Linear(2, 1)
     with torch.no_grad():

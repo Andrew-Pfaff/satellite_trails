@@ -31,6 +31,12 @@ def _reconstruct_source_array(h5_path, source_index, fill_from_row, patch_dim=4)
     return full
 
 
+def _source_zscore_patch(f, row):
+    patch_source_index = int(f["source_index"][row])
+    image = f["images"][row].astype(np.float32)
+    return (image - float(f["source_mean"][patch_source_index])) / float(f["source_std"][patch_source_index])
+
+
 def test_predict_threshold_behavior():
     logits = torch.tensor([[-10.0], [0.0], [10.0]])
     assert _predict(logits, threshold=0.5).tolist() == [[0], [1], [1]]
@@ -40,11 +46,11 @@ def test_recreate_full_field(dummy_h5_file):
     model = MeanThresholdClassifier()
     full_image, full_pred, full_mask, full_overlay = recreate_full_field(model, dummy_h5_file, "train", 0, batch_size=2, patch_dim=4, threshold=0.5)
 
-    expected_image = _reconstruct_source_array(dummy_h5_file, 0, lambda f, row: f["images"][row].astype(np.float32) / 255.0)
+    expected_image = _reconstruct_source_array(dummy_h5_file, 0, _source_zscore_patch)
     expected_pred = _reconstruct_source_array(
         dummy_h5_file,
         0,
-        lambda f, row: float((f["images"][row].astype(np.float32) / 255.0).mean() > 0.015),
+        lambda f, row: float(_source_zscore_patch(f, row).mean() > 0.015),
     )
     expected_mask = _reconstruct_source_array(dummy_h5_file, 0, lambda f, row: float(f["patch_has_trail"][row]))
 

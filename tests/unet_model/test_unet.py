@@ -50,3 +50,22 @@ def test_unet_rejects_invalid_channel_count():
 def test_unet_dropout_layer():
     assert isinstance(UNet(dropout=0.0)._dropout_layer(), torch.nn.Identity)
     assert isinstance(UNet(dropout=0.5)._dropout_layer(), torch.nn.Dropout2d)
+
+
+def test_unet_uses_average_pooling():
+    assert isinstance(UNet().pool, torch.nn.AvgPool2d)
+
+
+def test_unet_leaky_relu_slope():
+    activations = [module for module in UNet().modules() if isinstance(module, torch.nn.LeakyReLU)]
+
+    assert activations
+    assert all(module.negative_slope == 0.1 for module in activations)
+
+
+def test_unet_batchnorm_can_be_disabled():
+    with_batchnorm = UNet(use_batchnorm=True)
+    without_batchnorm = UNet(use_batchnorm=False)
+
+    assert any(isinstance(module, torch.nn.BatchNorm2d) for module in with_batchnorm.modules())
+    assert not any(isinstance(module, torch.nn.BatchNorm2d) for module in without_batchnorm.modules())
