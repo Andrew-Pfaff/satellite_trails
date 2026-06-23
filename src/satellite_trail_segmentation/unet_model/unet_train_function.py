@@ -20,7 +20,8 @@ def train_unet(model, train_ds, val_ds, optimizer, scheduler,
                epochs, batch_size, pos_weight=1.0, bce_weight_factor=0.5, 
                label_smoothing=0.0, iou_thresholds = None, 
                sampler=None, num_workers=0, full_save_path=None, 
-               weight_save_path=None, trial=None, seed=None):
+               weight_save_path=None, trial=None, seed=None, grad_clip_max_norm=1.0,
+               early_stopping_patience=None, early_stopping_min_delta=0.0):
     """
     Trains a UNet model for satellite trail segmentation over a specified number of epochs.
 
@@ -37,11 +38,14 @@ def train_unet(model, train_ds, val_ds, optimizer, scheduler,
         pos_weight(float): Positive class weighting factor in BCE loss.
         bce_weight_factor (float): Weight of the BCE loss. Dice receives ``1 - bce_weight_factor``.
         iou_thresholds (list): List of thresholds at which metrics are calculated during training.
-        sampler (torch.utils.data.Sampler, optional): Sampler strategy (e.g., BalancedTrailSampler) to set balance of positive and negative data samples. Defaults to None.
+        sampler (torch.utils.data.Sampler, optional): Sampler strategy to set balance of positive and negative data samples. Defaults to None.
         num_workers (int, optional): Number of asynchronous subprocesses to allocate for data loading. Defaults to 0.
         save_path (str, optional): File path for saving the model. Defaults to None.
         trial (optuna.trial.Trial, optional): An active Optuna study trial hyperparameter hook used for validating metrics reporting and active epoch pruning. Defaults to None.
         seed (int): Random seed.
+        grad_clip_max_norm (float, optional): Maximum gradient norm. Set to None or <=0 to disable clipping. Defaults to 1.0.
+        early_stopping_patience (int, optional): Consecutive epochs without sufficient validation IOU improvement before stopping. Set to None to disable.
+        early_stopping_min_delta (float, optional): Minimum validation IOU increase required to reset early-stopping patience. Defaults to 0.0.
         
     Returns:
         dict: training history and best validation summary. Includes:
@@ -66,9 +70,29 @@ def train_unet(model, train_ds, val_ds, optimizer, scheduler,
         Path(full_save_path).parent.mkdir(parents=True, exist_ok=True)
     if weight_save_path is not None:
         Path(weight_save_path).parent.mkdir(parents=True, exist_ok=True)
+    if iou_thresholds is None:
+        iou_thresholds = [0.5]
+    iou_thresholds = [float(threshold) for threshold in iou_thresholds]
+
+    sampler_config = None
+    if sampler is not None:
+        sampler_num_samples = getattr(sampler, "num_samples", None)
+        if sampler_num_samples is None:
+            sampler_num_samples = len(sampler)
+        sampler_config = {
+            "class_name": sampler.__class__.__name__,
+            "pos_fraction": getattr(sampler, "pos_fraction", None),
+            "num_samples": sampler_num_samples,
+        }
     
     model_config = {"in_channels": model.in_channels, "out_channels": model.out_channels, "kernel_size": model.kernel_size, "base_channels": model.base_channels, "dropout": model.dropout,
-                    "pos_weight": pos_weight, "bce_weight_factor": bce_weight_factor, "label_smoothing": label_smoothing, "batch_size": batch_size, "seed": seed}
+                    "use_batchnorm": getattr(model, "use_batchnorm", None), "normalization": getattr(train_ds, "normalization", None),
+                    "pos_weight": pos_weight, "bce_weight_factor": bce_weight_factor, "label_smoothing": label_smoothing,
+                    "loss": {"name": "combo_loss", "pos_weight": pos_weight, "bce_weight_factor": bce_weight_factor, "label_smoothing": label_smoothing},
+                    "batch_size": batch_size, "seed": seed, "sampler": sampler_config,
+                    "augmentation": {"p_flip": getattr(train_ds, "p_flip", None), "p_rot": getattr(train_ds, "p_rot", None)},
+                    "iou_thresholds": iou_thresholds, "grad_clip_max_norm": grad_clip_max_norm,
+                    "early_stopping": {"patience": early_stopping_patience, "min_delta": early_stopping_min_delta}}
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     device_type = device.type 
@@ -81,14 +105,16 @@ def train_unet(model, train_ds, val_ds, optimizer, scheduler,
         train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True, num_workers=num_workers, pin_memory=True, persistent_workers=use_workers, worker_init_fn=worker_init_fn, generator=generator, prefetch_factor=2 if use_workers else None)
     val_loader = DataLoader(val_ds, batch_size=batch_size, shuffle=False, num_workers=num_workers, pin_memory=True, persistent_workers=use_workers, worker_init_fn=worker_init_fn, generator=generator, prefetch_factor=2 if use_workers else None)
 
-    if iou_thresholds is None:
-        iou_thresholds = [0.5]
     train_loss = []
     val_loss = []
     val_iou = []
     best_loss = float("inf")
     best_iou = -float("inf")
     best_threshold = 0
+    final_epoch = 0
+    early_stopping_best_iou = -float("inf")
+    early_stopping_wait = 0
+    use_early_stopping = early_stopping_patience is not None and early_stopping_patience > 0
 
     LOGGER.info(f"Starting training for {epochs} epochs on {device} with {len(train_loader)} train batches and {len(val_loader)} val batches.")
     
@@ -110,6 +136,9 @@ def train_unet(model, train_ds, val_ds, optimizer, scheduler,
                 loss = combo_loss(logits, masks, pos_weight=pos_weight, bce_weight_factor=bce_weight_factor, label_smoothing=label_smoothing)
 
             scaler.scale(loss).backward()
+            if grad_clip_max_norm is not None and grad_clip_max_norm > 0:
+                scaler.unscale_(optimizer)
+                torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=grad_clip_max_norm)
             scaler.step(optimizer)
             scaler.update()
         
@@ -173,6 +202,16 @@ def train_unet(model, train_ds, val_ds, optimizer, scheduler,
             if trial.should_prune():
                 LOGGER.warning(f"Trial pruned by Optuna at epoch {epoch + 1}")
                 raise optuna.exceptions.TrialPruned()
+
+        if use_early_stopping:
+            if epoch_best_iou > early_stopping_best_iou + early_stopping_min_delta:
+                early_stopping_best_iou = epoch_best_iou
+                early_stopping_wait = 0
+            else:
+                early_stopping_wait += 1
+                if early_stopping_wait >= early_stopping_patience:
+                    LOGGER.info(f"Early stopping after {epoch + 1} epochs. No validation IOU improvement greater than {early_stopping_min_delta} for {early_stopping_patience} consecutive epochs.")
+                    break
 
     return {"train_loss": train_loss,
             "val_loss": val_loss,
