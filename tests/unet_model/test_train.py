@@ -68,19 +68,27 @@ def test_train_unet_runs_and_saves(monkeypatch, tiny_seg_dataset, tiny_unet_mode
     assert set(checkpoint["metrics"]) == {"best_iou", "best_threshold", "val_loss_at_best_iou"}
     assert checkpoint["metrics"]["best_threshold"] in {0.3, 0.7}
     assert all(math.isfinite(float(value)) for value in checkpoint["metrics"].values())
-    assert checkpoint["model_config"] == {
-        "in_channels": 1,
-        "out_channels": 1,
-        "kernel_size": 3,
-        "base_channels": 4,
-        "dropout": 0.0,
-        "pos_weight": 1.0,
-        "bce_loss_factor": 0.5,
-        "dice_loss_factor": 0.5,
-        "label_smoothing": 0.0,
-        "batch_size": 2,
-        "seed": 0,
-    }
+    config = checkpoint["model_config"]
+    assert config["in_channels"] == 1
+    assert config["out_channels"] == 1
+    assert config["kernel_size"] == 3
+    assert config["base_channels"] == 4
+    assert config["dropout"] == 0.0
+    assert config["use_batchnorm"] is True
+    assert config["normalization"] is None
+    assert config["pos_weight"] == 1.0
+    assert config["bce_weight_factor"] == 0.5
+    assert config["label_smoothing"] == 0.0
+    assert config["loss"] == {"name": "combo_loss", "pos_weight": 1.0, "bce_weight_factor": 0.5, "label_smoothing": 0.0}
+    assert config["batch_size"] == 2
+    assert config["seed"] == 0
+    assert config["sampler"] is None
+    assert config["iou_thresholds"] == [0.3, 0.7]
+    assert config["grad_clip_max_norm"] == 1.0
+    assert config["early_stopping"] == {"patience": None, "min_delta": 0.0}
+    assert config["augmentation"] == {"p_flip": None, "p_rot": None, "p_shift": None, "min_shift": None, "max_shift": None}
+    assert "bce_loss_factor" not in config
+    assert "dice_loss_factor" not in config
 
     weights = weight_calls[0]
     assert weights["save_path"] == str(tmp_path / "weights.pt")

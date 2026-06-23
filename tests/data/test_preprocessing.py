@@ -86,6 +86,13 @@ def test_clean_mask_removes_small_objects():
     np.testing.assert_array_equal(_clean_mask(np.zeros((3, 3), dtype=np.uint8)), np.zeros((3, 3), dtype=np.uint8))
 
 
+def test_clean_mask_preserves_diagonal_connectivity():
+    mask = np.eye(4, dtype=np.uint8) * 255
+    cleaned = _clean_mask(mask, max_size=3)
+
+    np.testing.assert_array_equal(cleaned, mask)
+
+
 def test_prepare_subset_data_is_deterministic():
     train_files = [("t0", "m0"), ("t1", "m1"), ("t2", "m2")]
     val_files = [("v0", "mv0"), ("v1", "mv1")]
@@ -121,18 +128,24 @@ def test_create_h5_writes_expected_metadata(dummy_image_dir, tmp_path):
             "patch_y0",
             "source_files",
             "source_index",
+            "source_mean",
             "source_split",
+            "source_std",
         }
         assert f["images"].shape == (16, 16, 16)
         assert f["masks"].shape == (16, 16, 16)
         assert f["images"].dtype == np.uint8
         assert f["masks"].dtype == np.uint8
         assert f["source_index"].dtype == np.int32
+        assert f["source_mean"].dtype == np.float32
+        assert f["source_std"].dtype == np.float32
         assert f["patch_y0"].dtype == np.int32
         assert f["patch_x0"].dtype == np.int32
         assert f["source_split"].dtype == np.uint8
         assert f["source_files"].shape == (4,)
+        assert f["source_mean"].shape == (4,)
         assert f["source_split"].shape == (4,)
+        assert f["source_std"].shape == (4,)
         assert f["patch_has_trail"].shape == (16,)
         assert f["source_split"][:].tolist() == [0, 1, 2, 0]
         assert f.attrs["patch_dim"] == 16
@@ -143,6 +156,15 @@ def test_create_h5_writes_expected_metadata(dummy_image_dir, tmp_path):
         assert f["patch_x0"][:].tolist() == [0, 16, 0, 16] * 4
         assert f["patch_has_trail"].dtype == np.uint8
         assert f["patch_has_trail"][:].tolist() == [1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1]
+        expected_means = []
+        expected_stds = []
+        for input_file in input_files:
+            with Image.open(input_file) as image_file:
+                image = np.asarray(image_file, dtype=np.uint8)
+            expected_means.append(float(image.mean()))
+            expected_stds.append(float(image.std()))
+        np.testing.assert_allclose(f["source_mean"][:], expected_means, rtol=1e-6)
+        np.testing.assert_allclose(f["source_std"][:], expected_stds, rtol=1e-6)
 
         with Image.open(input_files[0]) as image_file:
             first_image = np.asarray(image_file, dtype=np.uint8)

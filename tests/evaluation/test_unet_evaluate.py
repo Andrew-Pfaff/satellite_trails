@@ -41,7 +41,7 @@ def test_recreate_full_field_pred(dummy_h5_file):
     model = EchoUNet()
     full_image, full_pred, full_mask = recreate_full_field_pred(model, dummy_h5_file, "train", 0, batch_size=2, patch_dim=4)
 
-    expected_image = _reconstruct_source_array(dummy_h5_file, 0, "images", lambda patch: patch.astype(np.float32) / 255.0)
+    expected_image = _reconstruct_source_array(dummy_h5_file, 0, "images", lambda patch: (patch.astype(np.float32) - 5.0) / 5.0)
     expected_mask = _reconstruct_source_array(dummy_h5_file, 0, "masks", lambda patch: (patch > 0).astype(np.float32))
     expected_pred = 1 / (1 + np.exp(-expected_image))
 
