@@ -17,8 +17,8 @@ LOGGER = logging.getLogger(__name__)
 
 
 def train_unet(model, train_ds, val_ds, optimizer, scheduler, 
-               epochs, batch_size, pos_weight=1.0, bce_loss_factor=0.5, 
-               dice_loss_factor=0.5, label_smoothing=0.0, iou_thresholds = None, 
+               epochs, batch_size, pos_weight=1.0, bce_weight_factor=0.5, 
+               label_smoothing=0.0, iou_thresholds = None, 
                sampler=None, num_workers=0, full_save_path=None, 
                weight_save_path=None, trial=None, seed=None):
     """
@@ -35,8 +35,7 @@ def train_unet(model, train_ds, val_ds, optimizer, scheduler,
         epochs (int): The total number of full training cycles to execute.
         batch_size (int): Number of training/validation samples to pass through the network per iteration.
         pos_weight(float): Positive class weighting factor in BCE loss.
-        bce_loss_factor (float): Weight of the BCE loss.
-        dice_loss_factor (float): Weight of the Dice loss.
+        bce_weight_factor (float): Weight of the BCE loss. Dice receives ``1 - bce_weight_factor``.
         iou_thresholds (list): List of thresholds at which metrics are calculated during training.
         sampler (torch.utils.data.Sampler, optional): Sampler strategy (e.g., BalancedTrailSampler) to set balance of positive and negative data samples. Defaults to None.
         num_workers (int, optional): Number of asynchronous subprocesses to allocate for data loading. Defaults to 0.
@@ -69,7 +68,7 @@ def train_unet(model, train_ds, val_ds, optimizer, scheduler,
         Path(weight_save_path).parent.mkdir(parents=True, exist_ok=True)
     
     model_config = {"in_channels": model.in_channels, "out_channels": model.out_channels, "kernel_size": model.kernel_size, "base_channels": model.base_channels, "dropout": model.dropout,
-                    "pos_weight": pos_weight, "bce_loss_factor": bce_loss_factor, "dice_loss_factor": dice_loss_factor, "label_smoothing": label_smoothing, "batch_size": batch_size, "seed": seed}
+                    "pos_weight": pos_weight, "bce_weight_factor": bce_weight_factor, "label_smoothing": label_smoothing, "batch_size": batch_size, "seed": seed}
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     device_type = device.type 
@@ -108,7 +107,7 @@ def train_unet(model, train_ds, val_ds, optimizer, scheduler,
             
             with autocast(device_type=device_type):
                 logits = model(images)
-                loss = combo_loss(logits, masks, pos_weight, bce_loss_factor, dice_loss_factor, label_smoothing)
+                loss = combo_loss(logits, masks, pos_weight=pos_weight, bce_weight_factor=bce_weight_factor, label_smoothing=label_smoothing)
 
             scaler.scale(loss).backward()
             scaler.step(optimizer)
@@ -131,7 +130,7 @@ def train_unet(model, train_ds, val_ds, optimizer, scheduler,
                 
                 with autocast(device_type=device_type):
                     logits = model(images)
-                    loss = combo_loss(logits, masks, pos_weight, bce_loss_factor, dice_loss_factor, label_smoothing=0)
+                    loss = combo_loss(logits, masks, pos_weight=pos_weight, bce_weight_factor=bce_weight_factor, label_smoothing=0)
 
                 batch_size_actual = images.size(0)
                 epoch_val_loss += loss.item() * batch_size_actual

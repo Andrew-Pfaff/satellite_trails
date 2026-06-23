@@ -45,16 +45,17 @@ def dice_loss(pred, mask):
     return loss
 
 
-def combo_loss(pred, mask, pos_weight=1.0, bce_weight=0.5, dice_weight=0.5, label_smoothing=0.0):
+def combo_loss(pred, mask, pos_weight=1.0, bce_weight_factor=0.5, label_smoothing=0.0):
     """
     Computes a weighted combination of Binary Cross-Entropy and Soft Dice Loss.
 
     Args:
         pred (torch.Tensor): Raw, unnormalized model predictions (logits).
         mask (torch.Tensor): Ground truth binary mask with the same shape as `pred`. 
-        bce_weight (float, optional): Scaling factor for the BCE loss component. Defaults to 0.5.
-        dice_weight (float, optional): Scaling factor for the Dice loss component. Defaults to 0.5.
         pos_weight (float, optional): Positive class weighting factor for BCE loss. Defaults to 1.0 (same as no weight).
+        bce_weight_factor (float, optional): Weight for the BCE component. Dice receives
+            ``1 - bce_weight_factor``. Defaults to 0.5.
+        label_smoothing (float, optional): Amount of binary-label smoothing to apply. Defaults to 0.0.
 
 
     Returns:
@@ -63,7 +64,10 @@ def combo_loss(pred, mask, pos_weight=1.0, bce_weight=0.5, dice_weight=0.5, labe
     if label_smoothing > 0.0:
         mask = mask * (1 - label_smoothing) + 0.5 * label_smoothing
     
-    loss = bce_weight*weighted_bce_loss(pred,mask,pos_weight) + dice_weight*dice_loss(pred,mask)
+    loss = (
+        bce_weight_factor * weighted_bce_loss(pred, mask, pos_weight)
+        + (1.0 - bce_weight_factor) * dice_loss(pred, mask)
+    )
     return loss
 
 
