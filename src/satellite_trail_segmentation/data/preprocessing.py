@@ -4,6 +4,7 @@ import glob
 import argparse
 import random
 import logging
+import inspect
 from PIL import Image
 Image.MAX_IMAGE_PIXELS = 150000000
 
@@ -13,6 +14,7 @@ from sklearn.model_selection import train_test_split
 from skimage.morphology import remove_small_objects
 
 LOGGER = logging.getLogger(__name__)
+REMOVE_SMALL_OBJECTS_HAS_MAX_SIZE = "max_size" in inspect.signature(remove_small_objects).parameters
 
 
 def _sort_images(image_dir, input_suffix=".fits_full.png", mask_suffix="_mask.png"):
@@ -228,17 +230,15 @@ def _create_patches(image, patch_dim=528):
 
 
 def _clean_mask(mask, max_size=31):
-    """Removes stray noise clusters smaller than min_size pixels."""
+    """Removes stray noise clusters while preserving diagonal trail connectivity."""
     max_val = np.max(mask)
     if max_val == 0:
         return mask
     
-    try:
-        # (scikit-image >= 0.26.0)
-        cleaned_bool = remove_small_objects(mask.astype(bool), max_size=max_size)
-    except TypeError:
-        # (scikit-image < 0.26.0)
-        cleaned_bool = remove_small_objects(mask.astype(bool), min_size=max_size)
+    if REMOVE_SMALL_OBJECTS_HAS_MAX_SIZE:
+        cleaned_bool = remove_small_objects(mask.astype(bool), max_size=max_size, connectivity=2)
+    else:
+        cleaned_bool = remove_small_objects(mask.astype(bool), min_size=max_size, connectivity=2)
     return (cleaned_bool.astype(np.uint8) * max_val)
 
 
@@ -257,6 +257,8 @@ def create_h5(input_files, mask_files, split_mask, output_path, patch_dim=528, o
     - ``patch_x0`` (N,) int32: top-left x coordinate of patch in source image
     - ``source_files`` (n_images,) str: basenames of source image files
     - ``source_split`` (n_images,) uint8: split label (0=train, 1=val, 2=test)
+    - ``source_mean`` (n_images,) float32: mean pixel value of each full-field source image
+    - ``source_std`` (n_images,) float32: standard deviation of each full-field source image
     Attributes:
     - ``patch_dim``: patch side length in pixels
     - ``full_shape``: (H, W) shape of the source images
@@ -328,6 +330,8 @@ def create_h5(input_files, mask_files, split_mask, output_path, patch_dim=528, o
         patch_x0_dataset = h5_file.create_dataset("patch_x0", shape=(total_patches,), dtype=np.int32)
         h5_file.create_dataset("source_files", data=np.asarray([os.path.basename(path) for path in input_files], dtype=object), dtype=string_dtype)
         h5_file.create_dataset("source_split", data=split_mask)
+        source_mean_dataset = h5_file.create_dataset("source_mean", shape=(len(input_files),), dtype=np.float32)
+        source_std_dataset = h5_file.create_dataset("source_std", shape=(len(input_files),), dtype=np.float32)
 
         for source_index, (input_path, mask_path) in enumerate(zip(input_files, mask_files)):
             with Image.open(input_path) as image_file:
@@ -341,6 +345,9 @@ def create_h5(input_files, mask_files, split_mask, output_path, patch_dim=528, o
                 raise ValueError(f"Image and mask shapes do not match: {input_path} {image.shape} vs {mask_path} {mask.shape}")
             if image.shape != full_shape:
                 raise ValueError(f"All images must share the same shape. Expected {full_shape}, got {image.shape} for {input_path}")
+
+            source_mean_dataset[source_index] = float(image.mean())
+            source_std_dataset[source_index] = float(image.std())
 
             image_patches = _create_patches(image, patch_dim=patch_dim)
             mask_patches = _create_patches(mask, patch_dim=patch_dim)
