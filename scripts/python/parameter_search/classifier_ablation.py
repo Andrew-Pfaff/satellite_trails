@@ -113,13 +113,13 @@ def evaluate_best_checkpoint(model, data_path, batch_size, num_workers):
     return float(best_threshold), float(ranking_score), best_metrics
 
 
-def run_variant(trial_row, p_shift, args, output_dir, variant_index):
+def run_variant(trial_row, p_shift, args, output_dir):
     trial_number = int(trial_row["trial_number"])
     variant = f"trial_{trial_number}_shift_{str(p_shift).replace('.', 'p')}"
     temp_path = output_dir / "tmp" / f"{variant}.pt"
     temp_path.parent.mkdir(parents=True, exist_ok=True)
 
-    trial_seed = args.seed + trial_number + variant_index
+    trial_seed = args.seed + trial_number
     set_seed(trial_seed)
 
     train_ds = H5PatchDataset(args.data_path, split="train", return_metadata=True, return_masks=False, augment=True,
@@ -214,12 +214,10 @@ if __name__ == "__main__":
     LOGGER.info(f"Summary CSV: {summary_path}")
 
     rows = []
-    variant_index = 0
     for trial_row in top_trials:
         for p_shift in SHIFT_VALUES:
-            rows.append(run_variant(trial_row, p_shift, args, output_dir, variant_index))
-            variant_index += 1
-
+            rows.append(run_variant(trial_row, p_shift, args, output_dir))
+            
     rows = sorted(rows, key=lambda row: row["ranking_score"], reverse=True)
     write_summary(rows, summary_path)
 
