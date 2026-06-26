@@ -18,7 +18,7 @@ def main(data_path, epochs, batch_size, learning_rate, dropout_rate,
          pos_weight, bce_weight_factor, label_smoothing, weight_decay, num_workers, warmup_epochs, 
          eta_min, sampler_fraction=None, full_save_path=None, weight_save_path=None, seed=1,
          normalization="source_zscore", use_batchnorm=True, steps_per_epoch=800,
-         grad_clip_max_norm=1.0, early_stopping_patience=None, early_stopping_min_delta=0.0, p_shift=0.0, min_shift=4, max_shift=20):
+         grad_clip_max_norm=1.0, early_stopping_patience=None, early_stopping_min_delta=0.0, p_shift=0.0, min_shift=15, max_shift=100):
     
     set_seed(seed)
 
@@ -77,8 +77,8 @@ def parse_args():
     parser.add_argument("--early-stopping-patience", type=int, default=None)
     parser.add_argument("--early-stopping-min-delta", type=float, default=0.0)
     parser.add_argument("--p-shift", type=float, default=0.0)
-    parser.add_argument("--min-shift", type=int, default=4)
-    parser.add_argument("--max-shift", type=int, default=20)
+    parser.add_argument("--min-shift", type=int, default=15)
+    parser.add_argument("--max-shift", type=int, default=100)
     parser.add_argument("--full-save-path", type=str, default=None)
     parser.add_argument("--weight-save-path", type=str, default=None)
     parser.add_argument("--seed", type=int, default=1)

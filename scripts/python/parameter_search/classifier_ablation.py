@@ -21,9 +21,9 @@ from satellite_trail_segmentation.ml_utils.seed import set_seed
 
 LOGGER = logging.getLogger(__name__)
 NORMALIZATION = "source_zscore"
-SHIFT_VALUES = (0.0, 0.2)
-MIN_SHIFT = 4
-MAX_SHIFT = 20
+SHIFT_VALUES = (0.0, 0.25)
+MIN_SHIFT = 15
+MAX_SHIFT = 100
 GRAD_CLIP_MAX_NORM = 1.0
 EARLY_STOPPING_MIN_DELTA = 0.0
 BASE_CHANNELS = 16

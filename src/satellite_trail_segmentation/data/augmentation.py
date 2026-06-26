@@ -38,49 +38,60 @@ def rotate(image, mask):
     return aug_image, aug_mask
 
 
-def shift(image, mask, min_shift=4, max_shift=20):
+def shift(image, mask, min_shift=15, max_shift=100):
     """
     Randomly shifts an image and mask pair in one of four cardinal directions. Shift distance is selected randomly between min_shift and max_shift pixels.
-    Vacated pixels in the image are filled with the mean image value and, in the mask, pixels are filled with zero.
-
+    Vacated pixels in the image are filled with normal noise centered at the median with the image's standard deviation. Mask pixels are filled with zero.
+    
     Args:
         image (np.ndarray): 2D image array
         mask (np.ndarray): 2D mask array
-        min_shift (int): Minimum shift in pixels. Defaults to 4.
-        max_shift (int): Maximum shift in pixels inclusive. Defaults to 20.
+        min_shift (int): Minimum shift in pixels. Defaults to 15.
+        max_shift (int): Maximum shift in pixels inclusive. Defaults to 100.
     Returns:
         aug_image (np.ndarray): Shifted image
         aug_mask (np.ndarray): Shifted mask
     """
 
     shift_total = np.random.randint(min_shift, max_shift + 1)
-    shift_dir = np.random.randint(0, 4)
 
-    aug_image = np.zeros_like(image)
+    valid_dirs = []
+    if not np.any(mask[:, 0]):
+        valid_dirs.append(0)  
+    if not np.any(mask[0, :]):
+        valid_dirs.append(1)  
+    if not np.any(mask[:, -1]):
+        valid_dirs.append(2)  
+    if not np.any(mask[-1, :]):
+        valid_dirs.append(3)
+    if not valid_dirs:
+        return image, mask
+    
+    
+    shift_total = np.random.randint(min_shift, max_shift + 1)
+    shift_dir = np.random.choice(valid_dirs)
+
+    aug_image = np.random.normal(loc=np.median(image), scale=np.std(image), size=image.shape).astype(image.dtype)
     aug_mask = np.zeros_like(mask)
-    fill_value = np.median(image)
+    
 
     if shift_dir == 0:
         aug_image[:,shift_total:] = image[:,:-shift_total]
-        aug_image[:,:shift_total] = fill_value
         aug_mask[:,shift_total:] = mask[:,:-shift_total]
     elif shift_dir == 1:
         aug_image[shift_total:,:] = image[:-shift_total,:]
-        aug_image[:shift_total,:] = fill_value
         aug_mask[shift_total:,:] = mask[:-shift_total,:]
     elif shift_dir == 2:
         aug_image[:,:-shift_total] = image[:,shift_total:]
-        aug_image[:,-shift_total:] = fill_value
         aug_mask[:,:-shift_total] = mask[:,shift_total:]
     else:
         aug_image[:-shift_total,:] = image[shift_total:,:]
-        aug_image[-shift_total:,:] = fill_value
         aug_mask[:-shift_total,:] = mask[shift_total:,:]
 
     return aug_image, aug_mask
 
 
-def augment_image(image, mask, p_flip=0, p_rot=0, p_shift=0, min_shift=4, max_shift=20):
+def augment_image(image, mask, p_flip=0, p_rot=0, p_shift=0, min_shift=15, max_shift=100):
     """
     Applies random augmentations to an image and mask pair.
 
@@ -93,8 +104,8 @@ def augment_image(image, mask, p_flip=0, p_rot=0, p_shift=0, min_shift=4, max_sh
         p_flip (float): Probability of applying a random flip. Defaults to 0.
         p_rot (float): Probability of applying a random rotation. Defaults to 0.
         p_shift (float): Probability of applying a random shift. Defaults to 0.
-        min_shift (int): Minimum shift in pixels. Defaults to 4.
-        max_shift (int): Maximum shift in pixels inclusive. Defaults to 20.
+        min_shift (int): Minimum shift in pixels. Defaults to 15.
+        max_shift (int): Maximum shift in pixels inclusive. Defaults to 100.
 
     Returns:
         image (np.ndarray): Augmented image

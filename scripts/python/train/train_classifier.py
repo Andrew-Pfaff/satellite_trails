@@ -17,7 +17,7 @@ def main(data_path, learning_rate, sampler_fraction, base_channels, dropout_rate
          pos_weight, fn_penalty_weight, min_recall, recall_penalty, weight_decay,
          num_workers, full_save_path=None, weight_save_path=None, seed=1,
          normalization="source_zscore", steps_per_epoch=800, grad_clip_max_norm=1.0,
-         early_stopping_patience=None, early_stopping_min_delta=0.0, p_shift=0.0, min_shift=4, max_shift=20):
+         early_stopping_patience=None, early_stopping_min_delta=0.0, p_shift=0.0, min_shift=15, max_shift=100):
     
     set_seed(seed)
 
@@ -81,8 +81,8 @@ def parse_args():
     parser.add_argument("--early-stopping-patience", type=int, default=None)
     parser.add_argument("--early-stopping-min-delta", type=float, default=0.0)
     parser.add_argument("--p-shift", type=float, default=0.0)
-    parser.add_argument("--min-shift", type=int, default=4)
-    parser.add_argument("--max-shift", type=int, default=20)
+    parser.add_argument("--min-shift", type=int, default=15)
+    parser.add_argument("--max-shift", type=int, default=100)
     parser.add_argument("--verbose", action="store_true")
     parser.add_argument("--plot-path", type=str, default=None)
     

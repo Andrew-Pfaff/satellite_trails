@@ -23,7 +23,7 @@ class H5PatchDataset(Dataset):
         neg_indices (np.ndarray): Subset of internal indices pointing strictly to trail-free patches.
     """
 
-    def __init__(self, h5_path, split='train', return_metadata=False, return_masks=True, source_index=None, augment=False, p_flip=0.66, p_rot=0.75, p_shift=0.0, min_shift=4, max_shift=20, normalization="source_zscore"):
+    def __init__(self, h5_path, split='train', return_metadata=False, return_masks=True, source_index=None, augment=False, p_flip=0.66, p_rot=0.75, p_shift=0.0, min_shift=15, max_shift=100, normalization="source_zscore"):
         """
         Args:
             h5_path (str): Path to the HDF5 file created by create_h5
@@ -36,8 +36,8 @@ class H5PatchDataset(Dataset):
             p_flip (float): Probability of applying a random flip. Defaults to 0.66.
             p_rot (float): Probability of applying a random rotation. Defaults to 0.75.
             p_shift (float): Probability of applying a random shift. Defaults to 0.0.
-            min_shift (int): Minimum shift in pixels. Defaults to 4.
-            max_shift (int): Maximum shift in pixels inclusive. Defaults to 20.
+            min_shift (int): Minimum shift in pixels. Defaults to 15.
+            max_shift (int): Maximum shift in pixels inclusive. Defaults to 100.
             normalization (str): One of 'source_zscore', 'patch_zscore', or 'uint8'.
 
         Raises:
