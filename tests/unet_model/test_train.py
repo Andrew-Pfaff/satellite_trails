@@ -2,6 +2,7 @@ import math
 
 import torch
 
+from satellite_trail_segmentation.unet_model.attention_unet import AttentionUNet
 from satellite_trail_segmentation.unet_model.unet_train_function import train_unet
 
 
@@ -69,6 +70,8 @@ def test_train_unet_runs_and_saves(monkeypatch, tiny_seg_dataset, tiny_unet_mode
     assert checkpoint["metrics"]["best_threshold"] in {0.3, 0.7}
     assert all(math.isfinite(float(value)) for value in checkpoint["metrics"].values())
     config = checkpoint["model_config"]
+    assert config["model_name"] == "UNet"
+    assert config["model_class"] == "UNet"
     assert config["in_channels"] == 1
     assert config["out_channels"] == 1
     assert config["kernel_size"] == 3
@@ -94,3 +97,50 @@ def test_train_unet_runs_and_saves(monkeypatch, tiny_seg_dataset, tiny_unet_mode
     assert weights["save_path"] == str(tmp_path / "weights.pt")
     assert weights["model"] is tiny_unet_model
     assert weights["model_config"] == checkpoint["model_config"]
+
+
+def test_train_unet_runs_and_saves_attention_unet_metadata(monkeypatch, tiny_seg_dataset, tmp_path):
+    model = AttentionUNet(in_channels=1, out_channels=1, kernel_size=3, base_channels=4, dropout=0.0, use_batchnorm=True)
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=1)
+    checkpoint_calls = []
+
+    def fake_checkpoint(save_path, model, optimizer, scheduler, sampler, epoch, metrics, model_config):
+        checkpoint_calls.append(
+            {
+                "save_path": save_path,
+                "model": model,
+                "optimizer": optimizer,
+                "scheduler": scheduler,
+                "sampler": sampler,
+                "epoch": epoch,
+                "metrics": metrics,
+                "model_config": model_config,
+            }
+        )
+
+    monkeypatch.setattr("satellite_trail_segmentation.unet_model.unet_train_function.save_checkpoint", fake_checkpoint)
+
+    history = train_unet(
+        model,
+        tiny_seg_dataset,
+        tiny_seg_dataset,
+        optimizer,
+        scheduler,
+        epochs=1,
+        batch_size=2,
+        iou_thresholds=[0.5],
+        num_workers=0,
+        full_save_path=str(tmp_path / "attention_full.pt"),
+        seed=0,
+    )
+
+    assert history["final_epoch"] == 1
+    assert len(history["train_loss"]) == 1
+    assert len(checkpoint_calls) == 1
+
+    config = checkpoint_calls[0]["model_config"]
+    assert config["model_name"] == "attention_unet"
+    assert config["model_class"] == "AttentionUNet"
+    assert config["base_channels"] == 4
+    assert config["use_batchnorm"] is True
