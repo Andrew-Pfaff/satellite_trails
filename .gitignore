@@ -35,6 +35,7 @@ src/*.egg-info/
 *.zip
 *.csv
 !*master_split.csv
+reca_streaks_eval/
 datasets/
 *.png
 *.jpg
