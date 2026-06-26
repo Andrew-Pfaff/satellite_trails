@@ -40,13 +40,18 @@ if [[ "$MODEL_TYPE" == "unet" ]]; then
     THRESHOLD_PLOT="${THRESHOLD_PLOT:-$PROJECT_ROOT/results/models/unet/unet_${SPLIT}_threshold_metrics.png}"
     ROC_PLOT="${ROC_PLOT:-$PROJECT_ROOT/results/models/unet/unet_${SPLIT}_roc.png}"
     SUMMARY_CSV="${SUMMARY_CSV:-$PROJECT_ROOT/results/models/unet/unet_${SPLIT}_summary.csv}"
+elif [[ "$MODEL_TYPE" == "attention_unet" ]]; then
+    MODEL_PATH="${MODEL_PATH:-$PROJECT_ROOT/results/models/attention_unet/attention_unet_weights.pt}"
+    THRESHOLD_PLOT="${THRESHOLD_PLOT:-$PROJECT_ROOT/results/models/attention_unet/attention_unet_${SPLIT}_threshold_metrics.png}"
+    ROC_PLOT="${ROC_PLOT:-$PROJECT_ROOT/results/models/attention_unet/attention_unet_${SPLIT}_roc.png}"
+    SUMMARY_CSV="${SUMMARY_CSV:-$PROJECT_ROOT/results/models/attention_unet/attention_unet_${SPLIT}_summary.csv}"
 elif [[ "$MODEL_TYPE" == "classifier" ]]; then
     MODEL_PATH="${MODEL_PATH:-$PROJECT_ROOT/results/models/classifier/classifier_weights.pt}"
     THRESHOLD_PLOT="${THRESHOLD_PLOT:-$PROJECT_ROOT/results/models/classifier/classifier_${SPLIT}_threshold_metrics.png}"
     ROC_PLOT="${ROC_PLOT:-}"
     SUMMARY_CSV="${SUMMARY_CSV:-$PROJECT_ROOT/results/models/classifier/classifier_${SPLIT}_summary.csv}"
 else
-    echo "MODEL_TYPE must be 'unet' or 'classifier', got '$MODEL_TYPE'" >&2
+    echo "MODEL_TYPE must be 'unet', 'attention_unet', or 'classifier', got '$MODEL_TYPE'" >&2
     exit 1
 fi
 
