@@ -19,6 +19,7 @@ build/
 dist/
 # Ignores the metadata folder generated when installing in editable mode
 src/*.egg-info/ 
+docs/build/
 
 
 # ---------------------------------------------------
