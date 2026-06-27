@@ -56,6 +56,29 @@ def write_summary(summary_csv_path, row):
         writer.writerow(row)
 
 
+def write_threshold_metrics_csv(csv_path, common_row, metrics_by_threshold, extra_by_threshold=None):
+    if csv_path is None:
+        return
+
+    rows = []
+    extra_by_threshold = extra_by_threshold or {}
+    for threshold, metrics in sorted(metrics_by_threshold.items(), key=lambda item: float(item[0])):
+        row = {**common_row, "threshold": float(threshold)}
+        row.update(metrics)
+        row.update(extra_by_threshold.get(threshold, {}))
+        rows.append(row)
+
+    if not rows:
+        return
+
+    csv_path = Path(csv_path)
+    csv_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(csv_path, "w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
+        writer.writeheader()
+        writer.writerows(rows)
+
+
 def parse_args():
     parser = argparse.ArgumentParser(description="Evaluate satellite trail models.")
 
@@ -72,6 +95,7 @@ def parse_args():
     parser.add_argument("--min-recall", type=float, default=0.99)
     parser.add_argument("--recall-penalty", type=float, default=3.0)
     parser.add_argument("--threshold-metrics-save-path", type=str, default=None)
+    parser.add_argument("--threshold-metrics-csv-path", type=str, default=None)
     parser.add_argument("--roc-save-path", type=str, default=None)
     parser.add_argument("--summary-csv-path", type=str, default=None)
 
@@ -93,6 +117,11 @@ if __name__ == "__main__":
     print(f"Model config: {model_config}")
     print(f"Evaluating split={args.split} normalization={args.normalization} threshold_mode={threshold_mode} thresholds={thresholds[0]:.2f}..{thresholds[-1]:.2f} n={len(thresholds)}")
 
+    common_summary = {"model_type": args.model_type, "model_path": args.model_path,
+                      "h5_path": args.h5_path, "split": args.split,
+                      "normalization": args.normalization,
+                      "threshold_mode": threshold_mode}
+
     if args.model_type in SEGMENTATION_MODELS:
         batch_size = args.batch_size or 64
         metrics_by_threshold, fpr, tpr, roc_thresholds, optimal_threshold, roc_auc = evaluate_dataset_unet(
@@ -111,9 +140,16 @@ if __name__ == "__main__":
         if args.threshold_metrics_save_path:
             plot_threshold_metrics(metrics_by_threshold, save_path=args.threshold_metrics_save_path)
 
-        summary = {"model_type": args.model_type, "model_path": args.model_path, "h5_path": args.h5_path,
-                   "split": args.split, "normalization": args.normalization, "batch_size": batch_size,
-                   "threshold_mode": threshold_mode,
+        threshold_common = {**common_summary, "batch_size": batch_size,
+                            "roc_auc": roc_auc,
+                            "roc_optimal_threshold": optimal_threshold,
+                            "ranking_metric": "iou"}
+        threshold_extras = {threshold: {"ranking_score": metrics["iou"]}
+                            for threshold, metrics in metrics_by_threshold.items()}
+        write_threshold_metrics_csv(args.threshold_metrics_csv_path, threshold_common,
+                                    metrics_by_threshold, threshold_extras)
+
+        summary = {**common_summary, "batch_size": batch_size,
                    "best_threshold": best_threshold, "ranking_metric": "iou", "ranking_score": ranking_score,
                    "roc_auc": roc_auc, "roc_optimal_threshold": optimal_threshold, **best_metrics}
     else:
@@ -134,9 +170,18 @@ if __name__ == "__main__":
         if args.threshold_metrics_save_path:
             plot_threshold_metrics(metrics_by_threshold, save_path=args.threshold_metrics_save_path)
 
-        summary = {"model_type": args.model_type, "model_path": args.model_path, "h5_path": args.h5_path,
-                   "split": args.split, "normalization": args.normalization, "batch_size": batch_size,
-                   "threshold_mode": threshold_mode,
+        threshold_common = {**common_summary, "batch_size": batch_size,
+                            "ranking_metric": "penalized_specificity",
+                            "min_recall": args.min_recall,
+                            "recall_penalty": args.recall_penalty}
+        threshold_extras = {
+            threshold: {"ranking_score": specificity_with_recall_penalty(metrics, args.min_recall, args.recall_penalty)}
+            for threshold, metrics in metrics_by_threshold.items()
+        }
+        write_threshold_metrics_csv(args.threshold_metrics_csv_path, threshold_common,
+                                    metrics_by_threshold, threshold_extras)
+
+        summary = {**common_summary, "batch_size": batch_size,
                    "best_threshold": best_threshold, "ranking_metric": "penalized_specificity",
                    "ranking_score": ranking_score, "min_recall": args.min_recall,
                    "recall_penalty": args.recall_penalty, **best_metrics}

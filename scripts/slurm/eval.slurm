@@ -39,16 +39,19 @@ RECALL_PENALTY="${RECALL_PENALTY:-3.0}"
 if [[ "$MODEL_TYPE" == "unet" ]]; then
     MODEL_PATH="${MODEL_PATH:-$PROJECT_ROOT/results/models/unet/unet_weights.pt}"
     THRESHOLD_PLOT="${THRESHOLD_PLOT:-$PROJECT_ROOT/results/models/unet/unet_${SPLIT}_threshold_metrics.png}"
+    THRESHOLD_METRICS_CSV="${THRESHOLD_METRICS_CSV:-$PROJECT_ROOT/results/models/unet/unet_${SPLIT}_threshold_metrics.csv}"
     ROC_PLOT="${ROC_PLOT:-$PROJECT_ROOT/results/models/unet/unet_${SPLIT}_roc.png}"
     SUMMARY_CSV="${SUMMARY_CSV:-$PROJECT_ROOT/results/models/unet/unet_${SPLIT}_summary.csv}"
 elif [[ "$MODEL_TYPE" == "attention_unet" ]]; then
     MODEL_PATH="${MODEL_PATH:-$PROJECT_ROOT/results/models/attention_unet/attention_unet_weights.pt}"
     THRESHOLD_PLOT="${THRESHOLD_PLOT:-$PROJECT_ROOT/results/models/attention_unet/attention_unet_${SPLIT}_threshold_metrics.png}"
+    THRESHOLD_METRICS_CSV="${THRESHOLD_METRICS_CSV:-$PROJECT_ROOT/results/models/attention_unet/attention_unet_${SPLIT}_threshold_metrics.csv}"
     ROC_PLOT="${ROC_PLOT:-$PROJECT_ROOT/results/models/attention_unet/attention_unet_${SPLIT}_roc.png}"
     SUMMARY_CSV="${SUMMARY_CSV:-$PROJECT_ROOT/results/models/attention_unet/attention_unet_${SPLIT}_summary.csv}"
 elif [[ "$MODEL_TYPE" == "classifier" ]]; then
     MODEL_PATH="${MODEL_PATH:-$PROJECT_ROOT/results/models/classifier/classifier_weights.pt}"
     THRESHOLD_PLOT="${THRESHOLD_PLOT:-$PROJECT_ROOT/results/models/classifier/classifier_${SPLIT}_threshold_metrics.png}"
+    THRESHOLD_METRICS_CSV="${THRESHOLD_METRICS_CSV:-$PROJECT_ROOT/results/models/classifier/classifier_${SPLIT}_threshold_metrics.csv}"
     ROC_PLOT="${ROC_PLOT:-}"
     SUMMARY_CSV="${SUMMARY_CSV:-$PROJECT_ROOT/results/models/classifier/classifier_${SPLIT}_summary.csv}"
 else
@@ -56,7 +59,7 @@ else
     exit 1
 fi
 
-mkdir -p "$(dirname "$THRESHOLD_PLOT")" "$(dirname "$SUMMARY_CSV")"
+mkdir -p "$(dirname "$THRESHOLD_PLOT")" "$(dirname "$THRESHOLD_METRICS_CSV")" "$(dirname "$SUMMARY_CSV")"
 if [[ -n "$ROC_PLOT" ]]; then
     mkdir -p "$(dirname "$ROC_PLOT")"
 fi
@@ -74,6 +77,7 @@ args=(
     --min-recall "$MIN_RECALL"
     --recall-penalty "$RECALL_PENALTY"
     --threshold-metrics-save-path "$THRESHOLD_PLOT"
+    --threshold-metrics-csv-path "$THRESHOLD_METRICS_CSV"
     --summary-csv-path "$SUMMARY_CSV"
 )
 
