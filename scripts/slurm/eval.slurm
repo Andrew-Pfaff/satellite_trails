@@ -31,7 +31,8 @@ NORMALIZATION="${NORMALIZATION:-source_zscore}"
 BATCH_SIZE="${BATCH_SIZE:-}"
 THRESHOLD_MIN="${THRESHOLD_MIN:-0.05}"
 THRESHOLD_MAX="${THRESHOLD_MAX:-0.95}"
-THRESHOLD_COUNT="${THRESHOLD_COUNT:-19}"
+THRESHOLD_COUNT="${THRESHOLD_COUNT:-37}"
+FIXED_THRESHOLD="${FIXED_THRESHOLD:-}"
 MIN_RECALL="${MIN_RECALL:-0.99}"
 RECALL_PENALTY="${RECALL_PENALTY:-3.0}"
 
@@ -78,6 +79,10 @@ args=(
 
 if [[ -n "$BATCH_SIZE" ]]; then
     args+=(--batch-size "$BATCH_SIZE")
+fi
+
+if [[ -n "$FIXED_THRESHOLD" ]]; then
+    args+=(--fixed-threshold "$FIXED_THRESHOLD")
 fi
 
 if [[ -n "$ROC_PLOT" ]]; then

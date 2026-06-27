@@ -67,7 +67,8 @@ def parse_args():
     parser.add_argument("--normalization", type=str, default="source_zscore", choices=["source_zscore", "patch_zscore", "uint8"])
     parser.add_argument("--threshold-min", type=float, default=0.05)
     parser.add_argument("--threshold-max", type=float, default=0.95)
-    parser.add_argument("--threshold-count", type=int, default=19)
+    parser.add_argument("--threshold-count", type=int, default=37)
+    parser.add_argument("--fixed-threshold", type=float, default=None)
     parser.add_argument("--min-recall", type=float, default=0.99)
     parser.add_argument("--recall-penalty", type=float, default=3.0)
     parser.add_argument("--threshold-metrics-save-path", type=str, default=None)
@@ -79,12 +80,18 @@ def parse_args():
 
 if __name__ == "__main__":
     args = parse_args()
-    thresholds = list(np.linspace(args.threshold_min, args.threshold_max, args.threshold_count))
+    if args.fixed_threshold is None:
+        thresholds = list(np.linspace(args.threshold_min, args.threshold_max, args.threshold_count))
+        threshold_mode = "sweep"
+    else:
+        thresholds = [float(args.fixed_threshold)]
+        threshold_mode = "fixed"
+
     model, model_config = build_model(args.model_type, args.model_path)
 
     print(f"Loaded {args.model_type} model from {args.model_path}")
     print(f"Model config: {model_config}")
-    print(f"Evaluating split={args.split} normalization={args.normalization} thresholds={thresholds[0]:.2f}..{thresholds[-1]:.2f} n={len(thresholds)}")
+    print(f"Evaluating split={args.split} normalization={args.normalization} threshold_mode={threshold_mode} thresholds={thresholds[0]:.2f}..{thresholds[-1]:.2f} n={len(thresholds)}")
 
     if args.model_type in SEGMENTATION_MODELS:
         batch_size = args.batch_size or 64
@@ -106,6 +113,7 @@ if __name__ == "__main__":
 
         summary = {"model_type": args.model_type, "model_path": args.model_path, "h5_path": args.h5_path,
                    "split": args.split, "normalization": args.normalization, "batch_size": batch_size,
+                   "threshold_mode": threshold_mode,
                    "best_threshold": best_threshold, "ranking_metric": "iou", "ranking_score": ranking_score,
                    "roc_auc": roc_auc, "roc_optimal_threshold": optimal_threshold, **best_metrics}
     else:
@@ -128,6 +136,7 @@ if __name__ == "__main__":
 
         summary = {"model_type": args.model_type, "model_path": args.model_path, "h5_path": args.h5_path,
                    "split": args.split, "normalization": args.normalization, "batch_size": batch_size,
+                   "threshold_mode": threshold_mode,
                    "best_threshold": best_threshold, "ranking_metric": "penalized_specificity",
                    "ranking_score": ranking_score, "min_recall": args.min_recall,
                    "recall_penalty": args.recall_penalty, **best_metrics}
