@@ -65,3 +65,6 @@ runs/
 *.ipynb
 
 archive/
+
+
+!scripts/colab/*.ipynb
