@@ -1,7 +1,5 @@
 import torch
 import torch.nn as nn
-import torch.nn.init as init
-from torchvision.models import resnet18
 
 
 class TrailClassifier(nn.Module):
