@@ -43,6 +43,22 @@ pip install -e .[dev,docs]
 python -m pytest -q
 ```
 
+## Data
+
+The models in this repository were trained on the PNG data released with the ASTA paper, "Automated Detection of Satellite Trails in Ground-Based Observations Using U-Net and Hough Transform".
+
+- Paper: [A&A article](https://www.aanda.org/articles/aa/full_html/2024/12/aa51663-24/aa51663-24.html) and [arXiv preprint](https://arxiv.org/abs/2407.19461)
+- Dataset: [Zenodo record 11642424](https://zenodo.org/records/11642424)
+
+Download the main ASTA PNG archive with:
+
+```bash
+mkdir -p data/raw
+wget -c -O data/raw/Processed.zip "https://zenodo.org/records/11642424/files/Processed.zip?download=1"
+```
+
+The archive is large, about 18 GB. After downloading, extract it and place or symlink the PNG images and masks into the local `data/png/` layout used by the preprocessing scripts. The original ASTA paper trained and applied its pipeline on FITS images; this reproducibility work uses the released PNG data.
+
 ## Main Workflows
 
 Preprocess data on CSD3:
