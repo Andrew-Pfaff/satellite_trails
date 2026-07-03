@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 
-from satellite_trail_segmentation.postprocess.postprocess_utils import standardize_binary_mask
+from satellite_trail_segmentation.postprocess.postprocess_utils import standardize_binary_mask, to_numpy_2d
 
 
 def detect_hough_lines(mask, hough_threshold=50, min_line_length=100, max_line_gap=250):
@@ -107,9 +107,43 @@ def cluster_hough_lines(records, angle_degrees=3, distance=8):
         clusters (list): List of record lists.
     """
 
-    # Skeleton implementation: each line is its own cluster until we implement grouping.
-    del angle_degrees, distance
-    return [[record] for record in records]
+    if not records:
+        return []
+
+    angle_threshold = np.deg2rad(float(angle_degrees))
+    visited = set()
+    clusters = []
+
+    for start_index in range(len(records)):
+        if start_index in visited:
+            continue
+
+        queue = [start_index]
+        visited.add(start_index)
+        cluster = []
+
+        while queue:
+            current_index = queue.pop(0)
+            current = records[current_index]
+            cluster.append(current)
+
+            for candidate_index, candidate in enumerate(records):
+                if candidate_index in visited:
+                    continue
+
+                angle_diff = abs(current["angle"] - candidate["angle"]) % np.pi
+                angle_diff = min(angle_diff, np.pi - angle_diff)
+                midpoint_delta = candidate["midpoint"] - current["midpoint"]
+                distance_a = abs(float(np.dot(midpoint_delta, current["normal"])))
+                distance_b = abs(float(np.dot(-midpoint_delta, candidate["normal"])))
+
+                if angle_diff <= angle_threshold and min(distance_a, distance_b) <= distance:
+                    visited.add(candidate_index)
+                    queue.append(candidate_index)
+
+        clusters.append(cluster)
+
+    return clusters
 
 
 def representative_centerline(cluster, image_shape):
@@ -127,10 +161,29 @@ def representative_centerline(cluster, image_shape):
     if not cluster:
         raise ValueError("cluster must contain at least one line record")
 
-    # Skeleton implementation: use the longest line until we implement median centerlines.
-    record = max(cluster, key=lambda item: item["length"])
+    angles = np.asarray([record["angle"] for record in cluster], dtype=float) % np.pi
+    reference = angles[0]
+    shifted_angles = ((angles - reference + np.pi / 2) % np.pi) - np.pi / 2
+    angle = float((reference + np.median(shifted_angles)) % np.pi)
+    direction = np.array([np.cos(angle), np.sin(angle)], dtype=float)
+    normal = np.array([-direction[1], direction[0]], dtype=float)
+
+    endpoints = []
+    offsets = []
+    for record in cluster:
+        x1, y1, x2, y2 = record["line"]
+        endpoints.append(np.array([x1, y1], dtype=float))
+        endpoints.append(np.array([x2, y2], dtype=float))
+        offsets.append(float(np.dot(record["midpoint"], normal)))
+
+    offset = float(np.median(offsets))
+    projections = [float(np.dot(point, direction)) for point in endpoints]
+    start = offset * normal + min(projections) * direction
+    end = offset * normal + max(projections) * direction
+    line = np.array([start[0], start[1], end[0], end[1]], dtype=float)
+
     height, width = image_shape
-    x1, y1, x2, y2 = np.rint(record["line"]).astype(int)
+    x1, y1, x2, y2 = np.rint(line).astype(int)
     return np.array(
         [
             int(np.clip(x1, 0, width - 1)),

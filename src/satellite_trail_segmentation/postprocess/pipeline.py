@@ -25,6 +25,8 @@ def postprocess_segmentation(
     line_cluster_distance=8,
     width_samples=9,
     max_width_search=25,
+    max_contour_distance=20,
+    min_fill_gap=10,
     fallback_width=1,
     morph_kernel_size=3,
     min_component_size=100,
@@ -44,6 +46,8 @@ def postprocess_segmentation(
         line_cluster_distance (float): Maximum cluster perpendicular distance in pixels. Defaults to 8.
         width_samples (int): Number of width samples for median sampled width. Defaults to 9.
         max_width_search (int): Perpendicular search radius for median sampled width. Defaults to 25.
+        max_contour_distance (float): Maximum line-to-contour distance for contour width. Defaults to 20.
+        min_fill_gap (int): Minimum gap length to fill for ASTA width modes. Defaults to 10.
         fallback_width (float): Width used when estimation fails. Defaults to 1.
         morph_kernel_size (int): Morphological closing kernel size. Defaults to 3.
         min_component_size (int): Minimum connected component size to keep. Defaults to 100.
@@ -85,7 +89,11 @@ def postprocess_segmentation(
                 contour_records=contour_records,
                 width_samples=width_samples,
                 max_width_search=max_width_search,
+                max_contour_distance=max_contour_distance,
                 fallback_width=fallback_width,
+                support_mask=mask,
+                min_gap=min_fill_gap,
+                max_gap=max_line_gap,
                 foreground_value=foreground_value,
             )
     else:
@@ -104,6 +112,7 @@ def postprocess_segmentation(
             contour_records=contour_records,
             width_samples=width_samples,
             max_width_search=max_width_search,
+            max_contour_distance=max_contour_distance,
             fallback_width=fallback_width,
         )
         output = draw_centerlines(mask, centerlines, widths, foreground_value=foreground_value)

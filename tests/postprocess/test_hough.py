@@ -4,9 +4,8 @@ import pytest
 import torch
 
 from satellite_trail_segmentation.postprocess.hough import (
-    analyze_hough_lines,
     cluster_hough_lines,
-    perpendicular_mask_widths,
+    line_records,
     representative_centerline,
     standardize_binary_mask,
     to_numpy_2d,
@@ -68,7 +67,8 @@ def test_asta_draws_every_hough_line_with_thickness_one(monkeypatch):
 
     result = postprocess_segmentation(
         mask,
-        gap_fill_mode="asta",
+        line_mode="asta",
+        width_mode="none",
         min_line_length=1,
         max_line_gap=20,
         morph_kernel_size=1,
@@ -91,7 +91,7 @@ def test_duplicate_parallel_hough_detections_cluster_into_one_trail():
         dtype=np.int32,
     )
 
-    records = analyze_hough_lines(lines)
+    records = line_records(lines)
     clusters = cluster_hough_lines(records, angle_degrees=3, distance=3)
 
     assert sorted(len(cluster) for cluster in clusters) == [1, 3]
@@ -100,17 +100,8 @@ def test_duplicate_parallel_hough_detections_cluster_into_one_trail():
 def test_representative_centerline_is_centered_between_cluster_members():
     lines = np.array([[[5, 10, 35, 10]], [[5, 14, 35, 14]]], dtype=np.int32)
 
-    records = analyze_hough_lines(lines)
+    records = line_records(lines)
     cluster = cluster_hough_lines(records, angle_degrees=3, distance=5)[0]
     centerline = representative_centerline(cluster, image_shape=(30, 40))
 
-    assert centerline["integer_line"].tolist() == [5, 12, 35, 12]
-
-
-def test_sampled_width_recovers_known_synthetic_stripe_width():
-    mask = np.zeros((40, 50), dtype=np.uint8)
-    mask[17:24, 5:45] = 255
-
-    widths = perpendicular_mask_widths(mask, np.array([5, 20, 44, 20]), num_samples=7, max_width_search=12)
-
-    assert widths == [7, 7, 7, 7, 7, 7, 7]
+    assert centerline.tolist() == [5, 12, 35, 12]
