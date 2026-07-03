@@ -8,7 +8,8 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 
-from satellite_trail_segmentation.postprocess.hough import postprocess_segmentation, to_numpy_2d
+from satellite_trail_segmentation.postprocess.hough import to_numpy_2d
+from satellite_trail_segmentation.postprocess.pipeline import postprocess_segmentation
 from satellite_trail_segmentation.classifier_model.classifier import TrailClassifier
 from satellite_trail_segmentation.unet_model.unet import UNet
 from satellite_trail_segmentation.ml_utils.checkpoints import load_checkpoint
