@@ -1,160 +1,218 @@
 import cv2
 import numpy as np
 
+from satellite_trail_segmentation.postprocess.postprocess_utils import standardize_binary_mask, to_numpy_2d
 
-def to_numpy_2d(prediction):
+
+def detect_hough_lines(mask, hough_threshold=50, min_line_length=100, max_line_gap=250):
     """
-    Converts a segmentation prediction to a 2D NumPy array.
+    Detects probabilistic Hough line segments in a binary mask.
 
-    Accepts NumPy arrays and torch tensors. Singleton dimensions are removed
-    only when the result is unambiguous, such as (1, H, W) or (H, W, 1).
-    """
+    Args:
+        mask (np.ndarray or torch.Tensor): Binary-like mask.
+        hough_threshold (int): Minimum Hough accumulator threshold. Defaults to 50.
+        min_line_length (int): Minimum accepted Hough line length in pixels. Defaults to 100.
+        max_line_gap (int): Maximum connected line gap in pixels. Defaults to 250.
 
-    if hasattr(prediction, "detach") and hasattr(prediction, "cpu"):
-        prediction = prediction.detach().cpu().numpy()
-    else:
-        prediction = np.asarray(prediction)
-
-    prediction = np.array(prediction, copy=True)
-    if prediction.ndim == 2:
-        return prediction
-
-    squeezed = np.squeeze(prediction)
-    if squeezed.ndim != 2:
-        raise ValueError(f"prediction must resolve to a 2D array, got shape {prediction.shape}")
-
-    return squeezed
-
-
-def binarize_prediction(prediction, threshold=0.58, foreground_value=255):
-    """
-    Converts a probability map or binary-like array into a uint8 mask.
-
-    Returns an array with values 0 and ``foreground_value``.
+    Returns:
+        lines (np.ndarray or None): OpenCV HoughLinesP output.
     """
 
-    prediction = to_numpy_2d(prediction)
-    if foreground_value <= 0 or foreground_value > 255:
-        raise ValueError("foreground_value must be in the range 1..255")
+    binary = standardize_binary_mask(mask)
+    return cv2.HoughLinesP(
+        binary, rho=1, theta=np.pi / 180, threshold=hough_threshold,
+        minLineLength=min_line_length, maxLineGap=max_line_gap,
+    )
 
-    unique_values = np.unique(prediction)
-    has_zero = unique_values.size > 0 and np.isclose(unique_values[0], 0)
-    max_value = unique_values[-1] if unique_values.size > 0 else 0
-    binary_like = (
-        unique_values.size <= 2
-        and has_zero
-        and (
-            np.issubdtype(prediction.dtype, np.integer)
-            or np.isclose(max_value, 1)
-            or np.isclose(max_value, foreground_value)
-            or np.isclose(max_value, 255)
+
+def draw_hough_lines(mask, lines, thickness=1, foreground_value=255):
+    """
+    Draws every Hough line segment onto a copy of a mask.
+
+    Args:
+        mask (np.ndarray or torch.Tensor): Binary-like mask to copy before drawing.
+        lines (np.ndarray or None): OpenCV HoughLinesP output.
+        thickness (int): OpenCV line thickness. Defaults to 1.
+        foreground_value (int): Foreground value to draw. Defaults to 255.
+
+    Returns:
+        output (np.ndarray): uint8 binary mask with lines drawn.
+    """
+
+    output = standardize_binary_mask(mask, foreground_value=foreground_value)
+    if lines is None:
+        return output
+
+    thickness = max(1, int(round(float(thickness))))
+    height, width = output.shape
+    for x1, y1, x2, y2 in np.asarray(lines).reshape(-1, 4):
+        x1 = int(np.clip(round(x1), 0, width - 1))
+        x2 = int(np.clip(round(x2), 0, width - 1))
+        y1 = int(np.clip(round(y1), 0, height - 1))
+        y2 = int(np.clip(round(y2), 0, height - 1))
+        cv2.line(output, (x1, y1), (x2, y2), int(foreground_value), thickness=thickness)
+
+    return standardize_binary_mask(output, foreground_value=foreground_value)
+
+
+def line_records(lines):
+    """
+    Converts Hough lines into simple geometry records for trail grouping.
+
+    Args:
+        lines (np.ndarray or None): OpenCV HoughLinesP output.
+
+    Returns:
+        records (list): List of line records.
+    """
+
+    if lines is None:
+        return []
+
+    records = []
+    for index, line in enumerate(np.asarray(lines).reshape(-1, 4)):
+        x1, y1, x2, y2 = line.astype(float)
+        dx = x2 - x1
+        dy = y2 - y1
+        angle = float(np.arctan2(dy, dx) % np.pi)
+        direction = np.array([np.cos(angle), np.sin(angle)], dtype=float)
+        normal = np.array([-direction[1], direction[0]], dtype=float)
+        midpoint = np.array([(x1 + x2) / 2, (y1 + y2) / 2], dtype=float)
+        records.append(
+            {
+                "index": index,
+                "line": np.array([x1, y1, x2, y2], dtype=float),
+                "angle": angle,
+                "direction": direction,
+                "normal": normal,
+                "midpoint": midpoint,
+                "offset": float(np.dot(midpoint, normal)),
+                "length": float(np.hypot(dx, dy)),
+            }
         )
+
+    return records
+
+
+def cluster_hough_lines(records, angle_degrees=3, distance=8):
+    """
+    Groups Hough line records that likely describe the same physical trail.
+
+    Args:
+        records (list): Line records from line_records.
+        angle_degrees (float): Maximum orientation difference in degrees. Defaults to 3.
+        distance (float): Maximum perpendicular offset difference in pixels. Defaults to 8.
+
+    Returns:
+        clusters (list): List of record lists.
+    """
+
+    if not records:
+        return []
+
+    angle_threshold = np.deg2rad(float(angle_degrees))
+    visited = set()
+    clusters = []
+
+    for start_index in range(len(records)):
+        if start_index in visited:
+            continue
+
+        queue = [start_index]
+        visited.add(start_index)
+        cluster = []
+
+        while queue:
+            current_index = queue.pop(0)
+            current = records[current_index]
+            cluster.append(current)
+
+            for candidate_index, candidate in enumerate(records):
+                if candidate_index in visited:
+                    continue
+
+                angle_diff = abs(current["angle"] - candidate["angle"]) % np.pi
+                angle_diff = min(angle_diff, np.pi - angle_diff)
+                midpoint_delta = candidate["midpoint"] - current["midpoint"]
+                distance_a = abs(float(np.dot(midpoint_delta, current["normal"])))
+                distance_b = abs(float(np.dot(-midpoint_delta, candidate["normal"])))
+
+                if angle_diff <= angle_threshold and min(distance_a, distance_b) <= distance:
+                    visited.add(candidate_index)
+                    queue.append(candidate_index)
+
+        clusters.append(cluster)
+
+    return clusters
+
+
+def representative_centerline(cluster, image_shape):
+    """
+    Builds one representative centerline for a Hough cluster.
+
+    Args:
+        cluster (list): One cluster of line records.
+        image_shape (tuple): Output image shape as (height, width).
+
+    Returns:
+        line (np.ndarray): Integer centerline coordinates as (x1, y1, x2, y2).
+    """
+
+    if not cluster:
+        raise ValueError("cluster must contain at least one line record")
+
+    angles = np.asarray([record["angle"] for record in cluster], dtype=float) % np.pi
+    reference = angles[0]
+    shifted_angles = ((angles - reference + np.pi / 2) % np.pi) - np.pi / 2
+    angle = float((reference + np.median(shifted_angles)) % np.pi)
+    direction = np.array([np.cos(angle), np.sin(angle)], dtype=float)
+    normal = np.array([-direction[1], direction[0]], dtype=float)
+
+    endpoints = []
+    offsets = []
+    for record in cluster:
+        x1, y1, x2, y2 = record["line"]
+        endpoints.append(np.array([x1, y1], dtype=float))
+        endpoints.append(np.array([x2, y2], dtype=float))
+        offsets.append(float(np.dot(record["midpoint"], normal)))
+
+    offset = float(np.median(offsets))
+    projections = [float(np.dot(point, direction)) for point in endpoints]
+    start = offset * normal + min(projections) * direction
+    end = offset * normal + max(projections) * direction
+    line = np.array([start[0], start[1], end[0], end[1]], dtype=float)
+
+    height, width = image_shape
+    x1, y1, x2, y2 = np.rint(line).astype(int)
+    return np.array(
+        [
+            int(np.clip(x1, 0, width - 1)),
+            int(np.clip(y1, 0, height - 1)),
+            int(np.clip(x2, 0, width - 1)),
+            int(np.clip(y2, 0, height - 1)),
+        ],
+        dtype=np.int32,
     )
-    if binary_like:
-        binary = prediction > 0
-    else:
-        binary = prediction > threshold
-
-    return (binary.astype(np.uint8) * foreground_value).astype(np.uint8)
 
 
-def standardize_binary_mask(mask, foreground_value=255):
+def draw_centerlines(mask, centerlines, thicknesses, foreground_value=255):
     """
-    Converts an already-binary mask into a uint8 mask for OpenCV.
+    Draws representative centerlines with matching thickness values.
 
-    Any nonzero value is treated as foreground. This does not threshold
-    probability maps; thresholding should happen before postprocessing.
-    """
+    Args:
+        mask (np.ndarray or torch.Tensor): Binary-like mask to copy before drawing.
+        centerlines (list): List of integer centerline arrays.
+        thicknesses (list): List of line thickness values.
+        foreground_value (int): Foreground value to draw. Defaults to 255.
 
-    mask = to_numpy_2d(mask)
-    if foreground_value <= 0 or foreground_value > 255:
-        raise ValueError("foreground_value must be in the range 1..255")
-
-    return ((mask > 0).astype(np.uint8) * foreground_value).astype(np.uint8)
-
-
-def hough_gap_fill(mask, thickness, hough_threshold=50, min_line_length=100, max_line_gap=250):
-    """
-    Fills gaps in a binary segmentation mask using probabilistic Hough lines.
-
-    Detected line segments are drawn onto a copy of ``mask`` with the provided
-    thickness.
+    Returns:
+        output (np.ndarray): uint8 binary mask with centerlines drawn.
     """
 
-    mask = standardize_binary_mask(mask)
-    output = mask.copy()
-    thickness = max(1, int(round(thickness)))
+    output = standardize_binary_mask(mask, foreground_value=foreground_value)
+    for line, thickness in zip(centerlines, thicknesses):
+        x1, y1, x2, y2 = np.asarray(line).reshape(4).astype(int)
+        thickness = max(1, int(round(float(thickness))))
+        cv2.line(output, (x1, y1), (x2, y2), int(foreground_value), thickness=thickness)
 
-    lines = cv2.HoughLinesP(
-        mask,
-        rho=1,
-        theta=np.pi / 180,
-        threshold=hough_threshold,
-        minLineLength=min_line_length,
-        maxLineGap=max_line_gap,
-    )
-
-    if lines is not None:
-        for line in lines:
-            x1, y1, x2, y2 = line[0]
-            cv2.line(output, (x1, y1), (x2, y2), 255, thickness=thickness)
-
-    return output
-
-
-def morphological_close(mask, kernel_size=3):
-    """
-    Applies morphological closing to fill small holes and local gaps.
-    """
-
-    mask = standardize_binary_mask(mask)
-    if kernel_size <= 1:
-        return mask.copy()
-
-    kernel = np.ones((kernel_size, kernel_size), np.uint8)
-    closed = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
-    return standardize_binary_mask(closed)
-
-
-def remove_small_components(mask, min_size=500):
-    """
-    Removes connected foreground components smaller than ``min_size`` pixels.
-    """
-
-    mask = standardize_binary_mask(mask)
-    if min_size <= 1:
-        return mask.copy()
-
-    num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(mask, connectivity=8)
-    output = np.zeros_like(mask, dtype=np.uint8)
-    for label in range(1, num_labels):
-        if stats[label, cv2.CC_STAT_AREA] >= min_size:
-            output[labels == label] = 255
-
-    return output
-
-
-def postprocess_segmentation(prediction, foreground_value=255, hough_threshold=50, min_line_length=100, max_line_gap=250, morph_kernel_size=3, min_component_size=500):
-    """
-    Runs the full segmentation postprocessing pipeline.
-
-    The steps are: binary mask standardization, one-pixel Hough gap filling,
-    morphological closing, and small-component cleanup.
-    """
-
-    arr = to_numpy_2d(prediction)
-    mask = standardize_binary_mask(arr, foreground_value=foreground_value)
-    mask = hough_gap_fill(
-        mask,
-        thickness=1,
-        hough_threshold=hough_threshold,
-        min_line_length=min_line_length,
-        max_line_gap=max_line_gap,
-    )
-    mask = morphological_close(mask, kernel_size=morph_kernel_size)
-    mask = remove_small_components(mask, min_size=min_component_size)
-
-    if foreground_value != 255:
-        mask = ((mask > 0).astype(np.uint8) * foreground_value).astype(np.uint8)
-
-    return mask
+    return standardize_binary_mask(output, foreground_value=foreground_value)

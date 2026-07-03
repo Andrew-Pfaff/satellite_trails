@@ -8,7 +8,8 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 
-from satellite_trail_segmentation.postprocess.hough import postprocess_segmentation, to_numpy_2d
+from satellite_trail_segmentation.postprocess.hough import to_numpy_2d
+from satellite_trail_segmentation.postprocess.pipeline import postprocess_segmentation
 from satellite_trail_segmentation.classifier_model.classifier import TrailClassifier
 from satellite_trail_segmentation.unet_model.unet import UNet
 from satellite_trail_segmentation.ml_utils.checkpoints import load_checkpoint
@@ -204,18 +205,36 @@ class SatelliteTrailPipeline:
         return pred_data, times
 
 
-    def postprocessing(self, pred_mask):
+    def postprocessing(self, pred_mask, **postprocess_kwargs):
+        """
+        Applies postprocessing to a binary segmentation mask.
+
+        Args:
+            pred_mask (np.ndarray or torch.Tensor): Binary segmentation prediction mask.
+            **postprocess_kwargs: Keyword arguments passed to postprocess_segmentation.
+
+        Returns:
+            tuple: Postprocessed mask, timing dictionary, and contour details. Contour
+            details are None unless contour_details=True is passed.
+        """
+
         times = {}
         start_time = time()
 
         hough_start = time()
-        postprocessed_image = postprocess_segmentation(pred_mask)
+        postprocess_result = postprocess_segmentation(pred_mask, **postprocess_kwargs)
         hough_time = time() - hough_start
+        contour_details = None
+
+        if isinstance(postprocess_result, tuple):
+            postprocessed_image, contour_details = postprocess_result
+        else:
+            postprocessed_image = postprocess_result
 
         times["postprocessing_time"] = time()-start_time
         times["hough_transform"] = hough_time
-        
-        return postprocessed_image, times
+
+        return postprocessed_image, times, contour_details
 
 
     def evaluate_masks(self, pred_mask, postprocessed_mask, real_mask):
@@ -261,9 +280,10 @@ class SatelliteTrailPipeline:
     #     pass
 
 
-def main(unet_model,source_path, mask_path=None, classifier_model=None, timing=True, use_classifier=True, normalization="source_zscore"):
+def main(unet_model, source_path, mask_path=None, classifier_model=None, timing=True, use_classifier=True, normalization="source_zscore", postprocess_config=None):
     times = {}
     pipeline = SatelliteTrailPipeline(unet_model, classifier_model=classifier_model, timing=timing)
+    postprocess_config = {} if postprocess_config is None else postprocess_config
     
     preprocessing_data = pipeline.preprocessing(source_path, mask_path, normalization=normalization)
     times["preprocessing"] = preprocessing_data["time"]
@@ -272,15 +292,23 @@ def main(unet_model,source_path, mask_path=None, classifier_model=None, timing=T
     unet_pred_image = pred_data["segmented_result"]
     times["segmentation"] = segmentation_times
 
-    postprocessed_image, postprocess_time = pipeline.postprocessing(unet_pred_image)
+    postprocessed_image, postprocess_time, contour_details = pipeline.postprocessing(
+        unet_pred_image,
+        **postprocess_config,
+    )
     times["postprocessing"] = postprocess_time
 
     # pipeline.export_outputs(preprocessing_data["image"], pred_data, postprocessed_image show_classifier=use_classifier)
 
     if mask_path is not None:
         plot_segmentation_postprocess_comparison(preprocessing_data["image"], unet_pred_image, postprocessed_image, preprocessing_data["mask"], save_path='postprocess.png')
-        return times, pipeline.evaluate_masks(unet_pred_image, postprocessed_image, preprocessing_data["mask"])
+        results = pipeline.evaluate_masks(unet_pred_image, postprocessed_image, preprocessing_data["mask"])
+        if contour_details is not None:
+            results["contour_details"] = contour_details
+        return times, results
 
+    if contour_details is not None:
+        return times, contour_details
     return times
 
 if __name__ == "__main__":
