@@ -173,3 +173,44 @@ def test_invalid_options_raise_value_error():
         postprocess_segmentation(np.zeros((10, 10), dtype=np.uint8), width_mode="wide")
     with pytest.raises(ValueError, match="none"):
         postprocess_segmentation(np.zeros((10, 10), dtype=np.uint8), line_mode="centerline", width_mode="none")
+
+
+def test_default_return_is_mask_only(monkeypatch):
+    mask = gapped_stripe_mask()
+
+    def fake_lines(*args, **kwargs):
+        return None
+
+    monkeypatch.setattr(cv2, "HoughLinesP", fake_lines)
+
+    result = postprocess_segmentation(mask, morph_kernel_size=1, min_component_size=1)
+
+    assert isinstance(result, np.ndarray)
+    assert result.dtype == np.uint8
+    assert result.shape == mask.shape
+    assert sorted(np.unique(result).tolist()) == [0, 255]
+
+
+def test_contour_details_return_tuple_from_final_mask(monkeypatch):
+    mask = np.zeros((40, 50), dtype=np.uint8)
+    mask[18:23, 5:35] = 255
+    mask[2:4, 2:4] = 255
+
+    def fake_lines(*args, **kwargs):
+        return None
+
+    monkeypatch.setattr(cv2, "HoughLinesP", fake_lines)
+
+    result, details = postprocess_segmentation(
+        mask,
+        morph_kernel_size=1,
+        min_component_size=10,
+        contour_details=True,
+        contour_min_area=10,
+    )
+
+    assert result.dtype == np.uint8
+    assert result.shape == mask.shape
+    assert sorted(np.unique(result).tolist()) == [0, 255]
+    assert details["contour_count"] == 1
+    assert details["contours"][0]["bbox_x"] == 5

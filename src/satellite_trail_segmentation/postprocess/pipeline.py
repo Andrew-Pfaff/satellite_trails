@@ -3,7 +3,7 @@ from satellite_trail_segmentation.postprocess.postprocess_utils import (
     remove_small_components,
     standardize_binary_mask,
 )
-from satellite_trail_segmentation.postprocess.contour import contour_widths
+from satellite_trail_segmentation.postprocess.contour import contour_widths, extract_contour_details
 from satellite_trail_segmentation.postprocess.gap_fill import fill_gaps_along_lines, widths_for_centerlines
 from satellite_trail_segmentation.postprocess.hough import cluster_hough_lines, detect_hough_lines, draw_centerlines, draw_hough_lines, line_records, representative_centerline
 
@@ -30,6 +30,8 @@ def postprocess_segmentation(
     fallback_width=1,
     morph_kernel_size=3,
     min_component_size=100,
+    contour_details=False,
+    contour_min_area=10,
 ):
     """
     Postprocesses a binary segmentation mask using a selected Hough drawing strategy.
@@ -51,9 +53,11 @@ def postprocess_segmentation(
         fallback_width (float): Width used when estimation fails. Defaults to 1.
         morph_kernel_size (int): Morphological closing kernel size. Defaults to 3.
         min_component_size (int): Minimum connected component size to keep. Defaults to 100.
+        contour_details (bool): Whether to return final-mask contour details. Defaults to False.
+        contour_min_area (float): Minimum contour area included in contour details. Defaults to 10.
 
     Returns:
-        output (np.ndarray): uint8 postprocessed binary mask.
+        output (np.ndarray or tuple): uint8 postprocessed binary mask, or ``(mask, contour_details)`` when contour_details is True.
     """
 
     if line_mode not in LINE_MODES:
@@ -123,4 +127,7 @@ def postprocess_segmentation(
         min_component_size=min_component_size,
         foreground_value=foreground_value,
     )
-    return standardize_binary_mask(output, foreground_value=foreground_value)
+    output = standardize_binary_mask(output, foreground_value=foreground_value)
+    if contour_details:
+        return output, extract_contour_details(output, min_area=contour_min_area)
+    return output

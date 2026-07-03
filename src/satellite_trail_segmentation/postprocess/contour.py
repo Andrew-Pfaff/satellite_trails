@@ -74,3 +74,76 @@ def contour_width_for_line(line, contour_records, fallback_width=1, max_distance
     if best_record is None or best_distance > max_distance:
         return float(fallback_width)
     return float(best_record["width"])
+
+
+def extract_contour_details(mask, min_area=10):
+    """
+    Extracts image-plane contour details from a binary mask.
+
+    Args:
+        mask (np.ndarray or torch.Tensor): Binary-like mask.
+        min_area (float): Minimum contour area to include. Defaults to 10.
+
+    Returns:
+        details (dict): Dictionary containing contour records and contour count.
+    """
+
+    binary = standardize_binary_mask(mask)
+    contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    records = []
+
+    for contour in contours:
+        area = float(cv2.contourArea(contour))
+        if area < min_area:
+            continue
+
+        moments = cv2.moments(contour)
+        if moments["m00"] == 0:
+            rect_center = cv2.minAreaRect(contour)[0]
+            centroid_x = float(rect_center[0])
+            centroid_y = float(rect_center[1])
+        else:
+            centroid_x = float(moments["m10"] / moments["m00"])
+            centroid_y = float(moments["m01"] / moments["m00"])
+
+        bbox_x, bbox_y, bbox_width, bbox_height = cv2.boundingRect(contour)
+        rect = cv2.minAreaRect(contour)
+        box = cv2.boxPoints(rect)
+        side_lengths = [
+            float(np.hypot(*(box[(index + 1) % 4] - box[index])))
+            for index in range(4)
+        ]
+        long_index = int(np.argmax(side_lengths))
+        short_index = (long_index + 1) % 4
+        length = side_lengths[long_index]
+        width = side_lengths[short_index]
+        point_a = box[long_index]
+        point_b = box[(long_index + 1) % 4]
+        angle = float(np.degrees(np.arctan2(point_b[1] - point_a[1], point_b[0] - point_a[0])))
+
+        if angle < -90:
+            angle += 180
+        elif angle > 90:
+            angle -= 180
+
+        records.append(
+            {
+                "trail_id": len(records) + 1,
+                "area_px": area,
+                "centroid_x": centroid_x,
+                "centroid_y": centroid_y,
+                "bbox_x": int(bbox_x),
+                "bbox_y": int(bbox_y),
+                "bbox_width": int(bbox_width),
+                "bbox_height": int(bbox_height),
+                "length_px": float(length),
+                "width_px": float(width),
+                "angle_degrees": angle,
+                "endpoint_x1": float(point_a[0]),
+                "endpoint_y1": float(point_a[1]),
+                "endpoint_x2": float(point_b[0]),
+                "endpoint_y2": float(point_b[1]),
+            }
+        )
+
+    return {"contours": records, "contour_count": len(records)}
