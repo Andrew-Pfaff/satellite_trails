@@ -100,7 +100,7 @@ def recreate_full_field(model, h5_path, split_type, source_index, batch_size=32,
     return full_image, full_pred, full_mask, full_overlay
 
 
-def evaluate_dataset_classifier(model, h5_path, split_type, pred_thresholds=None, batch_size=4, normalization="source_zscore"):
+def evaluate_dataset_classifier(model, h5_path, split_type, pred_thresholds=None, batch_size=4, normalization="source_zscore", num_workers=0):
     if pred_thresholds is None:
         pred_thresholds = [0.5]
     
@@ -108,7 +108,7 @@ def evaluate_dataset_classifier(model, h5_path, split_type, pred_thresholds=None
     model = model.to(device)
 
     dataset = H5PatchDataset(h5_path, split=split_type, return_metadata=True, return_masks=False, normalization=normalization)
-    loader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
+    loader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers, pin_memory=torch.cuda.is_available())
 
     threshold_counts = {t: init_conf_counts() for t in pred_thresholds}
     image_wise_counts = {t: {} for t in pred_thresholds}

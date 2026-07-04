@@ -87,6 +87,7 @@ def parse_args():
     parser.add_argument("--h5-path", type=str, default="/home/anp50/rds/hpc-work/satellite_trails/data/h5s/dataset.h5")
     parser.add_argument("--split", type=str, default="val", choices=["train", "val", "test"])
     parser.add_argument("--batch-size", type=int, default=None)
+    parser.add_argument("--num-workers", type=int, default=2)
     parser.add_argument("--normalization", type=str, default="source_zscore", choices=["source_zscore", "patch_zscore", "uint8"])
     parser.add_argument("--threshold-min", type=float, default=0.05)
     parser.add_argument("--threshold-max", type=float, default=0.95)
@@ -125,7 +126,8 @@ if __name__ == "__main__":
     if args.model_type in SEGMENTATION_MODELS:
         batch_size = args.batch_size or 64
         metrics_by_threshold, fpr, tpr, roc_thresholds, optimal_threshold, roc_auc = evaluate_dataset_unet(
-            model, args.h5_path, args.split, thresholds, batch_size, normalization=args.normalization
+            model, args.h5_path, args.split, thresholds, batch_size,
+            normalization=args.normalization, num_workers=args.num_workers
         )
         best_threshold, best_metrics = best_threshold_by_metric(metrics_by_threshold, "iou")
         ranking_score = best_metrics["iou"]
@@ -141,6 +143,7 @@ if __name__ == "__main__":
             plot_threshold_metrics(metrics_by_threshold, save_path=args.threshold_metrics_save_path)
 
         threshold_common = {**common_summary, "batch_size": batch_size,
+                            "num_workers": args.num_workers,
                             "roc_auc": roc_auc,
                             "roc_optimal_threshold": optimal_threshold,
                             "ranking_metric": "iou"}
@@ -150,12 +153,14 @@ if __name__ == "__main__":
                                     metrics_by_threshold, threshold_extras)
 
         summary = {**common_summary, "batch_size": batch_size,
+                   "num_workers": args.num_workers,
                    "best_threshold": best_threshold, "ranking_metric": "iou", "ranking_score": ranking_score,
                    "roc_auc": roc_auc, "roc_optimal_threshold": optimal_threshold, **best_metrics}
     else:
         batch_size = args.batch_size or 128
         metrics_by_threshold, image_wise_counts = evaluate_dataset_classifier(
-            model, args.h5_path, args.split, thresholds, batch_size, normalization=args.normalization
+            model, args.h5_path, args.split, thresholds, batch_size,
+            normalization=args.normalization, num_workers=args.num_workers
         )
         best_threshold, best_metrics = best_threshold_by_penalized_specificity(metrics_by_threshold, args.min_recall, args.recall_penalty)
         ranking_score = specificity_with_recall_penalty(best_metrics, args.min_recall, args.recall_penalty)
@@ -171,6 +176,7 @@ if __name__ == "__main__":
             plot_threshold_metrics(metrics_by_threshold, save_path=args.threshold_metrics_save_path)
 
         threshold_common = {**common_summary, "batch_size": batch_size,
+                            "num_workers": args.num_workers,
                             "ranking_metric": "penalized_specificity",
                             "min_recall": args.min_recall,
                             "recall_penalty": args.recall_penalty}
@@ -182,6 +188,7 @@ if __name__ == "__main__":
                                     metrics_by_threshold, threshold_extras)
 
         summary = {**common_summary, "batch_size": batch_size,
+                   "num_workers": args.num_workers,
                    "best_threshold": best_threshold, "ranking_metric": "penalized_specificity",
                    "ranking_score": ranking_score, "min_recall": args.min_recall,
                    "recall_penalty": args.recall_penalty, **best_metrics}
