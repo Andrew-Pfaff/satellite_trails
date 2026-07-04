@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+from sklearn.cluster import DBSCAN
 
 from satellite_trail_segmentation.postprocess.postprocess_utils import standardize_binary_mask
 
@@ -74,6 +75,67 @@ def contour_width_for_line(line, contour_records, fallback_width=1, max_distance
     if best_record is None or best_distance > max_distance:
         return float(fallback_width)
     return float(best_record["width"])
+
+
+def contour_filtering(mask, area_threshold=3000, foreground_value=255):
+    """
+    Applies contour filtering to a binary mask.
+
+    Args:
+        mask (np.ndarray or torch.Tensor): Binary-like mask after Hough filling and cleanup.
+        area_threshold (float): Minimum contour area to keep. Defaults to 3000.
+        foreground_value (int): Foreground value for returned mask. Defaults to 255.
+
+    Returns:
+        output (np.ndarray): uint8 binary mask after contour filtering.
+    """
+
+    output = standardize_binary_mask(mask, foreground_value=foreground_value)
+    contours, _ = cv2.findContours(output, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    for contour in contours:
+        contour_area = cv2.contourArea(contour)
+        if contour_area < area_threshold:
+            cv2.drawContours(output, [contour], -1, 0, thickness=cv2.FILLED)
+            continue
+
+        contour_mask = np.zeros_like(output, dtype=np.uint8)
+        cv2.drawContours(contour_mask, [contour], -1, 1, thickness=cv2.FILLED)
+        lines = cv2.HoughLinesP(contour_mask, 1, np.pi / 180, threshold=50, minLineLength=100, maxLineGap=10)
+
+        if lines is None:
+            continue
+
+        lines = lines[:, 0, :]
+        angles = np.array([_line_angle(line) for line in lines])
+        clustering = DBSCAN(eps=5, min_samples=1).fit(angles.reshape(-1, 1))
+        unique_labels = set(clustering.labels_)
+
+        if len(unique_labels) >= 5:
+            cv2.drawContours(output, [contour], -1, 0, thickness=cv2.FILLED)
+            continue
+
+        for label in unique_labels:
+            if label == -1:
+                continue
+
+            cluster_lines = lines[clustering.labels_ == label]
+            cluster_mask = np.zeros_like(contour_mask, dtype=np.uint8)
+            for x1, y1, x2, y2 in cluster_lines:
+                cv2.line(cluster_mask, (x1, y1), (x2, y2), 1, thickness=1)
+
+            cluster_contours, _ = cv2.findContours(cluster_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            for cluster_contour in cluster_contours:
+                if cv2.contourArea(cluster_contour) < area_threshold:
+                    cv2.drawContours(output, [cluster_contour], -1, 0, thickness=cv2.FILLED)
+
+    return standardize_binary_mask(output, foreground_value=foreground_value)
+
+
+def _line_angle(line):
+    x1, y1, x2, y2 = line
+    angle = np.arctan2(y2 - y1, x2 - x1) * 180 / np.pi
+    return angle if angle >= 0 else angle + 360
 
 
 def extract_contour_details(mask, min_area=10):

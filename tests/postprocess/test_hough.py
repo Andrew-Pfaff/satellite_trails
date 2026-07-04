@@ -73,6 +73,7 @@ def test_asta_draws_every_hough_line_with_thickness_one(monkeypatch):
         max_line_gap=20,
         morph_kernel_size=1,
         min_component_size=1,
+        contour_filter=False,
     )
 
     assert [line[2] for line in drawn] == [1, 1]

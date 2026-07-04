@@ -3,7 +3,7 @@ from satellite_trail_segmentation.postprocess.postprocess_utils import (
     remove_small_components,
     standardize_binary_mask,
 )
-from satellite_trail_segmentation.postprocess.contour import contour_widths, extract_contour_details
+from satellite_trail_segmentation.postprocess.contour import contour_filtering, contour_widths, extract_contour_details
 from satellite_trail_segmentation.postprocess.gap_fill import fill_gaps_along_lines, widths_for_centerlines
 from satellite_trail_segmentation.postprocess.hough import cluster_hough_lines, detect_hough_lines, draw_centerlines, draw_hough_lines, line_records, representative_centerline
 
@@ -29,7 +29,9 @@ def postprocess_segmentation(
     min_fill_gap=10,
     fallback_width=1,
     morph_kernel_size=3,
-    min_component_size=100,
+    min_component_size=500,
+    contour_filter=True,
+    contour_area_threshold=3000,
     contour_details=False,
     contour_min_area=10,
 ):
@@ -52,7 +54,9 @@ def postprocess_segmentation(
         min_fill_gap (int): Minimum gap length to fill for ASTA width modes. Defaults to 10.
         fallback_width (float): Width used when estimation fails. Defaults to 1.
         morph_kernel_size (int): Morphological closing kernel size. Defaults to 3.
-        min_component_size (int): Minimum connected component size to keep. Defaults to 100.
+        min_component_size (int): Minimum connected component size to keep. Defaults to 500.
+        contour_filter (bool): Whether to apply ASTA-style contour filtering. Defaults to True.
+        contour_area_threshold (float): Minimum contour area kept by contour filtering. Defaults to 3000.
         contour_details (bool): Whether to return final-mask contour details. Defaults to False.
         contour_min_area (float): Minimum contour area included in contour details. Defaults to 10.
 
@@ -127,6 +131,8 @@ def postprocess_segmentation(
         min_component_size=min_component_size,
         foreground_value=foreground_value,
     )
+    if contour_filter:
+        output = contour_filtering(output, area_threshold=contour_area_threshold, foreground_value=foreground_value)
     output = standardize_binary_mask(output, foreground_value=foreground_value)
     if contour_details:
         return output, extract_contour_details(output, min_area=contour_min_area)

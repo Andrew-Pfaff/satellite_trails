@@ -469,7 +469,9 @@ def parse_args():
     parser.add_argument("--min-fill-gap", type=int, default=10, help="Minimum gap length to fill, if the gap is smaller, it will not be filled.")
     parser.add_argument("--fallback-width", type=float, default=1, help="Fallback width when width estimation fails.")
     parser.add_argument("--morph-kernel-size", type=int, default=3, help="Morphological closing kernel size.")
-    parser.add_argument("--min-component-size", type=int, default=100, help="Minimum connected component size to keep.")
+    parser.add_argument("--min-component-size", type=int, default=500, help="Minimum connected component size to keep.")
+    parser.add_argument("--no-contour-filter", dest="contour_filter", action="store_false", default=True, help="Disable ASTA-style final contour filtering.")
+    parser.add_argument("--contour-area-threshold", type=float, default=3000, help="Minimum contour area kept by ASTA-style final contour filtering.")
     parser.add_argument("--contour-details", action="store_true", help="Return PNG-plane contour details.")
     parser.add_argument("--contour-min-area", type=float, default=10, help="Minimum contour area included in contour details.")
 
@@ -512,6 +514,8 @@ def cli():
         "fallback_width": args.fallback_width,
         "morph_kernel_size": args.morph_kernel_size,
         "min_component_size": args.min_component_size,
+        "contour_filter": args.contour_filter,
+        "contour_area_threshold": args.contour_area_threshold,
         "contour_details": args.contour_details,
         "contour_min_area": args.contour_min_area,
     }

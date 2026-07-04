@@ -40,6 +40,7 @@ def test_public_modes_do_not_mutate_input(monkeypatch, line_mode, width_mode):
         max_line_gap=20,
         morph_kernel_size=1,
         min_component_size=1,
+        contour_filter=False,
         width_samples=5,
         max_width_search=10,
     )
@@ -80,6 +81,7 @@ def test_sampled_gap_fills_only_synthetic_gap(monkeypatch):
         max_line_gap=20,
         morph_kernel_size=1,
         min_component_size=1,
+        contour_filter=False,
         width_samples=9,
         max_width_search=10,
     )
@@ -117,6 +119,7 @@ def test_sampled_gap_respects_min_fill_gap(monkeypatch):
         min_fill_gap=11,
         morph_kernel_size=1,
         min_component_size=1,
+        contour_filter=False,
         width_samples=9,
         max_width_search=10,
     )
@@ -157,6 +160,7 @@ def test_centerline_sampled_width_draws_one_line_per_cluster(monkeypatch):
         max_line_gap=20,
         morph_kernel_size=1,
         min_component_size=1,
+        contour_filter=False,
         width_samples=5,
         max_width_search=10,
     )
@@ -183,12 +187,28 @@ def test_default_return_is_mask_only(monkeypatch):
 
     monkeypatch.setattr(cv2, "HoughLinesP", fake_lines)
 
-    result = postprocess_segmentation(mask, morph_kernel_size=1, min_component_size=1)
+    result = postprocess_segmentation(mask, morph_kernel_size=1, min_component_size=1, contour_filter=False)
 
     assert isinstance(result, np.ndarray)
     assert result.dtype == np.uint8
     assert result.shape == mask.shape
     assert sorted(np.unique(result).tolist()) == [0, 255]
+
+
+def test_default_pipeline_uses_paper_style_filtering(monkeypatch):
+    mask = np.zeros((140, 160), dtype=np.uint8)
+    mask[5:15, 5:15] = 255
+    mask[40:110, 40:120] = 255
+
+    def fake_lines(*args, **kwargs):
+        return None
+
+    monkeypatch.setattr(cv2, "HoughLinesP", fake_lines)
+
+    result = postprocess_segmentation(mask, morph_kernel_size=1)
+
+    assert result[10, 10] == 0
+    assert result[70, 70] == 255
 
 
 def test_contour_details_return_tuple_from_final_mask(monkeypatch):
@@ -205,6 +225,7 @@ def test_contour_details_return_tuple_from_final_mask(monkeypatch):
         mask,
         morph_kernel_size=1,
         min_component_size=10,
+        contour_filter=False,
         contour_details=True,
         contour_min_area=10,
     )

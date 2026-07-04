@@ -1,7 +1,12 @@
 import numpy as np
 import pytest
 
-from satellite_trail_segmentation.postprocess.contour import contour_width_for_line, contour_widths, extract_contour_details
+from satellite_trail_segmentation.postprocess.contour import (
+    contour_width_for_line,
+    contour_widths,
+    extract_contour_details,
+    contour_filtering,
+)
 
 
 def test_contour_widths_measure_external_components():
@@ -71,3 +76,14 @@ def test_extract_contour_details_handles_empty_mask():
     details = extract_contour_details(np.zeros((20, 20), dtype=np.uint8), min_area=10)
 
     assert details == {"contours": [], "contour_count": 0}
+
+
+def test_contour_filter_removes_small_contours():
+    mask = np.zeros((100, 120), dtype=np.uint8)
+    mask[5:10, 5:10] = 255
+    mask[30:80, 30:95] = 255
+
+    result = contour_filtering(mask, area_threshold=1000)
+
+    assert result[7, 7] == 0
+    assert result[50, 50] == 255
