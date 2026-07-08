@@ -1,3 +1,5 @@
+"""Run Optuna hyperparameter tuning for the patch classifier."""
+
 import argparse
 import csv
 import gc
@@ -29,11 +31,31 @@ RECALL_PENALTY = 3.0
 
 
 def create_objective(data_path, epochs, warmup_epochs, batch_size, num_workers, seed, steps_per_epoch, early_stopping_patience, trial_results_path):
+    """
+    Creates an Optuna objective for classifier tuning.
+
+    Args:
+        data_path (str): HDF5 dataset path.
+        epochs (int): Maximum training epochs per trial.
+        warmup_epochs (int): Learning-rate warmup epochs.
+        batch_size (int): Training batch size.
+        num_workers (int): DataLoader worker count.
+        seed (int): Base random seed.
+        steps_per_epoch (int): Fixed sampler steps per epoch.
+        early_stopping_patience (int): Early-stopping patience.
+        trial_results_path (str): CSV path for appending trial summaries.
+
+    Returns:
+        callable: Optuna objective function.
+    """
+
     train_ds = H5PatchDataset(data_path, split="train", return_metadata=True, return_masks=False, augment=True,
                               p_shift=P_SHIFT, min_shift=MIN_SHIFT, max_shift=MAX_SHIFT, normalization=NORMALIZATION)
     val_ds = H5PatchDataset(data_path, split="val", return_metadata=True, return_masks=False, normalization=NORMALIZATION)
 
     def objective(trial):
+        """Runs one Optuna trial and returns the best penalized specificity."""
+
         trial_seed = seed + trial.number
         set_seed(trial_seed)
 
