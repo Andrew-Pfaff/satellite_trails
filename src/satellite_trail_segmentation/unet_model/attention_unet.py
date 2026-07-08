@@ -13,6 +13,16 @@ class AttentionGate(nn.Module):
     """
 
     def __init__(self, skip_channels, gating_channels, intermediate_channels=None):
+        """
+        Initializes projection layers for one additive attention gate.
+
+        Args:
+            skip_channels (int): Number of channels in the encoder skip tensor.
+            gating_channels (int): Number of channels in the decoder gating tensor.
+            intermediate_channels (int, optional): Shared projection channel count.
+                Defaults to half of skip_channels, with a minimum of 1.
+        """
+
         super().__init__()
 
         if intermediate_channels is None:
@@ -31,6 +41,17 @@ class AttentionGate(nn.Module):
         )
 
     def attention_coefficients(self, skip, gating):
+        """
+        Computes multiplicative attention coefficients for a skip tensor.
+
+        Args:
+            skip (torch.Tensor): Encoder skip tensor.
+            gating (torch.Tensor): Decoder gating tensor with matching spatial shape.
+
+        Returns:
+            torch.Tensor: Single-channel coefficient map in the range [0, 1].
+        """
+
         if skip.shape[2:] != gating.shape[2:]:
             raise ValueError(
                 "Skip and gating tensors must have matching spatial dimensions, "
@@ -40,6 +61,17 @@ class AttentionGate(nn.Module):
         return self.attention(self.skip_projection(skip) + self.gating_projection(gating))
 
     def forward(self, skip, gating):
+        """
+        Applies attention coefficients to a skip tensor.
+
+        Args:
+            skip (torch.Tensor): Encoder skip tensor.
+            gating (torch.Tensor): Decoder gating tensor.
+
+        Returns:
+            torch.Tensor: Attention-filtered skip tensor.
+        """
+
         coefficients = self.attention_coefficients(skip, gating)
         return skip * coefficients
 
@@ -54,6 +86,18 @@ class AttentionUNet(nn.Module):
     """
 
     def __init__(self, in_channels=1, out_channels=1, kernel_size=3, base_channels=8, dropout=0.0, use_batchnorm=True):
+        """
+        Initializes an Attention U-Net segmentation model.
+
+        Args:
+            in_channels (int): Number of input image channels. Defaults to 1.
+            out_channels (int): Number of output channels. Defaults to 1.
+            kernel_size (int): Convolution kernel size. Defaults to 3.
+            base_channels (int): Channel count in the first encoder block. Defaults to 8.
+            dropout (float): Spatial dropout probability. Defaults to 0.0.
+            use_batchnorm (bool): Whether to use batch normalization. Defaults to True.
+        """
+
         super().__init__()
 
         self.in_channels = in_channels
@@ -105,12 +149,30 @@ class AttentionUNet(nn.Module):
                 init.constant_(module.bias, 0)
 
     def _dropout_layer(self):
+        """
+        Builds the dropout layer used inside each convolution block.
+
+        Returns:
+            nn.Module: Dropout2d when dropout > 0, otherwise Identity.
+        """
+
         if self.dropout == 0:
             return nn.Identity()
 
         return nn.Dropout2d(p=self.dropout)
 
     def _conv_block(self, conv_input_channels, conv_output_channels):
+        """
+        Builds a two-layer convolution block for the encoder or decoder.
+
+        Args:
+            conv_input_channels (int): Number of channels entering the block.
+            conv_output_channels (int): Number of channels produced by the block.
+
+        Returns:
+            nn.Sequential: Convolution block with normalization, activation, and optional dropout.
+        """
+
         layers = [
             nn.Conv2d(conv_input_channels, conv_output_channels, self.kernel_size, stride=1, padding=1, dilation=1),
         ]
@@ -135,6 +197,16 @@ class AttentionUNet(nn.Module):
         return nn.Sequential(*layers)
 
     def forward(self, image):
+        """
+        Passes a batch of images through the Attention U-Net.
+
+        Args:
+            image (torch.Tensor): Tensor with shape (batch_size, in_channels, height, width).
+
+        Returns:
+            torch.Tensor: Raw logits with shape (batch_size, out_channels, height, width).
+        """
+
         if image.ndim != 4:
             raise ValueError(f"Expected a 4D input tensor, got shape {tuple(image.shape)}")
         if (image.shape[2] % 16) != 0 or (image.shape[3] % 16) != 0:

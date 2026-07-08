@@ -35,12 +35,14 @@ def train_unet(model, train_ds, val_ds, optimizer, scheduler,
         scheduler (torch.optim.lr_scheduler.LRScheduler): The learning rate schedule object stepped once per epoch.
         epochs (int): The total number of full training cycles to execute.
         batch_size (int): Number of training/validation samples to pass through the network per iteration.
-        pos_weight(float): Positive class weighting factor in BCE loss.
+        pos_weight (float): Positive class weighting factor in BCE loss.
         bce_weight_factor (float): Weight of the BCE loss. Dice receives ``1 - bce_weight_factor``.
-        iou_thresholds (list): List of thresholds at which metrics are calculated during training.
+        label_smoothing (float): Amount of binary-label smoothing used during training.
+        iou_thresholds (list, optional): Thresholds at which validation metrics are calculated.
         sampler (torch.utils.data.Sampler, optional): Sampler strategy to set balance of positive and negative data samples. Defaults to None.
         num_workers (int, optional): Number of asynchronous subprocesses to allocate for data loading. Defaults to 0.
-        save_path (str, optional): File path for saving the model. Defaults to None.
+        full_save_path (str, optional): File path for saving a resumable checkpoint. Defaults to None.
+        weight_save_path (str, optional): File path for saving a weights-only checkpoint. Defaults to None.
         trial (optuna.trial.Trial, optional): An active Optuna study trial hyperparameter hook used for validating metrics reporting and active epoch pruning. Defaults to None.
         seed (int): Random seed.
         grad_clip_max_norm (float, optional): Maximum gradient norm. Set to None or <=0 to disable clipping. Defaults to 1.0.

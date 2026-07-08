@@ -81,6 +81,24 @@ def recreate_full_field_pred(model, h5_path, split_type, source_index, batch_siz
 
 
 def evaluate_dataset_unet(model, h5_path, split_type, pred_thresholds=None, batch_size=1, normalization="source_zscore", num_workers=4):
+    """
+    Evaluates a segmentation model over one HDF5 split and threshold sweep.
+
+    Args:
+        model (torch.nn.Module): Trained segmentation model.
+        h5_path (str): Path to the HDF5 patch dataset.
+        split_type (str): Split to evaluate: "train", "val", or "test".
+        pred_thresholds (list, optional): Probability thresholds for binary metrics.
+            Defaults to [0.5].
+        batch_size (int): Number of patches per inference batch. Defaults to 1.
+        normalization (str): Dataset normalization mode. Defaults to "source_zscore".
+        num_workers (int): DataLoader worker count. Defaults to 4.
+
+    Returns:
+        tuple: Threshold metrics, false-positive rates, true-positive rates, ROC
+        thresholds, Youden-selected threshold, and ROC AUC.
+    """
+
     if pred_thresholds is None:
         pred_thresholds = [0.5]
     

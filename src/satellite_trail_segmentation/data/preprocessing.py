@@ -370,6 +370,8 @@ def create_h5(input_files, mask_files, split_mask, output_path, patch_dim=528, o
 
 
 def parse_args(): # pragma: no cover.
+    """Parses command-line arguments for creating an HDF5 patch dataset."""
+
     parser = argparse.ArgumentParser(description="Train satellite trail segmentation model")
     
     parser.add_argument("--data-path", type=str, required=True)
