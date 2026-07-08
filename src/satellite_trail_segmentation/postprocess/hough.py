@@ -94,7 +94,7 @@ def line_records(lines):
     return records
 
 
-def cluster_hough_lines(records, angle_degrees=3, distance=8):
+def cluster_hough_lines(records, angle_degrees=3, distance=8, max_along_gap=250):
     """
     Groups Hough line records that likely describe the same physical trail.
 
@@ -102,6 +102,9 @@ def cluster_hough_lines(records, angle_degrees=3, distance=8):
         records (list): Line records from line_records.
         angle_degrees (float): Maximum orientation difference in degrees. Defaults to 3.
         distance (float): Maximum perpendicular offset difference in pixels. Defaults to 8.
+        max_along_gap (float or None): Maximum gap between projected line
+            intervals along the trail direction. Use None to disable this
+            check. Defaults to 250.
 
     Returns:
         clusters (list): List of record lists.
@@ -137,7 +140,36 @@ def cluster_hough_lines(records, angle_degrees=3, distance=8):
                 distance_a = abs(float(np.dot(midpoint_delta, current["normal"])))
                 distance_b = abs(float(np.dot(-midpoint_delta, candidate["normal"])))
 
-                if angle_diff <= angle_threshold and min(distance_a, distance_b) <= distance:
+                along_gap = 0.0
+                if max_along_gap is not None:
+                    current_line = current["line"].reshape(2, 2)
+                    candidate_line = candidate["line"].reshape(2, 2)
+                    current_projection = [float(np.dot(point, current["direction"])) for point in current_line]
+                    candidate_projection = [float(np.dot(point, current["direction"])) for point in candidate_line]
+                    current_start, current_end = min(current_projection), max(current_projection)
+                    candidate_start, candidate_end = min(candidate_projection), max(candidate_projection)
+                    gap_a = (
+                        0.0
+                        if current_start <= candidate_end and candidate_start <= current_end
+                        else float(max(current_start, candidate_start) - min(current_end, candidate_end))
+                    )
+
+                    current_projection = [float(np.dot(point, candidate["direction"])) for point in current_line]
+                    candidate_projection = [float(np.dot(point, candidate["direction"])) for point in candidate_line]
+                    current_start, current_end = min(current_projection), max(current_projection)
+                    candidate_start, candidate_end = min(candidate_projection), max(candidate_projection)
+                    gap_b = (
+                        0.0
+                        if current_start <= candidate_end and candidate_start <= current_end
+                        else float(max(current_start, candidate_start) - min(current_end, candidate_end))
+                    )
+                    along_gap = min(gap_a, gap_b)
+
+                if (
+                    angle_diff <= angle_threshold
+                    and min(distance_a, distance_b) <= distance
+                    and (max_along_gap is None or along_gap <= max_along_gap)
+                ):
                     visited.add(candidate_index)
                     queue.append(candidate_index)
 
@@ -183,6 +215,39 @@ def representative_centerline(cluster, image_shape):
     line = np.array([start[0], start[1], end[0], end[1]], dtype=float)
 
     height, width = image_shape
+    x1_float, y1_float, x2_float, y2_float = line
+    dx = x2_float - x1_float
+    dy = y2_float - y1_float
+    u_min = 0.0
+    u_max = 1.0
+    for p, q in (
+        (-dx, x1_float),
+        (dx, (width - 1) - x1_float),
+        (-dy, y1_float),
+        (dy, (height - 1) - y1_float),
+    ):
+        if p == 0:
+            if q < 0:
+                break
+            continue
+        ratio = q / p
+        if p < 0:
+            u_min = max(u_min, ratio)
+        else:
+            u_max = min(u_max, ratio)
+        if u_min > u_max:
+            break
+    else:
+        line = np.array(
+            [
+                x1_float + u_min * dx,
+                y1_float + u_min * dy,
+                x1_float + u_max * dx,
+                y1_float + u_max * dy,
+            ],
+            dtype=float,
+        )
+
     x1, y1, x2, y2 = np.rint(line).astype(int)
     return np.array(
         [

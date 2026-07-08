@@ -23,6 +23,7 @@ def postprocess_segmentation(
     max_line_gap=250,
     line_cluster_angle_degrees=3,
     line_cluster_distance=8,
+    line_cluster_max_along_gap=250,
     width_samples=9,
     max_width_search=25,
     max_contour_distance=20,
@@ -48,6 +49,7 @@ def postprocess_segmentation(
         max_line_gap (int): Maximum connected line gap in pixels. Defaults to 250.
         line_cluster_angle_degrees (float): Maximum cluster orientation difference. Defaults to 3.
         line_cluster_distance (float): Maximum cluster perpendicular distance in pixels. Defaults to 8.
+        line_cluster_max_along_gap (float or None): Maximum gap between Hough segments along the fitted trail direction before they are split into separate clusters. Defaults to 250.
         width_samples (int): Number of width samples for median sampled width. Defaults to 9.
         max_width_search (int): Perpendicular search radius for median sampled width. Defaults to 25.
         max_contour_distance (float): Maximum line-to-contour distance for contour width. Defaults to 20.
@@ -87,6 +89,7 @@ def postprocess_segmentation(
                 records,
                 angle_degrees=line_cluster_angle_degrees,
                 distance=line_cluster_distance,
+                max_along_gap=line_cluster_max_along_gap,
             )
             centerlines = [representative_centerline(cluster, mask.shape) for cluster in clusters]
             contour_records = contour_widths(mask) if width_mode == "contour_width" else None
@@ -110,6 +113,7 @@ def postprocess_segmentation(
             records,
             angle_degrees=line_cluster_angle_degrees,
             distance=line_cluster_distance,
+            max_along_gap=line_cluster_max_along_gap,
         )
         centerlines = [representative_centerline(cluster, mask.shape) for cluster in clusters]
         contour_records = contour_widths(mask) if width_mode == "contour_width" else None

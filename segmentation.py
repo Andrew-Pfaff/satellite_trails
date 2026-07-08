@@ -463,6 +463,7 @@ def parse_args():
     parser.add_argument("--max-line-gap", type=int, default=250, help="Maximum Hough line gap and gap-fill length.")
     parser.add_argument("--line-cluster-angle-degrees", type=float, default=3, help="Maximum cluster orientation difference in degrees.")
     parser.add_argument("--line-cluster-distance", type=float, default=8, help="Maximum line cluster perpendicular distance in pixels.")
+    parser.add_argument("--line-cluster-max-along-gap", type=float, default=250, help="Maximum along-line gap for grouping Hough segments into one centerline cluster.")
     parser.add_argument("--width-samples", type=int, default=9, help="Number of sampled width positions.")
     parser.add_argument("--max-width-search", type=int, default=25, help="Perpendicular width search radius in pixels.")
     parser.add_argument("--max-contour-distance", type=float, default=20, help="Maximum line-to-contour distance for contour width.")
@@ -507,6 +508,7 @@ def cli():
         "max_line_gap": args.max_line_gap,
         "line_cluster_angle_degrees": args.line_cluster_angle_degrees,
         "line_cluster_distance": args.line_cluster_distance,
+        "line_cluster_max_along_gap": args.line_cluster_max_along_gap,
         "width_samples": args.width_samples,
         "max_width_search": args.max_width_search,
         "max_contour_distance": args.max_contour_distance,

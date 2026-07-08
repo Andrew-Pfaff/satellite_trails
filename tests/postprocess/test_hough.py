@@ -98,6 +98,36 @@ def test_duplicate_parallel_hough_detections_cluster_into_one_trail():
     assert sorted(len(cluster) for cluster in clusters) == [1, 3]
 
 
+def test_distant_collinear_hough_detections_split_by_along_gap():
+    lines = np.array(
+        [
+            [[5, 15, 35, 15]],
+            [[90, 15, 120, 15]],
+        ],
+        dtype=np.int32,
+    )
+
+    records = line_records(lines)
+    clusters = cluster_hough_lines(records, angle_degrees=3, distance=3, max_along_gap=25)
+
+    assert sorted(len(cluster) for cluster in clusters) == [1, 1]
+
+
+def test_nearby_collinear_hough_detections_cluster_by_along_gap():
+    lines = np.array(
+        [
+            [[5, 15, 35, 15]],
+            [[50, 15, 80, 15]],
+        ],
+        dtype=np.int32,
+    )
+
+    records = line_records(lines)
+    clusters = cluster_hough_lines(records, angle_degrees=3, distance=3, max_along_gap=25)
+
+    assert [len(cluster) for cluster in clusters] == [2]
+
+
 def test_representative_centerline_is_centered_between_cluster_members():
     lines = np.array([[[5, 10, 35, 10]], [[5, 14, 35, 14]]], dtype=np.int32)
 

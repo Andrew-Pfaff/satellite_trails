@@ -170,6 +170,50 @@ def test_centerline_sampled_width_draws_one_line_per_cluster(monkeypatch):
     assert result[20, 20] == 255
 
 
+def test_centerline_splits_distant_collinear_fragments(monkeypatch):
+    mask = np.zeros((40, 130), dtype=np.uint8)
+    mask[18:23, 5:35] = 255
+    mask[18:23, 90:120] = 255
+    drawn = []
+
+    def fake_lines(*args, **kwargs):
+        return np.array(
+            [
+                [[5, 20, 34, 20]],
+                [[90, 20, 119, 20]],
+            ],
+            dtype=np.int32,
+        )
+
+    original_line = cv2.line
+
+    def capture_line(image, pt1, pt2, color, thickness=1):
+        drawn.append((pt1, pt2, thickness))
+        return original_line(image, pt1, pt2, color, thickness=thickness)
+
+    monkeypatch.setattr(cv2, "HoughLinesP", fake_lines)
+    monkeypatch.setattr(cv2, "line", capture_line)
+
+    result = postprocess_segmentation(
+        mask,
+        line_mode="centerline",
+        width_mode="median_sampled_width",
+        min_line_length=1,
+        max_line_gap=100,
+        line_cluster_max_along_gap=25,
+        morph_kernel_size=1,
+        min_component_size=1,
+        contour_filter=False,
+        width_samples=5,
+        max_width_search=10,
+    )
+
+    assert len(drawn) == 2
+    assert result[20, 20] == 255
+    assert result[20, 104] == 255
+    assert result[20, 60] == 0
+
+
 def test_invalid_options_raise_value_error():
     with pytest.raises(ValueError, match="line_mode"):
         postprocess_segmentation(np.zeros((10, 10), dtype=np.uint8), line_mode="wide")
