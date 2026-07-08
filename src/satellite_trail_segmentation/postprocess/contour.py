@@ -133,6 +133,16 @@ def contour_filtering(mask, area_threshold=3000, foreground_value=255):
 
 
 def _line_angle(line):
+    """
+    Calculates a Hough line segment angle in degrees.
+
+    Args:
+        line (array-like): Line coordinates as (x1, y1, x2, y2).
+
+    Returns:
+        float: Angle in the range [0, 360).
+    """
+
     x1, y1, x2, y2 = line
     angle = np.arctan2(y2 - y1, x2 - x1) * 180 / np.pi
     return angle if angle >= 0 else angle + 360

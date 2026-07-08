@@ -26,7 +26,7 @@ def train_classifier(model, train_ds, val_ds, optimizer, scheduler,
     Trains a classifier model for satellite trail detection over a specified number of epochs.
 
     Full training workflow: manages data loading, moves tensors to the appropriate device, executes the forward and backward passes, tracks loss profiles across training and validation splits, updates the learning rate schedule, and implements custom checkpoint saving alongside Optuna trial pruning.
-    Uses a combo loss of weighted BCE and dice score. Saves on highest penalized specificity (specificity minus a penalty value when recall threshold is not met).
+    Uses weighted BCE plus a soft false-negative penalty. Saves on highest penalized specificity, where recall below ``min_recall`` reduces specificity by ``recall_penalty`` times the recall shortfall.
 
     Args:
         model (torch.nn.Module): The classifier neural network instance to be trained.
@@ -39,12 +39,12 @@ def train_classifier(model, train_ds, val_ds, optimizer, scheduler,
         pos_weight (float): Positive class weighting factor passed to the classifier loss.
         fn_penalty_weight (float): Scaling factor for the soft false-negative penalty term.
         pred_thresholds (list): Probability thresholds used to binarize classifier outputs for metric tracking. 
-        min_recall
-        recall_penalty
-        sampler
+        min_recall (float): Minimum recall target used by the penalized-specificity objective.
+        recall_penalty (float): Penalty multiplier applied when recall is below ``min_recall``.
+        sampler (torch.utils.data.Sampler, optional): Sampler strategy to set balance of positive and negative data samples. Defaults to None.
         num_workers (int): Number of asynchronous subprocesses to allocate for data loading.
-        full_save_path (str): File path for saving the full model weights and config.
-        save_path (str): File path for saving the model weights.
+        full_save_path (str, optional): File path for saving a resumable checkpoint. Defaults to None.
+        weight_save_path (str, optional): File path for saving a weights-only checkpoint. Defaults to None.
         trial (optuna.trial.Trial, optional): An active Optuna study trial hyperparameter hook used for validating metrics reporting and active epoch pruning. Defaults to None.
         seed (int): Random seed.
         grad_clip_max_norm (float, optional): Maximum gradient norm. Set to None or <=0 to disable clipping. Defaults to 1.0.

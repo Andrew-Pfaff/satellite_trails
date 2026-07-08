@@ -6,6 +6,13 @@ from matplotlib.patches import Patch
 from satellite_trail_segmentation.evaluation.unet_evaluate import image_threshold
 
 def _save_plot(save_path=None):
+    """
+    Helper function to save the current Matplotlib figure or displays it interactively if save_path is None.
+
+    Args:
+        save_path (str or Path, optional): Destination path. If None, displays the figure.
+    """
+
     if save_path is not None:
         save_path = Path(save_path)
         save_path.parent.mkdir(parents=True, exist_ok=True)
@@ -79,6 +86,17 @@ def plot_full_field(full_image, full_pred, full_mask, save_path=None, threshold=
 
 
 def _binary_mask(array, threshold=None):
+    """
+    Converts an array to a boolean mask.
+
+    Args:
+        array (np.ndarray): Input prediction or mask array.
+        threshold (float, optional): Threshold for probability-like predictions.
+
+    Returns:
+        np.ndarray: Boolean mask.
+    """
+
     array = np.asarray(array)
     if threshold is not None:
         return array > threshold
@@ -86,6 +104,16 @@ def _binary_mask(array, threshold=None):
 
 
 def _normalize_grayscale(array):
+    """
+    Normalizes an array to the [0, 1] grayscale range.
+
+    Args:
+        array (np.ndarray): Input image-like array.
+
+    Returns:
+        np.ndarray: Float32 normalized array.
+    """
+
     array = np.asarray(array, dtype=np.float32)
     min_value = np.nanmin(array)
     max_value = np.nanmax(array)
@@ -95,6 +123,18 @@ def _normalize_grayscale(array):
 
 
 def _error_color_image(prediction, mask, threshold=None):
+    """
+    Builds an RGB error overlay for false negatives and false positives.
+
+    Args:
+        prediction (np.ndarray): Prediction array or mask.
+        mask (np.ndarray): Ground-truth mask array.
+        threshold (float, optional): Threshold for probability-like predictions.
+
+    Returns:
+        np.ndarray: RGB image with false negatives in red and false positives in green.
+    """
+
     pred_bin = _binary_mask(prediction, threshold=threshold)
     mask_bin = _binary_mask(mask)
 
@@ -291,6 +331,15 @@ def plot_pred_residual(full_pred, full_mask, save_path):
 
 
 def plot_threshold_metrics(threshold_metrics, save_path=None, title='Performance Metrics Across Threshold Levels'):
+    """
+    Plots IoU, precision, recall, and Dice/F1 across threshold values.
+
+    Args:
+        threshold_metrics (dict): Dictionary mapping thresholds to metric dictionaries.
+        save_path (str or Path, optional): File path for saving the plot image.
+        title (str): Figure title.
+    """
+
     thresholds = sorted(threshold_metrics.keys())
     
     iou = [threshold_metrics[t]["iou"] for t in thresholds]

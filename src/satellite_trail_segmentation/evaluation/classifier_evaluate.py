@@ -42,7 +42,7 @@ def recreate_full_field(model, h5_path, split_type, source_index, batch_size=32,
         source_index (int): The unique index identifier of the full-field source image to reconstruct.
         batch_size (int, optional): Number of patches per batch during inference. Defaults to 32.
         patch_dim (int, optional): Spatial dimension (height and width) of the square patches. Defaults to 528.
-        threshold (float, optional): Probability cutoff used to binarize classifier outputs. Defaults to 0.3.
+        threshold (float, optional): Probability cutoff used to binarize classifier outputs. Defaults to 0.5.
         normalization (str, optional): Dataset normalization mode. Defaults to "source_zscore".
 
     Returns:
@@ -50,6 +50,7 @@ def recreate_full_field(model, h5_path, split_type, source_index, batch_size=32,
             - full_image (numpy.ndarray): Reconstructed image array.
             - full_pred (numpy.ndarray): Reconstructed binary prediction array.
             - full_mask (numpy.ndarray): Reconstructed ground truth label array.
+            - full_overlay (numpy.ndarray): RGB overlay showing patch predictions and correctness.
     """
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -101,6 +102,23 @@ def recreate_full_field(model, h5_path, split_type, source_index, batch_size=32,
 
 
 def evaluate_dataset_classifier(model, h5_path, split_type, pred_thresholds=None, batch_size=4, normalization="source_zscore", num_workers=0):
+    """
+    Evaluates a classifier over one HDF5 split and threshold sweep.
+
+    Args:
+        model (torch.nn.Module): Trained classifier model.
+        h5_path (str): Path to the HDF5 patch dataset.
+        split_type (str): Split to evaluate: "train", "val", or "test".
+        pred_thresholds (list, optional): Probability thresholds for binary metrics.
+            Defaults to [0.5].
+        batch_size (int): Number of patches per inference batch. Defaults to 4.
+        normalization (str): Dataset normalization mode. Defaults to "source_zscore".
+        num_workers (int): DataLoader worker count. Defaults to 0.
+
+    Returns:
+        tuple: Threshold-level metrics and per-threshold image-wise confusion counts.
+    """
+
     if pred_thresholds is None:
         pred_thresholds = [0.5]
     

@@ -163,6 +163,18 @@ def best_threshold_by_metric(threshold_metrics, metric_name):
 
 
 def specificity_with_recall_penalty(metrics, min_recall, penalty):
+    """
+    Calculates specificity after penalizing recall below a minimum target.
+
+    Args:
+        metrics (dict): Metric dictionary containing ``specificity`` and ``recall``.
+        min_recall (float): Desired minimum recall.
+        penalty (float): Penalty multiplier for recall shortfall.
+
+    Returns:
+        float: Penalized specificity score.
+    """
+
     specificity = metrics['specificity']
     recall = metrics['recall']
     
@@ -172,4 +184,16 @@ def specificity_with_recall_penalty(metrics, min_recall, penalty):
 
 
 def best_threshold_by_penalized_specificity(threshold_metrics, min_recall, penalty):
+    """
+    Selects the threshold with the highest penalized specificity.
+
+    Args:
+        threshold_metrics (dict): Dictionary mapping thresholds to metric dictionaries.
+        min_recall (float): Desired minimum recall.
+        penalty (float): Penalty multiplier for recall shortfall.
+
+    Returns:
+        tuple: A 2-element tuple containing the best threshold and its metrics dictionary.
+    """
+
     return max(threshold_metrics.items(), key=lambda item: specificity_with_recall_penalty(item[1], min_recall, penalty))

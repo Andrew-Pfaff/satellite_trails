@@ -96,6 +96,8 @@ def write_summary_csv(rows, csv_path):
 
 
 def parse_args():
+    """Parses command-line arguments for HDF5 dataset summaries."""
+
     parser = argparse.ArgumentParser(description="Summarize source images and splits in an HDF5 patch dataset")
     
     parser.add_argument("--data-path", type=str, required=True)

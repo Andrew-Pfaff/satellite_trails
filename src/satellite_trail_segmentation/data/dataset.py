@@ -94,6 +94,17 @@ class H5PatchDataset(Dataset):
         self.neg_indices = np.where(self.patch_has_trail == False)[0]
 
     def _normalize_image(self, image, source_index):
+        """
+        Normalizes one image patch according to the dataset normalization mode.
+
+        Args:
+            image (np.ndarray): Raw uint8 image patch converted to float32.
+            source_index (int): Source image index used for source-level statistics.
+
+        Returns:
+            np.ndarray: Normalized float patch.
+        """
+
         if self.normalization == "source_zscore":
             eps = 1e-6
             source_std = self.source_std[source_index]
