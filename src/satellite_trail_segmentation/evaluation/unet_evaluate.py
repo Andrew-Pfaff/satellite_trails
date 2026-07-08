@@ -80,7 +80,7 @@ def recreate_full_field_pred(model, h5_path, split_type, source_index, batch_siz
     return full_image, full_pred, full_mask
 
 
-def evaluate_dataset_unet(model, h5_path, split_type, pred_thresholds=None, batch_size=1, normalization="source_zscore"):
+def evaluate_dataset_unet(model, h5_path, split_type, pred_thresholds=None, batch_size=1, normalization="source_zscore", num_workers=4):
     if pred_thresholds is None:
         pred_thresholds = [0.5]
     
@@ -88,7 +88,7 @@ def evaluate_dataset_unet(model, h5_path, split_type, pred_thresholds=None, batc
     model = model.to(device)
 
     dataset = H5PatchDataset(h5_path, split=split_type, return_masks=True, return_metadata=False, normalization=normalization)
-    loader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=4, pin_memory=True)
+    loader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers, pin_memory=torch.cuda.is_available())
 
     threshold_counts = {t: init_conf_counts() for t in pred_thresholds}
 

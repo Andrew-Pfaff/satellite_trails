@@ -190,6 +190,33 @@ def plot_segmentation_postprocess_comparison(
     plt.close(fig)
 
 
+def plot_prediction_mask(image, prediction, mask=None, save_path=None):
+    """
+    Plots an input image, prediction mask, and optional ground-truth mask.
+
+    Args:
+        image (np.ndarray): Input image array.
+        prediction (np.ndarray): Predicted binary mask.
+        mask (np.ndarray, optional): Ground-truth mask array. Defaults to None.
+        save_path (str or Path, optional): File path for saving the plot image.
+    """
+
+    panels = [("Image", image), ("Prediction", prediction)]
+    if mask is not None:
+        panels.append(("True Mask", mask))
+
+    fig, axes = plt.subplots(1, len(panels), figsize=(6 * len(panels), 6), constrained_layout=True)
+    axes = np.atleast_1d(axes).ravel()
+
+    for ax, (title, array) in zip(axes, panels):
+        ax.imshow(array, cmap="gray")
+        ax.set_title(title)
+        ax.axis("off")
+
+    _save_plot(save_path)
+    plt.close(fig)
+
+
 def plot_roc_curve(fpr, tpr, thresholds, roc_auc, optimal_threshold, save_path):
     """
     Plots an ROC curve and highlights the optimal operating threshold.

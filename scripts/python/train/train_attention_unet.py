@@ -1,6 +1,7 @@
 import argparse
 import logging
 
+import numpy as np
 import torch
 
 from satellite_trail_segmentation.data.dataset import H5PatchDataset
@@ -12,6 +13,7 @@ from satellite_trail_segmentation.unet_model.unet_train_function import train_un
 from satellite_trail_segmentation.utils.visualizations import plot_loss_curves
 
 LOGGER = logging.getLogger(__name__)
+THRESHOLDS = np.linspace(0.05, 0.95, 37)
 
 
 def main(data_path, epochs, batch_size, learning_rate, dropout_rate,
@@ -46,7 +48,8 @@ def main(data_path, epochs, batch_size, learning_rate, dropout_rate,
                                bce_weight_factor=bce_weight_factor,
                                label_smoothing=label_smoothing, sampler=sampler, num_workers=num_workers,
                                full_save_path=full_save_path, weight_save_path=weight_save_path,
-                               trial=None, seed=seed, grad_clip_max_norm=grad_clip_max_norm,
+                               trial=None, seed=seed, iou_thresholds=THRESHOLDS,
+                               grad_clip_max_norm=grad_clip_max_norm,
                                early_stopping_patience=early_stopping_patience,
                                early_stopping_min_delta=early_stopping_min_delta)
 

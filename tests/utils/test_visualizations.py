@@ -9,6 +9,7 @@ import satellite_trail_segmentation.utils.visualizations as visualizations
 from satellite_trail_segmentation.utils.visualizations import (
     plot_full_field,
     plot_loss_curves,
+    plot_prediction_mask,
     plot_pred_residual,
     plot_roc_curve,
     plot_segmentation_postprocess_comparison,
@@ -55,6 +56,22 @@ def test_plot_segmentation_postprocess_comparison_without_mask_creates_file(tmp_
     plot_segmentation_postprocess_comparison(image, None, prediction, postprocessed, save_path=path, threshold=0.5)
 
     assert path.exists()
+    assert plt.get_fignums() == []
+
+
+def test_plot_prediction_mask_creates_file_with_and_without_mask(tmp_path):
+    image = np.zeros((8, 8), dtype=np.float32)
+    prediction = np.eye(8, dtype=np.uint8)
+    mask = np.ones((8, 8), dtype=np.uint8)
+
+    with_mask_path = tmp_path / "prediction_mask_with_mask.png"
+    without_mask_path = tmp_path / "prediction_mask_without_mask.png"
+
+    plot_prediction_mask(image, prediction, mask=mask, save_path=with_mask_path)
+    plot_prediction_mask(image, prediction, save_path=without_mask_path)
+
+    assert with_mask_path.exists()
+    assert without_mask_path.exists()
     assert plt.get_fignums() == []
 
 

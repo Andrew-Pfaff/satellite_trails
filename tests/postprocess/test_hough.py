@@ -1,147 +1,138 @@
-import numpy as np
 import cv2
+import numpy as np
 import pytest
 import torch
 
 from satellite_trail_segmentation.postprocess.hough import (
-    binarize_prediction,
-    hough_gap_fill,
-    morphological_close,
-    postprocess_segmentation,
-    remove_small_components,
+    cluster_hough_lines,
+    line_records,
+    representative_centerline,
     standardize_binary_mask,
     to_numpy_2d,
 )
 
 
-def test_to_numpy_2d_accepts_numpy_and_does_not_mutate():
-    pred = np.array([[[0.1, 0.9], [0.2, 0.8]]], dtype=np.float32)
-    original = pred.copy()
+def test_to_numpy_2d_handles_numpy_arrays_without_mutation():
+    prediction = np.array([[[0.1, 0.9], [0.2, 0.8]]], dtype=np.float32)
+    original = prediction.copy()
 
-    out = to_numpy_2d(pred)
+    result = to_numpy_2d(prediction)
 
-    assert out.shape == (2, 2)
-    np.testing.assert_array_equal(pred, original)
-
-
-def test_to_numpy_2d_accepts_torch_tensor():
-    pred = torch.tensor([[[0.1, 0.9], [0.2, 0.8]]])
-
-    out = to_numpy_2d(pred)
-
-    assert isinstance(out, np.ndarray)
-    np.testing.assert_allclose(out, np.array([[0.1, 0.9], [0.2, 0.8]], dtype=np.float32))
+    assert result.shape == (2, 2)
+    np.testing.assert_array_equal(prediction, original)
 
 
-def test_to_numpy_2d_rejects_ambiguous_shape():
-    with pytest.raises(ValueError):
+def test_to_numpy_2d_handles_torch_tensors():
+    prediction = torch.tensor([[[0.1, 0.9], [0.2, 0.8]]])
+
+    result = to_numpy_2d(prediction)
+
+    assert isinstance(result, np.ndarray)
+    np.testing.assert_allclose(result, np.array([[0.1, 0.9], [0.2, 0.8]], dtype=np.float32))
+
+
+def test_to_numpy_2d_rejects_ambiguous_shapes():
+    with pytest.raises(ValueError, match="2D"):
         to_numpy_2d(np.zeros((2, 3, 4), dtype=np.float32))
 
 
-def test_binarize_prediction_thresholds_probability_map():
-    pred = np.array([[0.57, 0.58, 0.59]], dtype=np.float32)
+def test_standardize_binary_mask_preserves_shape_dtype_and_foreground_value():
+    mask = np.array([[0, 1, 7], [0, 0, 3]], dtype=np.int16)
 
-    out = binarize_prediction(pred, threshold=0.58)
+    result = standardize_binary_mask(mask, foreground_value=127)
 
-    assert out.dtype == np.uint8
-    np.testing.assert_array_equal(out, np.array([[0, 0, 255]], dtype=np.uint8))
-
-
-def test_binarize_prediction_thresholds_two_value_probability_map():
-    pred = np.array([[0.2, 0.8]], dtype=np.float32)
-
-    out = binarize_prediction(pred, threshold=0.58)
-
-    np.testing.assert_array_equal(out, np.array([[0, 255]], dtype=np.uint8))
+    assert result.shape == mask.shape
+    assert result.dtype == np.uint8
+    np.testing.assert_array_equal(result, np.array([[0, 127, 127], [0, 0, 127]], dtype=np.uint8))
 
 
-def test_binarize_prediction_standardizes_binary_like_mask():
-    pred = np.array([[0, 1, 255]], dtype=np.uint8)
+def test_asta_draws_every_hough_line_with_thickness_one(monkeypatch):
+    from satellite_trail_segmentation.postprocess.pipeline import postprocess_segmentation
 
-    out = binarize_prediction(pred)
-
-    np.testing.assert_array_equal(out, np.array([[0, 255, 255]], dtype=np.uint8))
-
-
-def test_standardize_binary_mask_treats_nonzero_as_foreground():
-    mask = np.array([[0, 1, 255]], dtype=np.uint8)
-
-    out = standardize_binary_mask(mask)
-
-    np.testing.assert_array_equal(out, np.array([[0, 255, 255]], dtype=np.uint8))
-
-
-def test_hough_gap_fill_draws_with_supplied_thickness(monkeypatch):
-    mask = np.zeros((10, 10), dtype=np.uint8)
-    mask[5, 1:4] = 255
-    mask[5, 6:9] = 255
-    original = mask.copy()
-    drawn = {}
+    mask = np.zeros((30, 40), dtype=np.uint8)
+    mask[15, 2:10] = 255
+    drawn = []
 
     def fake_lines(*args, **kwargs):
-        return np.array([[[1, 5, 8, 5]]], dtype=np.int32)
+        return np.array([[[2, 15, 20, 15]], [[22, 15, 35, 15]]], dtype=np.int32)
 
     original_line = cv2.line
 
-    def capture_line(img, pt1, pt2, color, thickness=1):
-        drawn["thickness"] = thickness
-        return original_line(img, pt1, pt2, color, thickness=thickness)
+    def capture_line(image, pt1, pt2, color, thickness=1):
+        drawn.append((pt1, pt2, thickness))
+        return original_line(image, pt1, pt2, color, thickness=thickness)
 
     monkeypatch.setattr(cv2, "HoughLinesP", fake_lines)
     monkeypatch.setattr(cv2, "line", capture_line)
 
-    out = hough_gap_fill(mask, thickness=5, hough_threshold=1, min_line_length=1, max_line_gap=5)
-
-    np.testing.assert_array_equal(mask, original)
-    assert drawn["thickness"] == 5
-    assert out.dtype == np.uint8
-    assert out[5, 4] == 255
-
-
-def test_morphological_close_fills_small_gap():
-    mask = np.zeros((7, 7), dtype=np.uint8)
-    mask[3, 1:3] = 255
-    mask[3, 4:6] = 255
-
-    out = morphological_close(mask, kernel_size=3)
-
-    assert out[3, 3] == 255
-
-
-def test_remove_small_components_removes_tiny_objects():
-    mask = np.zeros((20, 20), dtype=np.uint8)
-    mask[1, 1] = 255
-    mask[10:15, 10:15] = 255
-
-    out = remove_small_components(mask, min_size=10)
-
-    assert out[1, 1] == 0
-    assert out[12, 12] == 255
-
-
-def test_postprocess_segmentation_returns_clean_binary_mask(monkeypatch):
-    pred = np.zeros((40, 40), dtype=np.float32)
-    pred[20:24, 5:15] = 1
-    pred[20:24, 25:35] = 1
-    pred[1, 1] = 1
-    original = pred.copy()
-
-    def fake_lines(*args, **kwargs):
-        return np.array([[[5, 21, 34, 21]]], dtype=np.int32)
-
-    monkeypatch.setattr(cv2, "HoughLinesP", fake_lines)
-
-    out = postprocess_segmentation(
-        pred,
+    result = postprocess_segmentation(
+        mask,
+        line_mode="asta",
+        width_mode="none",
         min_line_length=1,
         max_line_gap=20,
-        morph_kernel_size=3,
-        min_component_size=20,
+        morph_kernel_size=1,
+        min_component_size=1,
+        contour_filter=False,
     )
 
-    np.testing.assert_array_equal(pred, original)
-    assert out.shape == pred.shape
-    assert out.dtype == np.uint8
-    assert set(np.unique(out)).issubset({0, 255})
-    assert out[21, 20] == 255
-    assert out[1, 1] == 0
+    assert [line[2] for line in drawn] == [1, 1]
+    assert result[15, 20] == 255
+    assert result[15, 35] == 255
+
+
+def test_duplicate_parallel_hough_detections_cluster_into_one_trail():
+    lines = np.array(
+        [
+            [[2, 15, 37, 15]],
+            [[2, 16, 37, 16]],
+            [[2, 14, 37, 14]],
+            [[2, 5, 37, 5]],
+        ],
+        dtype=np.int32,
+    )
+
+    records = line_records(lines)
+    clusters = cluster_hough_lines(records, angle_degrees=3, distance=3)
+
+    assert sorted(len(cluster) for cluster in clusters) == [1, 3]
+
+
+def test_distant_collinear_hough_detections_split_by_along_gap():
+    lines = np.array(
+        [
+            [[5, 15, 35, 15]],
+            [[90, 15, 120, 15]],
+        ],
+        dtype=np.int32,
+    )
+
+    records = line_records(lines)
+    clusters = cluster_hough_lines(records, angle_degrees=3, distance=3, max_along_gap=25)
+
+    assert sorted(len(cluster) for cluster in clusters) == [1, 1]
+
+
+def test_nearby_collinear_hough_detections_cluster_by_along_gap():
+    lines = np.array(
+        [
+            [[5, 15, 35, 15]],
+            [[50, 15, 80, 15]],
+        ],
+        dtype=np.int32,
+    )
+
+    records = line_records(lines)
+    clusters = cluster_hough_lines(records, angle_degrees=3, distance=3, max_along_gap=25)
+
+    assert [len(cluster) for cluster in clusters] == [2]
+
+
+def test_representative_centerline_is_centered_between_cluster_members():
+    lines = np.array([[[5, 10, 35, 10]], [[5, 14, 35, 14]]], dtype=np.int32)
+
+    records = line_records(lines)
+    cluster = cluster_hough_lines(records, angle_degrees=3, distance=5)[0]
+    centerline = representative_centerline(cluster, image_shape=(30, 40))
+
+    assert centerline.tolist() == [5, 12, 35, 12]
