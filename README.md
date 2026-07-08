@@ -6,6 +6,7 @@ This repository contains a reproducibility study of satellite trail detection in
 ## Documentation
 
 The Sphinx documentation is the main user and API documentation surface.
+It should be treated as the primary documentation entry point for installation, data preparation, training, evaluation, results, and API reference material.
 
 Build it locally with:
 
@@ -23,7 +24,7 @@ Open:
 docs/build/html/index.html
 ```
 
-The docs include quickstart usage, data notes, training, parameter search, evaluation, postprocessing, CSD3 workflow, limitations, and API documentation.
+The docs include quickstart usage, data notes, training, parameter search, evaluation, postprocessing, CSD3 and Colab workflows, limitations, and API documentation.
 
 
 ## Quick Setup
