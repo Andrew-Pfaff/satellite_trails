@@ -18,7 +18,7 @@ __pycache__/
 build/
 dist/
 # Ignores the metadata folder generated when installing in editable mode
-src/*.egg-info/ 
+src/*.egg-info/
 docs/build/
 
 
@@ -36,27 +36,19 @@ docs/build/
 *.zip
 *.csv
 !*master_split.csv
-reca_streaks_eval/
-datasets/
 *.png
 *.jpg
 *.tif
 *.tiff
-
-# Ignore trained model weights
-# models/
-# *.pt
-*.pth
 *.h5
-*.onnx
 
-# Ignore training logs (e.g., TensorBoard)
+
+# Ignore training logs
 logs/
-runs/
 *.out
 
 # ---------------------------------------------------
-# IDEs and OS Files
+# IDEs and OS Files and Other
 # ---------------------------------------------------
 .vscode/
 .idea/
@@ -64,8 +56,6 @@ runs/
 
 *.db
 *.ipynb
-
 archive/
-
-
+# Keep my colab notebooks
 !scripts/colab/*.ipynb

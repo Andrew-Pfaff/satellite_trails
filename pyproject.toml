@@ -18,13 +18,14 @@ dependencies = [
     "scikit-image>=0.21.0",
     "torchvision",
     "torchmetrics",
+    "matplotlib",
+    "optuna",
 ]
 
 [project.optional-dependencies]
 dev = [
-    "matplotlib",
     "jupyterlab",
-    "optuna",
+    "pandas",
     "pytest",
     "pytest-cov",
 ]
