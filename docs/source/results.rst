@@ -1,7 +1,7 @@
 Results
 =======
 
-Final results are pending while CSD3 tuning, ablation, and training jobs complete. This page is a placeholder for the final documentation tables and should be updated from the generated summary CSV files.
+This page summarizes the final held-out test metrics. The table reports the raw U-Net and classifier-gated U-Net pipelines, plus the ASTA-style postprocessed variants using ``line_mode="asta"`` and ``width_mode="none"``.
 
 Final model metrics
 -------------------
@@ -11,7 +11,6 @@ Final model metrics
 
    * - Model
      - Split
-     - Threshold
      - IoU
      - Dice/F1
      - Precision
@@ -19,47 +18,157 @@ Final model metrics
      - Specificity
      - FPR
      - FNR
-   * - Classifier
+   * - Classifier U-Net
      - Test
-     - TBD
-     - TBD
-     - TBD
-     - TBD
-     - TBD
-     - TBD
-     - TBD
-     - TBD
+     - 0.8202
+     - 0.9012
+     - 0.8893
+     - 0.9135
+     - 0.9999
+     - 7.02e-05
+     - 0.0865
    * - Baseline U-Net
      - Test
-     - TBD
-     - TBD
-     - TBD
-     - TBD
-     - TBD
-     - TBD
-     - TBD
-     - TBD
-   * - Attention U-Net
+     - 0.8131
+     - 0.8969
+     - 0.8801
+     - 0.9144
+     - 0.9999
+     - 7.68e-05
+     - 0.0856
+   * - Postprocessed Classifier U-Net
      - Test
-     - TBD
-     - TBD
-     - TBD
-     - TBD
-     - TBD
-     - TBD
-     - TBD
-     - TBD
+     - 0.7961
+     - 0.8865
+     - 0.8283
+     - 0.9534
+     - 0.9999
+     - 1.22e-04
+     - 0.0466
+   * - Postprocessed U-Net
+     - Test
+     - 0.7914
+     - 0.8836
+     - 0.8231
+     - 0.9537
+     - 0.9999
+     - 1.27e-04
+     - 0.0463
 
-Planned figures
----------------
+The final evaluation also computed ASTA median-width and centerline median-width variants. The ASTA median-width variants did not improve the main IoU/Dice trade-off relative to the conservative ASTA setting, while the centerline variants recovered some missing pixels but introduced many false positives. The complete aggregate table for all postprocessing variants is included in the repository outputs and appendix tables.
 
-* Threshold sweep curves for each final model.
-* Full-field reconstruction examples.
-* Raw versus postprocessed segmentation masks.
-* Failure cases: false positives, false negatives, patch-boundary errors, and postprocessing tradeoffs.
-* Timing table by pipeline stage.
+Classifier-only patch metrics
+-----------------------------
 
-Comparison to ASTA
-------------------
+The patch classifier was evaluated independently on the held-out test split using the final classifier threshold ``0.725``. These metrics are patch-wise: each ``528 x 528`` patch is counted as trail-containing or background.
 
-The final report should compare against the ASTA paper's reported patch-level precision/recall, threshold behavior, postprocessing FNR reduction, and processing-time table. The comparison must state that the original FITS data were unavailable.
+.. list-table::
+   :header-rows: 1
+
+   * - Split
+     - Threshold
+     - TP
+     - FP
+     - FN
+     - TN
+     - Accuracy
+     - Precision
+     - Recall
+     - Dice/F1
+     - IoU
+     - Specificity
+     - FPR
+     - FNR
+   * - Test
+     - 0.725
+     - 579
+     - 122
+     - 15
+     - 9,684
+     - 0.9868
+     - 0.8260
+     - 0.9747
+     - 0.8942
+     - 0.8087
+     - 0.9876
+     - 0.0124
+     - 0.0253
+
+Operating thresholds
+--------------------
+
+The final full-field evaluation used ``UNET_THRESHOLD = 0.65`` and ``CLASSIFIER_THRESHOLD = 0.725``.
+
+The U-Net threshold was selected to balance precision and recall for the final full-field pipeline. The validation sweep showed a broad high-performing region, and the final threshold favors a conservative binary segmentation before optional postprocessing.
+
+The classifier threshold was selected from the validation sweep using the same training-time ranking metric used to score the classifier: penalized specificity with a minimum-recall target. This selected ``0.725`` on the validation split.
+
+Full-field timing
+-----------------
+
+The table below summarizes an end-to-end timing experiment. Each entry is the mean runtime in seconds, with the standard deviation in parentheses, over ten measured full-field runs after three warm-up runs. The expirement is run on an image where the classifier flags 34 of the patches as positive.
+
+The CPU measurements were collected on a standard Colab CPU runtime using the CPU execution device, with no GPU accelerator available. The runtime provided an Intel(R) Xeon(R) CPU @ 2.20GHz with 2 CPU cores and 12.67 GB of system memory.
+
+The GPU measurements were collected on a Colab A100 runtime using CUDA execution. The runtime provided an NVIDIA A100-SXM4-40GB accelerator with 39.49 GB of GPU memory, backed by an Intel(R) Xeon(R) CPU @ 2.20GHz host with 12 CPU cores and 83.47 GB of system memory.
+
+.. list-table::
+   :header-rows: 1
+
+   * - Stage
+     - CPU U-Net
+     - CPU classifier-gated U-Net
+     - A100 GPU U-Net
+     - A100 GPU classifier-gated U-Net
+   * - Preprocessing
+     - 2.24 (0.32)
+     - 2.19 (0.22)
+     - 1.71 (0.00)
+     - 1.74 (0.01)
+   * - Data loader setup
+     - 0.34 (0.05)
+     - 0.43 (0.21)
+     - 0.06 (0.00)
+     - 0.07 (0.01)
+   * - Classifier gate
+     - --
+     - 14.26 (0.21)
+     - --
+     - 0.43 (0.01)
+   * - U-Net prediction
+     - 109.06 (5.70)
+     - 9.71 (1.18)
+     - 1.39 (0.03)
+     - 0.29 (0.01)
+   * - Segmentation subtotal
+     - 109.45 (5.73)
+     - 24.45 (1.39)
+     - 1.47 (0.03)
+     - 0.80 (0.01)
+   * - Hough postprocessing
+     - 4.83 (0.67)
+     - 5.13 (1.63)
+     - 3.18 (0.02)
+     - 3.17 (0.01)
+   * - Total
+     - 116.51 (6.34)
+     - 31.77 (2.47)
+     - 6.35 (0.03)
+     - 5.72 (0.02)
+
+The classifier-gated pipeline is substantially faster on CPU because most patches are rejected before U-Net inference. On the A100 runtime, U-Net inference is already fast and the total runtime is dominated by preprocessing and Hough-style postprocessing, so the classifier gives a smaller absolute gain.
+
+Validation threshold sweeps
+---------------------------
+
+.. figure:: _static/figures/results/unet_validation_threshold_sweep.png
+   :alt: U-Net validation threshold sweep.
+   :width: 90%
+
+   U-Net validation metrics across probability thresholds. The final full-field evaluation used ``UNET_THRESHOLD = 0.65`` to balance precision and recall.
+
+.. figure:: _static/figures/results/classifier_validation_threshold_sweep.png
+   :alt: Classifier validation threshold sweep.
+   :width: 90%
+
+   Classifier validation metrics across probability thresholds. The final full-field evaluation used ``CLASSIFIER_THRESHOLD = 0.725``, selected by the classifier ranking metric used during training.

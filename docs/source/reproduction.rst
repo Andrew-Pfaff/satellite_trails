@@ -1,7 +1,7 @@
 Reproducing The Project
 =======================
 
-This page summarizes the intended end-to-end workflow for reproducing the project. Paths and final commands should be checked once final results are frozen.
+This page summarizes the end-to-end workflow used to reproduce the project. The commands assume the repository layout described in the user guide; adjust paths only if data or checkpoint files are stored elsewhere.
 
 1. Install the environment
 --------------------------
@@ -67,4 +67,10 @@ Evaluate validation and test splits:
    MODEL_TYPE=attention_unet SPLIT=val sbatch scripts/slurm/eval.slurm
    MODEL_TYPE=attention_unet SPLIT=test sbatch scripts/slurm/eval.slurm
 
-The final report should use validation thresholds for model/threshold selection and held-out test metrics for the final comparison.
+Use validation metrics for threshold selection and held-out test metrics for final comparison.
+
+Run the final PNG full-field comparison:
+
+.. code-block:: bash
+
+   python scripts/python/evaluate_final_full_field.py --png-dir data/png --master-split-csv data/h5s/master_split.csv --unet-checkpoint results/models/unet/unet_weights.pt --classifier-checkpoint results/models/classifier/classifier_weights.pt --split-id 2 --unet-threshold 0.65 --classifier-threshold 0.725 --output-dir results/metrics/test

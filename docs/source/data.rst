@@ -31,8 +31,6 @@ After downloading, extract the archive:
 
 The preprocessing scripts expect the full-field PNG images and mask PNGs to be available in the local project data area, typically ``data/png/``. Depending on where the archive extracts the files, either copy or symlink the PNGs into that directory. The local ``data/`` directory is intended for downloaded and generated data and should not be committed to git.
 
-Zenodo also provides ``Satellites_Catalog_Application.csv`` with the application-section catalogue discussed in the ASTA paper. That table is useful for reproducing the catalogue-matching analysis, but it is not required for patch-level model training.
-
 H5 datasets
 -----------
 
@@ -62,12 +60,36 @@ The split convention is:
 
    * - Split
      - Code
+     - Images
+     - Total patches
+     - Trail patches
+     - Trail fraction
    * - Train
      - ``0``
+     - 126
+     - 50,400
+     - 3,021
+     - 5.99%
    * - Validation
      - ``1``
+     - 26
+     - 10,400
+     - 620
+     - 5.96%
    * - Test
      - ``2``
+     - 26
+     - 10,400
+     - 594
+     - 5.71%
+   * - Total
+     - 
+     - 178
+     - 71,200
+     - 4,235
+     - 5.95%
+
+A trail patch is any patch with at least one non-zero mask pixel. These counts are taken from the report split table after mask cleaning and patch extraction.
 
 Normalization modes
 -------------------
@@ -91,4 +113,4 @@ Source-level statistics
 PNG/FITS limitation
 -------------------
 
-The missing FITS files are a central limitation. PNG images are quantized and contrast-scaled products of the original data, so the model cannot see the same brightness distribution available to the paper's original FITS-based pipeline. This limitation should be reported alongside final metrics.
+The missing FITS files are a central limitation. PNG images are quantized and contrast-scaled products of the original data, so the model cannot see the same brightness distribution available to the paper's original FITS-based pipeline.
