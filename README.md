@@ -98,6 +98,12 @@ MODEL_TYPE=unet SPLIT=test sbatch scripts/slurm/eval.slurm
 MODEL_TYPE=attention_unet SPLIT=test sbatch scripts/slurm/eval.slurm
 ```
 
+Run the final PNG full-field comparison with:
+
+```bash
+python scripts/python/evaluate_final_full_field.py --png-dir data/png --master-split-csv data/h5s/master_split.csv --unet-checkpoint results/models/unet/unet_weights.pt --classifier-checkpoint results/models/classifier/classifier_weights.pt --split-id 2 --output-dir final_eval_outputs --unet-threshold 0.65 --classifier-threshold 0.725
+```
+
 ## Repository Layout
 
 ```text
