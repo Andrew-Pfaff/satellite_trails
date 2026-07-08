@@ -1,13 +1,13 @@
 CSD3 Workflow
 =============
 
-The SLURM scripts assume the project lives at:
+The submitted CSD3 runs used the following project path. Adjust this path for another CSD3 account or workspace.
 
 .. code-block:: text
 
    /home/anp50/rds/hpc-work/satellite_trails
 
-and that the environment is available at:
+The submitted runs also used this virtual environment path:
 
 .. code-block:: text
 

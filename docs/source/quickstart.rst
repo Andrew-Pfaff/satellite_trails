@@ -41,30 +41,8 @@ The current full-field inference helper lives in ``segmentation.py``. It takes o
 
    pipeline = SatelliteTrailPipeline(unet_model=model)
    prepared = pipeline.preprocessing("data/png/example_full.png", normalization="source_zscore")
-   prediction, timings = pipeline.segmentation(prepared["patch_data"], use_classifier=False, unet_threshold=0.5)
-   postprocessed, postprocess_timings = pipeline.postprocessing(prediction["segmented_result"])
+   prediction, timings = pipeline.segmentation(prepared["patch_data"], use_classifier=False, unet_threshold=0.65)
+   postprocessed, postprocess_timings, contour_details = pipeline.postprocessing(prediction["segmented_result"])
 
-For report-quality evaluation, prefer the H5 evaluation scripts described in :doc:`evaluation`.
+For more detailed full-field usage, see :doc:`full_field_pipeline`. 
 
-Important paths
----------------
-
-.. list-table::
-   :header-rows: 1
-
-   * - Path
-     - Purpose
-   * - ``data/png/``
-     - Full-field PNG images and masks.
-   * - ``data/h5s/``
-     - H5 datasets created from PNG images and masks.
-   * - ``scripts/slurm/``
-     - CSD3 job wrappers.
-   * - ``scripts/python/train/``
-     - Training entry points.
-   * - ``scripts/python/parameter_search/``
-     - Optuna tuning and ablation entry points.
-   * - ``scripts/python/evaluate_models.py``
-     - Patch-level classifier and pixel-level segmentation evaluator.
-   * - ``results/``
-     - Ignored runtime outputs, checkpoints, logs, summaries, and figures.

@@ -40,61 +40,17 @@ The public pipeline entry point is currently :mod:`segmentation.py`. A typical u
    prediction, times = pipeline.segmentation(
        prepared["patch_data"],
        use_classifier=True,
-       unet_threshold=0.5,
-       classifier_threshold=0.5,
+       unet_threshold=0.65,
+       classifier_threshold=0.725,
    )
-   postprocessed, postprocess_times = pipeline.postprocessing(prediction["segmented_result"])
+   postprocessed, postprocess_times, contour_details = pipeline.postprocessing(prediction["segmented_result"])
 
 This interface is useful for full-field PNG inference. The final evaluation scripts use the package evaluation utilities directly on H5 datasets.
 
-Current final results
----------------------
+Final results
+-------------
 
-Final CSD3 runs are still in progress. Replace these placeholders once the final validation-selected thresholds and held-out test metrics are available.
-
-.. list-table:: Final model comparison
-   :header-rows: 1
-
-   * - Model
-     - Split
-     - Threshold
-     - IoU
-     - Dice/F1
-     - Precision
-     - Recall
-     - Specificity
-   * - Classifier
-     - Test
-     - TBD
-     - TBD
-     - TBD
-     - TBD
-     - TBD
-     - TBD
-   * - Baseline U-Net
-     - Test
-     - TBD
-     - TBD
-     - TBD
-     - TBD
-     - TBD
-     - TBD
-   * - Attention U-Net
-     - Test
-     - TBD
-     - TBD
-     - TBD
-     - TBD
-     - TBD
-     - TBD
-   * - Best postprocessed segmentation model
-     - Test
-     - TBD
-     - TBD
-     - TBD
-     - TBD
-     - TBD
-     - TBD
+The held-out test results, classifier-only patch metrics, and full-field timing experiment are summarized in :doc:`results`. The final full-field evaluation used ``UNET_THRESHOLD = 0.65`` and ``CLASSIFIER_THRESHOLD = 0.725``.
 
 Documentation map
 -----------------
@@ -104,6 +60,7 @@ Documentation map
    :caption: User Guide
 
    quickstart
+   full_field_pipeline
    data
    training
    parameter_search
@@ -112,6 +69,7 @@ Documentation map
    results
    reproduction
    csd3
+   colab
    limitations
 
 .. toctree::

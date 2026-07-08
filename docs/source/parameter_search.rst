@@ -24,7 +24,7 @@ Attention U-Net tuning:
 
    sbatch scripts/slurm/parameter_search/attention_unet_tuning.slurm
 
-Attention U-Net tuning is intentionally fixed to ``p_shift=0.25`` and ``use_batchnorm=True`` unless the baseline U-Net ablations show those settings are wrong.
+Attention U-Net tuning used ``p_shift=0.25`` and ``use_batchnorm=True``, matching the selected baseline U-Net training configuration.
 
 Ablations
 ---------
@@ -57,4 +57,4 @@ Tuning and ablation outputs are written under:
    results/hyperparameter_tuning/logs/
    results/hyperparameter_tuning/ablations/
 
-These files are runtime artifacts and should not be committed.
+These files are runtime artifacts and are not committed.

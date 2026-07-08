@@ -13,6 +13,8 @@ The CSD3 wrapper is:
 
    sbatch scripts/slurm/eval.slurm
 
+It writes a one-row summary CSV, a per-threshold metrics CSV, and a threshold metric plot for all model types. Segmentation models also write an ROC plot.
+
 Examples
 --------
 
@@ -41,7 +43,18 @@ Segmentation models are evaluated pixel-wise across thresholds. The main ranking
 
 The classifier is evaluated patch-wise across thresholds. The tuning objective is penalized specificity under a high-recall constraint.
 
+Full-field evaluation
+---------------------
+
+``scripts/python/evaluate_final_full_field.py`` evaluates the final PNG pipeline on rows selected from ``master_split.csv``. It runs raw U-Net predictions, classifier-gated U-Net predictions, and three postprocessed variants for each:
+
+* ``postprocess_asta_none``
+* ``postprocess_asta_median_sampled_width``
+* ``postprocess_centerline_median_sampled_width``
+
+The script writes one ``<method>_per_image_metrics.csv`` file per method and ``aggregate_metrics.csv`` in the output directory. Each row includes the confusion counts plus accuracy, precision, recall/sensitivity, specificity, FPR, FNR, IoU, and Dice/F1.
+
 Final protocol
 --------------
 
-The final report should use validation results for threshold selection and held-out test results for final comparison. A final combined evaluation script is still planned to automate this validation-to-test workflow.
+The final report uses validation results for threshold selection and held-out test results for final comparison. ``evaluate_models.py`` is used for patch/H5 threshold selection and ``evaluate_final_full_field.py`` for final PNG full-field raw-versus-postprocessed comparisons.
