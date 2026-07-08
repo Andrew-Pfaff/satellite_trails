@@ -29,7 +29,7 @@ docs/build/
 
 
 # ---------------------------------------------------
-# Machine Learning Data & Models (Crucial)
+# Data
 # ---------------------------------------------------
 # Ignore all data folders so you don't push huge datasets
 /png
