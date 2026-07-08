@@ -110,6 +110,5 @@ satellite_trails/
 ├── docs/                               Sphinx documentation
 ├── tests/                              Unit tests
 ├── data/                               Local data, ignored except small metadata
-├── results/                            Runtime outputs, ignored
-└── reca_streaks_eval/                  Optional external RECA/satmetrics evaluation tooling
+└── results/                            Runtime outputs, ignored
 ```

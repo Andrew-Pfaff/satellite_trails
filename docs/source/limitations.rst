@@ -15,8 +15,3 @@ Patch-based context
 -------------------
 
 The models operate on ``528 x 528`` patches. Trails can cross patch boundaries, which can create fragmented predictions. Hough postprocessing is used to reduce this problem, but overlapping patches or full-field models would provide a more direct solution.
-
-External RECA masks
--------------------
-
-The optional RECA/satmetrics evaluation uses Hough-derived masks rather than the same manual masks used for model training. Those results should be treated as an external sanity check rather than the primary benchmark.
