@@ -1,3 +1,5 @@
+"""Train the patch-level satellite trail classifier from an HDF5 dataset."""
+
 import argparse
 import torch
 import logging

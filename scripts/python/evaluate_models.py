@@ -1,3 +1,5 @@
+"""Evaluate trained models on HDF5 patch datasets and write summary artifacts."""
+
 import argparse
 import csv
 from pathlib import Path
@@ -22,12 +24,33 @@ SEGMENTATION_MODELS = {
 
 
 def checkpoint_model_config(model_path):
+    """
+    Loads model configuration metadata from a checkpoint file.
+
+    Args:
+        model_path (str or Path): Path to a checkpoint or weights file.
+
+    Returns:
+        dict: Stored model configuration, or an empty dictionary.
+    """
+
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     checkpoint = torch.load(model_path, map_location=device, weights_only=False)
     return checkpoint.get("model_config", {})
 
 
 def build_model(model_type, model_path):
+    """
+    Builds and loads the model architecture described by a checkpoint.
+
+    Args:
+        model_type (str): One of "unet", "attention_unet", or "classifier".
+        model_path (str or Path): Path to the checkpoint or weights file.
+
+    Returns:
+        tuple: Loaded model and checkpoint model configuration.
+    """
+
     model_config = checkpoint_model_config(model_path)
 
     if model_type in SEGMENTATION_MODELS:
@@ -45,6 +68,14 @@ def build_model(model_type, model_path):
 
 
 def write_summary(summary_csv_path, row):
+    """
+    Writes a one-row evaluation summary CSV.
+
+    Args:
+        summary_csv_path (str or Path or None): Output path. If None, no file is written.
+        row (dict): Summary row to write.
+    """
+
     if summary_csv_path is None:
         return
 
@@ -57,6 +88,16 @@ def write_summary(summary_csv_path, row):
 
 
 def write_threshold_metrics_csv(csv_path, common_row, metrics_by_threshold, extra_by_threshold=None):
+    """
+    Writes per-threshold metric rows to a CSV file.
+
+    Args:
+        csv_path (str or Path or None): Output path. If None, no file is written.
+        common_row (dict): Columns repeated on every threshold row.
+        metrics_by_threshold (dict): Mapping of threshold to metric dictionary.
+        extra_by_threshold (dict, optional): Extra per-threshold columns.
+    """
+
     if csv_path is None:
         return
 

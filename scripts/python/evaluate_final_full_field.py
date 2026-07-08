@@ -1,3 +1,5 @@
+"""Evaluate final full-field PNG segmentation pipelines and write CSV metrics."""
+
 import argparse
 import csv
 import sys
@@ -22,6 +24,18 @@ from satellite_trail_segmentation.unet_model.unet import UNet
 
 
 def build_model(model_class, checkpoint_path, allowed_keys):
+    """
+    Builds a model from checkpoint configuration and loads its weights.
+
+    Args:
+        model_class (type): Model class to instantiate.
+        checkpoint_path (str or Path): Path to a checkpoint or weights file.
+        allowed_keys (tuple): Model configuration keys accepted by the class.
+
+    Returns:
+        torch.nn.Module: Loaded model in evaluation mode.
+    """
+
     checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
     model_config = checkpoint.get("model_config", {}) or {}
     model_kwargs = {key: model_config[key] for key in allowed_keys if key in model_config}
@@ -32,6 +46,18 @@ def build_model(model_class, checkpoint_path, allowed_keys):
 
 
 def test_rows(master_split_csv, png_dir, split_id="2"):
+    """
+    Selects full-field PNG/mask rows for one split from the master split CSV.
+
+    Args:
+        master_split_csv (str or Path): CSV containing image name, mask name, and split id.
+        png_dir (str or Path): Directory containing PNG images and masks.
+        split_id (str): Split id to select. Defaults to "2".
+
+    Returns:
+        list[dict]: Rows with image and mask names plus resolved paths.
+    """
+
     rows = []
     with open(master_split_csv, newline="") as file:
         reader = csv.reader(file)
@@ -51,6 +77,13 @@ def test_rows(master_split_csv, png_dir, split_id="2"):
 
 
 def postprocess_methods():
+    """
+    Defines the final full-field postprocessing variants to evaluate.
+
+    Returns:
+        dict: Mapping of output method suffixes to postprocessing keyword arguments.
+    """
+
     common = {
         "hough_threshold": 50,
         "min_line_length": 100,
@@ -80,6 +113,20 @@ def postprocess_methods():
 
 
 def metric_row(method, image_name, mask_name, prediction, target):
+    """
+    Builds one per-image metric row for a prediction and target mask.
+
+    Args:
+        method (str): Evaluation method name.
+        image_name (str): Source image filename.
+        mask_name (str): Mask filename.
+        prediction (np.ndarray): Binary prediction mask.
+        target (np.ndarray): Ground-truth mask.
+
+    Returns:
+        dict: Per-image metric row.
+    """
+
     metrics = metrics_from_conf_counts(conf_counts_from_arrays(prediction, target))
     return {
         "method": method,
@@ -90,6 +137,16 @@ def metric_row(method, image_name, mask_name, prediction, target):
 
 
 def aggregate_rows(rows):
+    """
+    Aggregates per-image rows into one metric row per method.
+
+    Args:
+        rows (list[dict]): Per-image metric rows.
+
+    Returns:
+        list[dict]: Aggregate rows grouped by method.
+    """
+
     grouped = {}
     for row in rows:
         method = row["method"]
@@ -112,6 +169,14 @@ def aggregate_rows(rows):
 
 
 def write_rows(csv_path, rows):
+    """
+    Writes metric rows to a CSV file.
+
+    Args:
+        csv_path (str or Path): Output path.
+        rows (list[dict]): Rows to write. Empty lists create no file.
+    """
+
     csv_path = Path(csv_path)
     csv_path.parent.mkdir(parents=True, exist_ok=True)
     if not rows:
@@ -125,6 +190,16 @@ def write_rows(csv_path, rows):
 
 
 def evaluate_full_fields(args):
+    """
+    Runs raw and postprocessed full-field evaluations for selected PNG rows.
+
+    Args:
+        args (argparse.Namespace): Parsed command-line options.
+
+    Returns:
+        dict: Per-method per-image metric rows.
+    """
+
     device = torch.device(args.device) if args.device is not None else None
     unet_model = build_model(
         UNet,

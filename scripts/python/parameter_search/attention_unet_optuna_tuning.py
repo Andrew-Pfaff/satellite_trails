@@ -1,3 +1,5 @@
+"""Run Optuna hyperparameter tuning for the Attention U-Net model."""
+
 import argparse
 import csv
 import gc
@@ -28,10 +30,30 @@ USE_BATCHNORM = True
 
 
 def create_objective(data_path, epochs, warmup_epochs, batch_size, num_workers, seed, steps_per_epoch, early_stopping_patience, trial_results_path):
+    """
+    Creates an Optuna objective for Attention U-Net tuning.
+
+    Args:
+        data_path (str): HDF5 dataset path.
+        epochs (int): Maximum training epochs per trial.
+        warmup_epochs (int): Learning-rate warmup epochs.
+        batch_size (int): Training batch size.
+        num_workers (int): DataLoader worker count.
+        seed (int): Base random seed.
+        steps_per_epoch (int): Fixed sampler steps per epoch.
+        early_stopping_patience (int): Early-stopping patience.
+        trial_results_path (str): CSV path for appending trial summaries.
+
+    Returns:
+        callable: Optuna objective function.
+    """
+
     train_ds = H5PatchDataset(data_path, split="train", augment=True, p_shift=P_SHIFT, min_shift=MIN_SHIFT, max_shift=MAX_SHIFT, normalization=NORMALIZATION)
     val_ds = H5PatchDataset(data_path, split="val", normalization=NORMALIZATION)
 
     def objective(trial):
+        """Runs one Optuna trial and returns the best validation IoU."""
+
         trial_seed = seed + trial.number
         set_seed(trial_seed)
 

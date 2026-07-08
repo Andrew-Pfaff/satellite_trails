@@ -1,3 +1,5 @@
+"""Run classifier ablations from top Optuna trial rows."""
+
 import argparse
 import csv
 import gc
@@ -38,11 +40,33 @@ SUMMARY_FIELDS = ("source_trial_number", "variant", "ranking_score", "optuna_sco
 
 
 def default_trial_csv(db_dir, study_name):
+    """
+    Builds the default trial summary CSV path for a study.
+
+    Args:
+        db_dir (str): Optuna database directory.
+        study_name (str): Study name.
+
+    Returns:
+        str: Default trial summary CSV path.
+    """
+
     parent_dir = os.path.dirname(os.path.normpath(db_dir)) or "."
     return os.path.join(parent_dir, "summaries", f"{study_name}_trials.csv")
 
 
 def load_top_trials(trial_csv, top_n):
+    """
+    Loads and ranks the top Optuna trial rows by score.
+
+    Args:
+        trial_csv (str): Trial summary CSV path.
+        top_n (int): Number of top rows to return.
+
+    Returns:
+        list[dict]: Parsed top trial rows.
+    """
+
     if top_n <= 0:
         raise ValueError(f"--top-n must be positive, got {top_n}")
     if not os.path.exists(trial_csv):
@@ -72,6 +96,13 @@ def load_top_trials(trial_csv, top_n):
 
 
 def validate_args(args):
+    """
+    Validates ablation command-line arguments.
+
+    Args:
+        args (argparse.Namespace): Parsed command-line options.
+    """
+
     if args.epochs <= 0:
         raise ValueError(f"--epochs must be positive, got {args.epochs}")
     if args.batch_size <= 0:
@@ -81,6 +112,18 @@ def validate_args(args):
 
 
 def make_eval_loader(dataset, batch_size, num_workers):
+    """
+    Builds a DataLoader for validation-set checkpoint evaluation.
+
+    Args:
+        dataset (torch.utils.data.Dataset): Dataset to evaluate.
+        batch_size (int): Evaluation batch size.
+        num_workers (int): DataLoader worker count.
+
+    Returns:
+        torch.utils.data.DataLoader: Configured evaluation loader.
+    """
+
     loader_kwargs = {"batch_size": batch_size, "shuffle": False, "num_workers": num_workers, "pin_memory": True}
     if num_workers > 0:
         loader_kwargs["persistent_workers"] = True
@@ -89,6 +132,19 @@ def make_eval_loader(dataset, batch_size, num_workers):
 
 
 def evaluate_best_checkpoint(model, data_path, batch_size, num_workers):
+    """
+    Evaluates a trained classifier checkpoint on the validation split.
+
+    Args:
+        model (torch.nn.Module): Loaded model to evaluate.
+        data_path (str): HDF5 dataset path.
+        batch_size (int): Evaluation batch size.
+        num_workers (int): DataLoader worker count.
+
+    Returns:
+        tuple: Best threshold, penalized-specificity score, and metric dictionary.
+    """
+
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = model.to(device)
     model.eval()
@@ -114,6 +170,19 @@ def evaluate_best_checkpoint(model, data_path, batch_size, num_workers):
 
 
 def run_variant(trial_row, p_shift, args, output_dir):
+    """
+    Trains and evaluates one classifier ablation variant.
+
+    Args:
+        trial_row (dict): Hyperparameters from an Optuna trial row.
+        p_shift (float): Shift augmentation probability.
+        args (argparse.Namespace): Parsed command-line options.
+        output_dir (Path): Ablation output directory.
+
+    Returns:
+        dict: Summary row for the completed variant.
+    """
+
     trial_number = int(trial_row["trial_number"])
     variant = f"trial_{trial_number}_shift_{str(p_shift).replace('.', 'p')}"
     temp_path = output_dir / "tmp" / f"{variant}.pt"
@@ -171,6 +240,14 @@ def run_variant(trial_row, p_shift, args, output_dir):
 
 
 def write_summary(rows, output_path):
+    """
+    Writes ablation summary rows to CSV.
+
+    Args:
+        rows (list[dict]): Summary rows to write.
+        output_path (Path): Output CSV path.
+    """
+
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with open(output_path, "w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=SUMMARY_FIELDS)

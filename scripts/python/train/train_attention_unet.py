@@ -1,3 +1,5 @@
+"""Train the Attention U-Net segmentation model from an HDF5 patch dataset."""
+
 import argparse
 import logging
 
