@@ -67,8 +67,7 @@ def test_asta_draws_every_hough_line_with_thickness_one(monkeypatch):
 
     result = postprocess_segmentation(
         mask,
-        line_mode="asta",
-        width_mode="none",
+        mode="asta_only",
         min_line_length=1,
         max_line_gap=20,
         morph_kernel_size=1,
@@ -133,6 +132,16 @@ def test_representative_centerline_is_centered_between_cluster_members():
 
     records = line_records(lines)
     cluster = cluster_hough_lines(records, angle_degrees=3, distance=5)[0]
-    centerline = representative_centerline(cluster, image_shape=(30, 40))
+    centerline = representative_centerline(cluster, image_shape=(30, 40), max_extension_ratio=1.0)
 
     assert centerline.tolist() == [5, 12, 35, 12]
+
+
+def test_representative_centerline_extends_to_bounded_span():
+    lines = np.array([[[40, 10, 60, 10]]], dtype=np.int32)
+
+    records = line_records(lines)
+    cluster = cluster_hough_lines(records, angle_degrees=3, distance=5)[0]
+    centerline = representative_centerline(cluster, image_shape=(30, 200), max_extension_ratio=1.5)
+
+    assert centerline.tolist() == [35, 10, 65, 10]

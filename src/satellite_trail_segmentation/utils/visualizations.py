@@ -157,6 +157,8 @@ def plot_segmentation_postprocess_comparison(
     save_path=None,
     threshold=None,
     title="Segmentation Postprocessing Comparison",
+    include_image=True,
+    error_overlay=True,
 ):
     """
     Plots an image, ground-truth mask, raw prediction, and postprocessed mask.
@@ -165,45 +167,46 @@ def plot_segmentation_postprocess_comparison(
         image (np.ndarray): Input image array.
         mask (np.ndarray or None): Ground-truth mask array. If None, the mask panel is omitted.
         prediction (np.ndarray): Raw segmentation prediction or mask.
-        postprocessed (np.ndarray): Postprocessed segmentation mask.
+        postprocessed (np.ndarray or dict): Postprocessed segmentation mask, or a dictionary mapping panel titles to masks.
         save_path (str or Path, optional): File path for saving the plot image.
         threshold (float, optional): Threshold applied to prediction before plotting.
         title (str, optional): Figure title.
+        include_image (bool): Whether to include the source-image panel. Defaults to True.
+        error_overlay (bool): Whether to show false-negative/false-positive overlays when a mask is provided. Defaults to True.
+
+    Returns:
+        None.
     """
 
-    panels = [("Image", image, "gray", None)]
+    panels = []
+    if include_image:
+        panels.append(("Image", image, "gray", None))
     if mask is not None:
         panels.append(("Mask", mask, "gray", None))
 
     if threshold is not None:
         prediction = image_threshold(prediction, threshold=threshold)
 
-    if mask is not None:
+    postprocessed_items = list(postprocessed.items()) if isinstance(postprocessed, dict) else [("Postprocessed", postprocessed)]
+
+    if mask is not None and error_overlay:
         prediction_panel = _error_color_image(prediction, mask)
-        postprocessed_panel = _error_color_image(postprocessed, mask)
-        prediction_cmap = None
-        postprocessed_cmap = None
-        prediction_subtitle = "FN red, FP green"
-        postprocessed_subtitle = "FN red, FP green"
+        panels.append(("Prediction", prediction_panel, None, "FN red, FP green"))
+        for panel_title, panel_mask in postprocessed_items:
+            panels.append((panel_title, _error_color_image(panel_mask, mask), None, "FN red, FP green"))
     else:
-        prediction_panel = prediction
-        postprocessed_panel = postprocessed
-        prediction_cmap = "gray"
-        postprocessed_cmap = "gray"
-        prediction_subtitle = None
-        postprocessed_subtitle = None
+        panels.append(("Prediction", prediction, "gray", None))
+        for panel_title, panel_mask in postprocessed_items:
+            panels.append((panel_title, panel_mask, "gray", None))
 
-    panels.extend(
-        [
-            ("Prediction", prediction_panel, prediction_cmap, prediction_subtitle),
-            ("Postprocessed", postprocessed_panel, postprocessed_cmap, postprocessed_subtitle),
-        ]
-    )
-
-    if len(panels) == 4:
+    if len(panels) <= 3:
+        fig, axes = plt.subplots(1, len(panels), figsize=(6 * len(panels), 6), constrained_layout=True)
+    elif len(panels) == 4:
         fig, axes = plt.subplots(2, 2, figsize=(12, 12), constrained_layout=True)
     else:
-        fig, axes = plt.subplots(1, len(panels), figsize=(6 * len(panels), 6), constrained_layout=True)
+        columns = min(3, len(panels))
+        rows = int(np.ceil(len(panels) / columns))
+        fig, axes = plt.subplots(rows, columns, figsize=(6 * columns, 6 * rows), constrained_layout=True)
     axes = np.atleast_1d(axes).ravel()
 
     for ax, (panel_title, array, cmap, subtitle) in zip(axes, panels):
@@ -216,10 +219,13 @@ def plot_segmentation_postprocess_comparison(
         ax.set_title(panel_title, pad=10)
         ax.axis("off")
 
+    for ax in axes[len(panels):]:
+        ax.axis("off")
+
     if title is not None:
         fig.suptitle(title, y=1.04)
 
-    if mask is not None:
+    if mask is not None and error_overlay:
         legend_handles = [
             Patch(facecolor="red", edgecolor="red", label="False negatives"),
             Patch(facecolor="green", edgecolor="green", label="False positives"),

@@ -178,13 +178,14 @@ def cluster_hough_lines(records, angle_degrees=3, distance=8, max_along_gap=250)
     return clusters
 
 
-def representative_centerline(cluster, image_shape):
+def representative_centerline(cluster, image_shape, max_extension_ratio=1.5):
     """
     Builds one representative centerline for a Hough cluster.
 
     Args:
         cluster (list): One cluster of line records.
         image_shape (tuple): Output image shape as (height, width).
+        max_extension_ratio (float): Maximum final line span relative to the observed cluster endpoint span. Defaults to 1.5.
 
     Returns:
         line (np.ndarray): Integer centerline coordinates as (x1, y1, x2, y2).
@@ -210,8 +211,12 @@ def representative_centerline(cluster, image_shape):
 
     offset = float(np.median(offsets))
     projections = [float(np.dot(point, direction)) for point in endpoints]
-    start = offset * normal + min(projections) * direction
-    end = offset * normal + max(projections) * direction
+    projection_start = min(projections)
+    projection_end = max(projections)
+    projection_span = projection_end - projection_start
+    extension = max(0.0, (max(1.0, float(max_extension_ratio)) - 1.0) * projection_span / 2)
+    start = offset * normal + (projection_start - extension) * direction
+    end = offset * normal + (projection_end + extension) * direction
     line = np.array([start[0], start[1], end[0], end[1]], dtype=float)
 
     height, width = image_shape
@@ -260,7 +265,7 @@ def representative_centerline(cluster, image_shape):
     )
 
 
-def draw_centerlines(mask, centerlines, thicknesses, foreground_value=255):
+def _draw_centerlines(mask, centerlines, thicknesses, foreground_value=255):
     """
     Draws representative centerlines with matching thickness values.
 
