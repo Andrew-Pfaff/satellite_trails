@@ -12,7 +12,7 @@ import torch
 from torch.utils.data import DataLoader, TensorDataset
 
 from satellite_trail_segmentation.postprocess.hough import to_numpy_2d
-from satellite_trail_segmentation.postprocess.pipeline import postprocess_segmentation
+from satellite_trail_segmentation.postprocess.pipeline import POSTPROCESS_MODES, postprocess_segmentation
 from satellite_trail_segmentation.classifier_model.classifier import TrailClassifier
 from satellite_trail_segmentation.unet_model.unet import UNet
 from satellite_trail_segmentation.ml_utils.checkpoints import load_checkpoint
@@ -455,19 +455,19 @@ def parse_args():
     parser.add_argument("--output-prefix", default="prediction", help="Output filename prefix.")
 
     # Postprocess config
-    parser.add_argument("--line-mode", choices=("asta", "centerline"), default="asta", help="Hough line drawing mode.")
-    parser.add_argument("--width-mode", choices=("none", "contour_width", "median_sampled_width"), default="none", help="Width (when using centerline) or gap-fill (when using asta) mode.")
+    parser.add_argument("--postprocess-mode", choices=POSTPROCESS_MODES, default="asta_only", help="Postprocessing mode.")
     parser.add_argument("--foreground-value", type=int, default=255, help="Foreground value for returned postprocessed mask.")
     parser.add_argument("--hough-threshold", type=int, default=50, help="Minimum Hough accumulator threshold.")
     parser.add_argument("--min-line-length", type=int, default=100, help="Minimum Hough line length.")
-    parser.add_argument("--max-line-gap", type=int, default=250, help="Maximum Hough line gap and gap-fill length.")
+    parser.add_argument("--max-line-gap", type=int, default=250, help="Maximum Hough line gap.")
     parser.add_argument("--line-cluster-angle-degrees", type=float, default=3, help="Maximum cluster orientation difference in degrees.")
     parser.add_argument("--line-cluster-distance", type=float, default=8, help="Maximum line cluster perpendicular distance in pixels.")
     parser.add_argument("--line-cluster-max-along-gap", type=float, default=250, help="Maximum along-line gap for grouping Hough segments into one centerline cluster.")
+    parser.add_argument("--max-extension-ratio", type=float, default=1.5, help="Maximum representative centerline span relative to observed cluster endpoint span.")
     parser.add_argument("--width-samples", type=int, default=9, help="Number of sampled width positions.")
     parser.add_argument("--max-width-search", type=int, default=25, help="Perpendicular width search radius in pixels.")
-    parser.add_argument("--max-contour-distance", type=float, default=20, help="Maximum line-to-contour distance for contour width.")
     parser.add_argument("--min-fill-gap", type=int, default=10, help="Minimum gap length to fill, if the gap is smaller, it will not be filled.")
+    parser.add_argument("--max-fill-gap", type=int, default=250, help="Maximum gap length to fill.")
     parser.add_argument("--fallback-width", type=float, default=1, help="Fallback width when width estimation fails.")
     parser.add_argument("--morph-kernel-size", type=int, default=3, help="Morphological closing kernel size.")
     parser.add_argument("--min-component-size", type=int, default=500, help="Minimum connected component size to keep.")
@@ -500,8 +500,7 @@ def cli():
 
     # Postprocess config
     postprocess_config = {
-        "line_mode": args.line_mode,
-        "width_mode": args.width_mode,
+        "mode": args.postprocess_mode,
         "foreground_value": args.foreground_value,
         "hough_threshold": args.hough_threshold,
         "min_line_length": args.min_line_length,
@@ -509,10 +508,11 @@ def cli():
         "line_cluster_angle_degrees": args.line_cluster_angle_degrees,
         "line_cluster_distance": args.line_cluster_distance,
         "line_cluster_max_along_gap": args.line_cluster_max_along_gap,
+        "max_extension_ratio": args.max_extension_ratio,
         "width_samples": args.width_samples,
         "max_width_search": args.max_width_search,
-        "max_contour_distance": args.max_contour_distance,
         "min_fill_gap": args.min_fill_gap,
+        "max_fill_gap": args.max_fill_gap,
         "fallback_width": args.fallback_width,
         "morph_kernel_size": args.morph_kernel_size,
         "min_component_size": args.min_component_size,

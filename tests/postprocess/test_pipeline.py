@@ -14,16 +14,13 @@ def gapped_stripe_mask():
 
 
 @pytest.mark.parametrize(
-    ("line_mode", "width_mode"),
+    "mode",
     [
-        ("asta", "none"),
-        ("asta", "contour_width"),
-        ("asta", "median_sampled_width"),
-        ("centerline", "contour_width"),
-        ("centerline", "median_sampled_width"),
+        "asta_only",
+        "asta_gap_fill",
     ],
 )
-def test_public_modes_do_not_mutate_input(monkeypatch, line_mode, width_mode):
+def test_public_modes_do_not_mutate_input(monkeypatch, mode):
     mask = gapped_stripe_mask()
     original = mask.copy()
 
@@ -34,8 +31,7 @@ def test_public_modes_do_not_mutate_input(monkeypatch, line_mode, width_mode):
 
     postprocess_segmentation(
         mask,
-        line_mode=line_mode,
-        width_mode=width_mode,
+        mode=mode,
         min_line_length=1,
         max_line_gap=20,
         morph_kernel_size=1,
@@ -62,7 +58,7 @@ def test_sampled_gap_fills_only_synthetic_gap(monkeypatch):
     drawn = []
 
     def fake_lines(*args, **kwargs):
-        return np.array([[[5, 20, 34, 20]]], dtype=np.int32)
+        return np.array([[[5, 20, 14, 20]], [[25, 20, 34, 20]]], dtype=np.int32)
 
     original_line = cv2.line
 
@@ -75,8 +71,7 @@ def test_sampled_gap_fills_only_synthetic_gap(monkeypatch):
 
     result = postprocess_segmentation(
         mask,
-        line_mode="asta",
-        width_mode="median_sampled_width",
+        mode="asta_gap_fill",
         min_line_length=1,
         max_line_gap=20,
         morph_kernel_size=1,
@@ -99,7 +94,7 @@ def test_sampled_gap_respects_min_fill_gap(monkeypatch):
     drawn = []
 
     def fake_lines(*args, **kwargs):
-        return np.array([[[5, 20, 34, 20]]], dtype=np.int32)
+        return np.array([[[5, 20, 14, 20]], [[25, 20, 34, 20]]], dtype=np.int32)
 
     original_line = cv2.line
 
@@ -112,8 +107,7 @@ def test_sampled_gap_respects_min_fill_gap(monkeypatch):
 
     result = postprocess_segmentation(
         mask,
-        line_mode="asta",
-        width_mode="median_sampled_width",
+        mode="asta_gap_fill",
         min_line_length=1,
         max_line_gap=20,
         min_fill_gap=11,
@@ -124,21 +118,22 @@ def test_sampled_gap_respects_min_fill_gap(monkeypatch):
         max_width_search=10,
     )
 
-    assert len(drawn) == 1
-    assert result[20, 20] == 255
+    assert len(drawn) == 2
+    assert result[20, 20] == 0
     assert result[18, 20] == 0
 
 
-def test_centerline_sampled_width_draws_one_line_per_cluster(monkeypatch):
+def test_asta_gap_fill_uses_second_cluster_pass(monkeypatch):
     mask = gapped_stripe_mask()
+    mask[:, 35:] = 0
+    mask[18:23, 35:45] = 255
     drawn = []
 
     def fake_lines(*args, **kwargs):
         return np.array(
             [
-                [[5, 20, 34, 20]],
-                [[5, 21, 34, 21]],
-                [[5, 19, 34, 19]],
+                [[5, 20, 14, 20]],
+                [[35, 20, 44, 20]],
             ],
             dtype=np.int32,
         )
@@ -154,10 +149,12 @@ def test_centerline_sampled_width_draws_one_line_per_cluster(monkeypatch):
 
     result = postprocess_segmentation(
         mask,
-        line_mode="centerline",
-        width_mode="median_sampled_width",
+        mode="asta_gap_fill",
         min_line_length=1,
-        max_line_gap=20,
+        max_line_gap=60,
+        line_cluster_max_along_gap=10,
+        max_extension_ratio=5,
+        max_fill_gap=30,
         morph_kernel_size=1,
         min_component_size=1,
         contour_filter=False,
@@ -165,12 +162,11 @@ def test_centerline_sampled_width_draws_one_line_per_cluster(monkeypatch):
         max_width_search=10,
     )
 
-    assert len(drawn) == 1
-    assert drawn[0][2] == 5
+    assert len(drawn) == 3
     assert result[20, 20] == 255
 
 
-def test_centerline_splits_distant_collinear_fragments(monkeypatch):
+def test_asta_gap_fill_splits_distant_collinear_fragments(monkeypatch):
     mask = np.zeros((40, 130), dtype=np.uint8)
     mask[18:23, 5:35] = 255
     mask[18:23, 90:120] = 255
@@ -196,8 +192,7 @@ def test_centerline_splits_distant_collinear_fragments(monkeypatch):
 
     result = postprocess_segmentation(
         mask,
-        line_mode="centerline",
-        width_mode="median_sampled_width",
+        mode="asta_gap_fill",
         min_line_length=1,
         max_line_gap=100,
         line_cluster_max_along_gap=25,
@@ -215,12 +210,8 @@ def test_centerline_splits_distant_collinear_fragments(monkeypatch):
 
 
 def test_invalid_options_raise_value_error():
-    with pytest.raises(ValueError, match="line_mode"):
-        postprocess_segmentation(np.zeros((10, 10), dtype=np.uint8), line_mode="wide")
-    with pytest.raises(ValueError, match="width_mode"):
-        postprocess_segmentation(np.zeros((10, 10), dtype=np.uint8), width_mode="wide")
-    with pytest.raises(ValueError, match="none"):
-        postprocess_segmentation(np.zeros((10, 10), dtype=np.uint8), line_mode="centerline", width_mode="none")
+    with pytest.raises(ValueError, match="mode"):
+        postprocess_segmentation(np.zeros((10, 10), dtype=np.uint8), mode="wide")
 
 
 def test_default_return_is_mask_only(monkeypatch):

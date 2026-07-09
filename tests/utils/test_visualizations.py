@@ -59,6 +59,19 @@ def test_plot_segmentation_postprocess_comparison_without_mask_creates_file(tmp_
     assert plt.get_fignums() == []
 
 
+def test_plot_segmentation_postprocess_comparison_accepts_multiple_masks(tmp_path):
+    path = tmp_path / "postprocess_comparison_multiple.png"
+    image = np.zeros((8, 8), dtype=np.float32)
+    mask = np.ones((8, 8), dtype=np.uint8)
+    prediction = np.eye(8, dtype=np.uint8)
+    postprocessed = {"ASTA-only": prediction, "ASTA gap-fill": np.fliplr(prediction)}
+
+    plot_segmentation_postprocess_comparison(image, mask, prediction, postprocessed, save_path=path, include_image=False, error_overlay=False)
+
+    assert path.exists()
+    assert plt.get_fignums() == []
+
+
 def test_plot_prediction_mask_creates_file_with_and_without_mask(tmp_path):
     image = np.zeros((8, 8), dtype=np.float32)
     prediction = np.eye(8, dtype=np.uint8)

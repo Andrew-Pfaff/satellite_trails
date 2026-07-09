@@ -1,8 +1,7 @@
 import numpy as np
 
 from satellite_trail_segmentation.postprocess.postprocess_utils import standardize_binary_mask
-from satellite_trail_segmentation.postprocess.contour import contour_width_for_line
-from satellite_trail_segmentation.postprocess.hough import draw_centerlines
+from satellite_trail_segmentation.postprocess.hough import _draw_centerlines
 
 
 def sampled_width_for_line(mask, line, num_samples=9, max_width_search=25, fallback_width=1):
@@ -57,54 +56,19 @@ def sampled_width_for_line(mask, line, num_samples=9, max_width_search=25, fallb
     return float(np.median(widths))
 
 
-def widths_for_centerlines(
-    mask, centerlines, width_mode, contour_records=None, width_samples=9,
-    max_width_search=25, fallback_width=1, max_contour_distance=20,
-):
-    """
-    Chooses drawing widths for representative centerlines.
-
-    Args:
-        mask (np.ndarray or torch.Tensor): Binary-like mask.
-        centerlines (list): Representative centerline arrays.
-        width_mode (str): One of "contour_width" or "median_sampled_width".
-        contour_records (list): Optional contour width records.
-        width_samples (int): Number of samples for sampled-width mode. Defaults to 9.
-        max_width_search (int): Perpendicular search radius for sampled-width mode. Defaults to 25.
-        fallback_width (float): Width used when estimation fails. Defaults to 1.
-        max_contour_distance (float): Maximum line-to-contour distance. Defaults to 20.
-
-    Returns:
-        widths (list): Width values, one per centerline.
-    """
-
-    if width_mode == "contour_width":
-        return [
-            contour_width_for_line(
-                line, contour_records or [], fallback_width=fallback_width,
-                max_distance=max_contour_distance, num_samples=width_samples,
-            )
-            for line in centerlines
-        ]
-    if width_mode == "median_sampled_width":
-        return [
-            sampled_width_for_line(
-                mask, line, num_samples=width_samples, max_width_search=max_width_search,
-                fallback_width=fallback_width,
-            )
-            for line in centerlines
-        ]
-
-    raise ValueError("width_mode must be 'contour_width' or 'median_sampled_width'")
-
-
 def fill_gaps_along_lines(
-    mask, centerlines, width_mode, contour_records=None, width_samples=9,
-    max_width_search=25, fallback_width=1, foreground_value=255, support_mask=None,
-    min_gap=10, max_gap=250, max_contour_distance=20,
+    mask,
+    centerlines,
+    width_samples=9,
+    max_width_search=25,
+    fallback_width=1,
+    foreground_value=255,
+    support_mask=None,
+    min_gap=10,
+    max_gap=250,
 ):
     """
-    Draws gap-fill segments along centerlines using the requested width mode.
+    Draws support-anchored gap-fill segments along centerlines.
 
     The ``mask`` argument is the drawing target: gap segments are added to a
     copy of this mask and returned. The optional ``support_mask`` argument is
@@ -112,23 +76,20 @@ def fill_gaps_along_lines(
     by the original prediction. When ``support_mask`` is None, ``mask`` is used
     for both drawing and support detection.
 
-    For ASTA-plus-gap filling, call this with ``mask`` set to the ASTA output
-    and ``support_mask`` set to the original binary prediction. This keeps the
-    one-pixel Hough result while detecting gaps from the pre-Hough prediction.
+    For ASTA-plus-gap filling, call this with ``mask`` and ``support_mask`` set
+    to the ASTA Hough-line output. This keeps the real one-pixel Hough result
+    while filling only gaps that have existing support on both sides.
 
     Args:
         mask (np.ndarray or torch.Tensor): Binary-like mask to draw gap segments onto.
         centerlines (list): Candidate centerline arrays.
-        width_mode (str): One of "contour_width" or "median_sampled_width".
-        contour_records (list): Optional contour width records.
-        width_samples (int): Number of samples for sampled-width mode. Defaults to 9.
-        max_width_search (int): Perpendicular search radius for sampled-width mode. Defaults to 25.
+        width_samples (int): Number of sampled positions for width estimation. Defaults to 9.
+        max_width_search (int): Perpendicular search radius for width estimation. Defaults to 25.
         fallback_width (float): Width used when estimation fails. Defaults to 1.
         foreground_value (int): Foreground value to draw. Defaults to 255.
         support_mask (np.ndarray or torch.Tensor): Optional mask used to identify existing foreground support and gaps.
         min_gap (int): Minimum gap length to fill. Defaults to 10.
         max_gap (int): Maximum gap length to fill. Defaults to 250.
-        max_contour_distance (float): Maximum line-to-contour distance. Defaults to 20.
 
     Returns:
         output (np.ndarray): uint8 mask with gap fills drawn.
@@ -136,11 +97,10 @@ def fill_gaps_along_lines(
 
     output = standardize_binary_mask(mask, foreground_value=foreground_value)
     support = standardize_binary_mask(mask if support_mask is None else support_mask)
-    widths = widths_for_centerlines(
-        support, centerlines, width_mode, contour_records=contour_records,
-        width_samples=width_samples, max_width_search=max_width_search,
-        fallback_width=fallback_width, max_contour_distance=max_contour_distance,
-    )
+    widths = [
+        sampled_width_for_line(support, line, num_samples=width_samples, max_width_search=max_width_search, fallback_width=fallback_width)
+        for line in centerlines
+    ]
 
     gap_lines = []
     gap_widths = []
@@ -203,4 +163,4 @@ def fill_gaps_along_lines(
 
     if not gap_lines:
         return output
-    return draw_centerlines(output, gap_lines, gap_widths, foreground_value=foreground_value)
+    return _draw_centerlines(output, gap_lines, gap_widths, foreground_value=foreground_value)

@@ -57,14 +57,11 @@ def test_postprocess_methods_are_final_report_configs():
     methods = evaluate_final_full_field.postprocess_methods()
 
     assert set(methods) == {
-        "postprocess_asta_none",
-        "postprocess_asta_median_sampled_width",
-        "postprocess_centerline_median_sampled_width",
+        "postprocess_asta_only",
+        "postprocess_asta_gap_fill",
     }
-    assert methods["postprocess_asta_none"]["line_mode"] == "asta"
-    assert methods["postprocess_asta_none"]["width_mode"] == "none"
-    assert methods["postprocess_asta_median_sampled_width"]["width_mode"] == "median_sampled_width"
-    assert methods["postprocess_centerline_median_sampled_width"]["line_mode"] == "centerline"
+    assert methods["postprocess_asta_only"]["mode"] == "asta_only"
+    assert methods["postprocess_asta_gap_fill"]["mode"] == "asta_gap_fill"
     assert all(config["contour_filter"] is True for config in methods.values())
     assert all(config["contour_area_threshold"] == 3000 for config in methods.values())
 
@@ -123,12 +120,10 @@ def test_evaluate_full_fields_writes_expected_csvs(monkeypatch, tmp_path):
     expected_methods = {
         "unet",
         "classifier_unet",
-        "unet_postprocess_asta_none",
-        "unet_postprocess_asta_median_sampled_width",
-        "unet_postprocess_centerline_median_sampled_width",
-        "classifier_unet_postprocess_asta_none",
-        "classifier_unet_postprocess_asta_median_sampled_width",
-        "classifier_unet_postprocess_centerline_median_sampled_width",
+        "unet_postprocess_asta_only",
+        "unet_postprocess_asta_gap_fill",
+        "classifier_unet_postprocess_asta_only",
+        "classifier_unet_postprocess_asta_gap_fill",
     }
     for method in expected_methods:
         path = args.output_dir / f"{method}_per_image_metrics.csv"

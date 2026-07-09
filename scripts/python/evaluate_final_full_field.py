@@ -94,20 +94,13 @@ def postprocess_methods():
         "contour_area_threshold": 3000,
     }
     return {
-        "postprocess_asta_none": {
+        "postprocess_asta_only": {
             **common,
-            "line_mode": "asta",
-            "width_mode": "none",
+            "mode": "asta_only",
         },
-        "postprocess_asta_median_sampled_width": {
+        "postprocess_asta_gap_fill": {
             **common,
-            "line_mode": "asta",
-            "width_mode": "median_sampled_width",
-        },
-        "postprocess_centerline_median_sampled_width": {
-            **common,
-            "line_mode": "centerline",
-            "width_mode": "median_sampled_width",
+            "mode": "asta_gap_fill",
         },
     }
 
