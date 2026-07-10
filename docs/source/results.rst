@@ -122,11 +122,11 @@ The classifier threshold was selected from the validation sweep using the same t
 Full-field timing
 -----------------
 
-The table below summarizes an end-to-end timing experiment. Each entry is the mean runtime in seconds, with the standard deviation in parentheses, over ten measured full-field runs after three warm-up runs. The expirement is run on an image where the classifier flags 34 of the patches as positive.
+The table below summarizes an end-to-end timing experiment. Each entry is the mean runtime in seconds, with the standard deviation in parentheses, over ten measured full-field runs after three warm-up runs. The experiment is run on an image where the classifier flags 34 of the patches as positive.
 
 The CPU measurements were collected on a standard Colab CPU runtime using the CPU execution device, with no GPU accelerator available. The runtime provided an Intel(R) Xeon(R) CPU @ 2.20GHz with 2 CPU cores and 12.67 GB of system memory.
 
-The GPU measurements were collected on a Colab A100 runtime using CUDA execution. The runtime provided an NVIDIA A100-SXM4-40GB accelerator with 39.49 GB of GPU memory, backed by an Intel(R) Xeon(R) CPU @ 2.20GHz host with 12 CPU cores and 83.47 GB of system memory.
+The GPU measurements were collected on a Colab A100 runtime using CUDA execution. The runtime provided an NVIDIA A100-SXM4-80GB accelerator with 79.25 GB of GPU memory, backed by an Intel(R) Xeon(R) CPU @ 2.20GHz host with 12 CPU cores and 167.05 GB of system memory.
 
 .. list-table::
    :header-rows: 1
@@ -137,40 +137,40 @@ The GPU measurements were collected on a Colab A100 runtime using CUDA execution
      - A100 GPU U-Net
      - A100 GPU classifier-gated U-Net
    * - Preprocessing
-     - 2.24 (0.32)
-     - 2.19 (0.22)
-     - 1.71 (0.00)
-     - 1.74 (0.01)
+     - 2.39 (0.31)
+     - 2.59 (0.25)
+     - 1.83 (0.01)
+     - 1.86 (0.01)
    * - Data loader setup
-     - 0.34 (0.05)
-     - 0.43 (0.21)
+     - 0.33 (0.04)
+     - 0.40 (0.06)
      - 0.06 (0.00)
      - 0.07 (0.01)
    * - Classifier gate
      - --
-     - 14.26 (0.21)
+     - 15.02 (1.32)
      - --
-     - 0.43 (0.01)
+     - 0.46 (0.01)
    * - U-Net prediction
-     - 109.06 (5.70)
-     - 9.71 (1.18)
-     - 1.39 (0.03)
-     - 0.29 (0.01)
+     - 108.26 (2.04)
+     - 9.33 (0.18)
+     - 1.36 (0.01)
+     - 0.31 (0.01)
    * - Segmentation subtotal
-     - 109.45 (5.73)
-     - 24.45 (1.39)
-     - 1.47 (0.03)
-     - 0.80 (0.01)
+     - 108.63 (2.04)
+     - 24.78 (1.24)
+     - 1.44 (0.01)
+     - 0.86 (0.02)
    * - Hough postprocessing
-     - 4.83 (0.67)
-     - 5.13 (1.63)
-     - 3.18 (0.02)
-     - 3.17 (0.01)
+     - 4.12 (0.34)
+     - 4.06 (0.47)
+     - 3.24 (0.01)
+     - 3.40 (0.01)
    * - Total
-     - 116.51 (6.34)
-     - 31.77 (2.47)
-     - 6.35 (0.03)
-     - 5.72 (0.02)
+     - 115.14 (2.07)
+     - 31.44 (1.72)
+     - 6.51 (0.02)
+     - 6.12 (0.02)
 
 The classifier-gated pipeline is substantially faster on CPU because most patches are rejected before U-Net inference. On the A100 runtime, U-Net inference is already fast and the total runtime is dominated by preprocessing and Hough-style postprocessing, so the classifier gives a smaller absolute gain.
 
