@@ -60,8 +60,7 @@ Load the model checkpoints, construct ``SatelliteTrailPipeline``, and call the p
 
    postprocessed, postprocess_times, contour_details = pipeline.postprocessing(
        predictions["segmented_result"],
-       line_mode="asta",
-       width_mode="none",
+       mode="asta_only",
    )
 
    metrics = pipeline.evaluate_masks(
@@ -165,8 +164,8 @@ Common settings
 ``classifier_threshold``
    Probability threshold used to decide whether a patch contains a trail.
 
-``line_mode`` and ``width_mode``
-   Postprocessing mode controls. ``line_mode="asta"`` with ``width_mode="none"`` is the default. See :doc:`postprocessing` for the available Hough-style options.
+``mode``
+   Postprocessing mode control. ``mode="asta_only"`` is the default, and ``mode="asta_gap_fill"`` enables bounded support-anchored gap filling. See :doc:`postprocessing` for the available options.
 
 API reference
 -------------

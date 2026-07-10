@@ -105,6 +105,19 @@ Run the final PNG full-field comparison with:
 python scripts/python/evaluate_final_full_field.py --png-dir data/png --master-split-csv data/h5s/master_split.csv --unet-checkpoint results/models/unet/unet_weights.pt --classifier-checkpoint results/models/classifier/classifier_weights.pt --split-id 2 --output-dir final_eval_outputs --unet-threshold 0.65 --classifier-threshold 0.725
 ```
 
+## Final Test Metrics
+
+Aggregate full-field metrics on 26 held-out test images:
+
+| Method | IoU | Dice/F1 | Precision | Recall | FNR | FPR |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Classifier U-Net | 0.8202 | 0.9012 | 0.8893 | 0.9135 | 0.0865 | 7.02e-05 |
+| U-Net | 0.8131 | 0.8969 | 0.8801 | 0.9144 | 0.0856 | 7.68e-05 |
+| Classifier U-Net + ASTA-only | 0.7961 | 0.8865 | 0.8283 | 0.9534 | 0.0466 | 1.22e-04 |
+| U-Net + ASTA-only | 0.7914 | 0.8836 | 0.8231 | 0.9537 | 0.0463 | 1.27e-04 |
+| Classifier U-Net + ASTA gap-fill | 0.7869 | 0.8808 | 0.8185 | 0.9533 | 0.0467 | 1.30e-04 |
+| U-Net + ASTA gap-fill | 0.7814 | 0.8773 | 0.8112 | 0.9551 | 0.0449 | 1.37e-04 |
+
 ## Repository Layout
 
 ```text

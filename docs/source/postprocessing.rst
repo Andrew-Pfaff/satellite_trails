@@ -26,8 +26,7 @@ The postprocessing entry point accepts a binary-like mask. Any nonzero value is 
 
    postprocessed = postprocess_segmentation(
        raw_prediction,
-       line_mode="asta",
-       width_mode="none",
+       mode="asta_only",
        hough_threshold=50,
        min_line_length=100,
        max_line_gap=250,
@@ -35,55 +34,42 @@ The postprocessing entry point accepts a binary-like mask. Any nonzero value is 
        min_component_size=500,
    )
 
-Available mode combinations
----------------------------
+Available modes
+---------------
 
-The two main options are ``line_mode`` and ``width_mode``.
+The pipeline supports exactly two postprocessing configurations through ``mode``.
 
 .. list-table::
    :header-rows: 1
 
-   * - ``line_mode``
-     - ``width_mode``
+   * - ``mode``
      - Behavior
-   * - ``asta``
-     - ``none``
-     - Detects Hough line segments and draws each detected segment with one-pixel thickness. This is the default.
-   * - ``asta``
-     - ``contour_width``
-     - Starts with one-pixel ASTA-style Hough lines, then fills supported gaps along clustered centerlines using widths estimated from nearby contours.
-   * - ``asta``
-     - ``median_sampled_width``
-     - Starts with one-pixel ASTA-style Hough lines, then fills supported gaps along clustered centerlines using widths sampled from the raw prediction.
-   * - ``centerline``
-     - ``contour_width``
-     - Clusters Hough segments into representative centerlines and redraws each centerline with contour-estimated width.
-   * - ``centerline``
-     - ``median_sampled_width``
-     - Clusters Hough segments into representative centerlines and redraws each centerline with median sampled width.
-
-``line_mode="centerline"`` cannot be used with ``width_mode="none"`` because centerline mode needs a drawing width for each representative line.
+   * - ``asta_only``
+     - Detects Hough line segments, draws each detected segment with one-pixel thickness, then applies the shared cleanup stage. This is the default and matches the conservative ASTA-style setting.
+   * - ``asta_gap_fill``
+     - Starts from the ASTA-only Hough drawing, clusters detected segments into bounded representative centerlines, fills only support-anchored gaps, then applies the shared cleanup stage.
 
 Mode guidance
 -------------
 
-Use ``line_mode="asta", width_mode="none"`` as the conservative default. It extends detected trails without estimating a trail width, so it is less likely to thicken false positives.
+Use ``mode="asta_only"`` as the conservative default. It draws real Hough-detected segments and does not estimate trail widths.
 
-Use an ``asta`` width mode when the raw prediction has broken trails but you want to preserve the one-pixel Hough result. In this mode, width estimates are only used to draw gap-fill segments where the centerline is supported on both sides by existing foreground.
+Use ``mode="asta_gap_fill"`` when the prediction has broken trails but you want to preserve the real ASTA Hough result. Width estimates are only used to draw bounded gap-fill segments where the fitted centerline is supported on both sides by existing foreground.
 
-Use ``line_mode="centerline"`` when you want a cleaner reconstructed line per Hough cluster. This can improve visual continuity, but it redraws full representative centerlines and can therefore change mask shape more aggressively than ASTA mode. In the final full-field evaluation, this mode increased false positives substantially and is therefore not recommended as the main reporting configuration.
+Gap-fill options
+----------------
 
-Width modes
------------
+``width_samples``
+   Number of positions sampled along each representative centerline when estimating the gap-fill drawing width.
 
-``contour_width``
-   Measures connected foreground contours with minimum-area rectangles, matches each centerline to the nearest contour samples, and uses that contour width. ``max_contour_distance`` controls how far a line can be from a contour before ``fallback_width`` is used.
-
-``median_sampled_width``
-   Samples perpendicular profiles across each centerline and uses the median foreground run width. ``width_samples`` controls how many positions are sampled along the line, and ``max_width_search`` controls the perpendicular search radius.
+``max_width_search``
+   Perpendicular search radius used for sampled width estimation.
 
 ``fallback_width``
-   Used when width estimation fails or no matching foreground support is found. The default is ``1``.
+   Width used when sampled width estimation fails. The default is ``1``.
+
+``min_fill_gap`` and ``max_fill_gap``
+   Lower and upper bounds on support-anchored gaps that may be filled.
 
 Hough detection options
 -----------------------
@@ -95,12 +81,12 @@ Hough detection options
    Minimum Hough segment length in pixels. Increase this to ignore short fragments; decrease it if true trails are small.
 
 ``max_line_gap``
-   Maximum gap OpenCV may bridge when forming Hough line segments. This value is also used as the maximum gap length for ASTA width-mode gap filling.
+   Maximum gap OpenCV may bridge when forming Hough line segments.
 
 Line clustering options
 -----------------------
 
-Width modes and ``centerline`` mode cluster Hough segments before building representative centerlines.
+``asta_gap_fill`` clusters Hough segments before building representative centerlines.
 
 ``line_cluster_angle_degrees``
    Maximum orientation difference between segments in one cluster. Smaller values split trails more aggressively by angle.
@@ -110,6 +96,9 @@ Width modes and ``centerline`` mode cluster Hough segments before building repre
 
 ``line_cluster_max_along_gap``
    Maximum along-line gap between segments before they are split into separate clusters. Set to ``None`` in Python to disable this gap check.
+
+``max_extension_ratio``
+   Maximum representative-centerline span relative to the observed cluster endpoint span before clipping to the image boundary.
 
 Cleanup options
 ---------------
@@ -152,12 +141,13 @@ Full-field pipeline example
 
    postprocessed, timings, contour_details = pipeline.postprocessing(
        predictions["segmented_result"],
-       line_mode="asta",
-       width_mode="median_sampled_width",
+       mode="asta_gap_fill",
        hough_threshold=50,
        min_line_length=100,
        max_line_gap=250,
+       max_extension_ratio=1.5,
        min_fill_gap=10,
+       max_fill_gap=250,
        morph_kernel_size=3,
        min_component_size=500,
        contour_filter=True,
@@ -171,8 +161,7 @@ The same options are available on the command line through ``segmentation.py``:
    python segmentation.py \
      --source-path data/png/example_full.fits_full.png \
      --unet-checkpoint results/models/unet/unet_weights.pt \
-     --line-mode asta \
-     --width-mode median_sampled_width \
+     --postprocess-mode asta_gap_fill \
      --hough-threshold 50 \
      --min-line-length 100 \
      --max-line-gap 250 \
@@ -191,4 +180,4 @@ Important metrics for postprocessing are:
 * IoU/Dice change.
 * Visual continuity of broken trails.
 
-The conservative ASTA-style setting substantially reduces FNR and improves recall, but it also lowers precision and IoU because Hough drawing introduces additional false positives. The centerline variants were explored as alternatives, but they underperformed the ASTA-style setting because representative centerlines overdraw weak or fragmented detections.
+The conservative ASTA-style setting can reduce FNR and improve recall, but it may also lower precision and IoU because Hough drawing introduces additional false positives. The gap-fill setting is available for cases where bounded, support-anchored filling is worth that trade-off.

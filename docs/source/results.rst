@@ -1,7 +1,7 @@
 Results
 =======
 
-This page summarizes the final held-out test metrics. The table reports the raw U-Net and classifier-gated U-Net pipelines, plus the ASTA-style postprocessed variants using ``line_mode="asta"`` and ``width_mode="none"``.
+This page summarizes the final held-out test metrics. The table reports the raw U-Net and classifier-gated U-Net pipelines, plus the ASTA-style postprocessed variants using ``mode="asta_only"`` and ``mode="asta_gap_fill"``.
 
 Final model metrics
 -------------------
@@ -36,7 +36,7 @@ Final model metrics
      - 0.9999
      - 7.68e-05
      - 0.0856
-   * - Postprocessed Classifier U-Net
+   * - Classifier U-Net + ASTA-only
      - Test
      - 0.7961
      - 0.8865
@@ -45,7 +45,7 @@ Final model metrics
      - 0.9999
      - 1.22e-04
      - 0.0466
-   * - Postprocessed U-Net
+   * - U-Net + ASTA-only
      - Test
      - 0.7914
      - 0.8836
@@ -54,8 +54,24 @@ Final model metrics
      - 0.9999
      - 1.27e-04
      - 0.0463
-
-The final evaluation also computed ASTA median-width and centerline median-width variants. The ASTA median-width variants did not improve the main IoU/Dice trade-off relative to the conservative ASTA setting, while the centerline variants recovered some missing pixels but introduced many false positives. The complete aggregate table for all postprocessing variants is included in the repository outputs and appendix tables.
+   * - Classifier U-Net + ASTA gap-fill
+     - Test
+     - 0.7869
+     - 0.8808
+     - 0.8185
+     - 0.9533
+     - 0.9999
+     - 1.30e-04
+     - 0.0467
+   * - U-Net + ASTA gap-fill
+     - Test
+     - 0.7814
+     - 0.8773
+     - 0.8112
+     - 0.9551
+     - 0.9999
+     - 1.37e-04
+     - 0.0449
 
 Classifier-only patch metrics
 -----------------------------
