@@ -21,8 +21,12 @@ Notebook guide
      - Copies the H5 dataset to local Colab storage, trains the baseline U-Net, and writes U-Net checkpoints and training curves back to Drive.
    * - ``scripts/colab/evaluate_models_colab.ipynb``
      - Runs the H5-based model evaluator for trained classifier and segmentation checkpoints, then saves summary and threshold metric outputs.
+   * - ``scripts/colab/save_validation_predictions_colab.ipynb``
+     - Runs the final U-Net on ``data/val_images`` and saves one ``*_prediction.png`` beside each validation mask for postprocessing selection.
+   * - ``scripts/colab/tune_postprocessing_colab.ipynb``
+     - Runs the 36-configuration validation grid and writes aggregate confusion counts and metrics for every configuration plus the raw baseline.
    * - ``scripts/colab/final_full_field_evaluation_colab.ipynb``
-     - Runs the final full-field PNG evaluation workflow used for report metrics, including raw and postprocessed pipeline variants.
+     - Runs the final full-field PNG evaluation workflow used for report metrics, including raw predictions, released ASTA postprocessing defaults, and validation-selected postprocessing for both U-Net variants.
    * - ``scripts/colab/plot_all_pipelines_colab.ipynb``
      - Loads trained checkpoints and PNG examples, runs the available pipeline variants, and creates comparison plots for inspection or reporting.
    * - ``scripts/colab/pipeline_timing_colab.ipynb``

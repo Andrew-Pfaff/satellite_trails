@@ -58,3 +58,14 @@ Tuning and ablation outputs are written under:
    results/hyperparameter_tuning/ablations/
 
 These files are runtime artifacts and are not committed.
+
+Postprocessing grid
+-------------------
+
+``scripts/python/tune_postprocessing.py`` evaluates a fixed grid on saved full-field validation predictions.
+
+.. code-block:: bash
+
+   python scripts/python/tune_postprocessing.py \
+     --input-dir data/val_images \
+     --output-csv results/postprocess_tuning/validation_grid_results.csv

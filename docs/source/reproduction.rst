@@ -42,6 +42,8 @@ Run ablations for classifier and baseline U-Net:
    sbatch scripts/slurm/parameter_search/classifier_ablation.slurm
    sbatch scripts/slurm/parameter_search/unet_ablation.slurm
 
+Generate validation predictions and run the postprocessing grid using ``scripts/colab/save_validation_predictions_colab.ipynb`` followed by ``scripts/colab/tune_postprocessing_colab.ipynb``. The grid evaluates Hough thresholds ``25, 50, 75``, minimum line lengths ``50, 100``, maximum line gaps ``125, 250, 375``, and contour-area thresholds ``1500, 3000``. The selected values are ``50``, ``100``, ``125``, and ``1500`` respectively.
+
 4. Train final models
 ---------------------
 
@@ -73,4 +75,6 @@ Run the final PNG full-field comparison:
 
 .. code-block:: bash
 
-   python scripts/python/evaluate_final_full_field.py --png-dir data/png --master-split-csv data/h5s/master_split.csv --unet-checkpoint results/models/unet/unet_weights.pt --classifier-checkpoint results/models/classifier/classifier_weights.pt --split-id 2 --unet-threshold 0.65 --classifier-threshold 0.725 --output-dir results/metrics/test
+   python scripts/python/evaluate_final_full_field.py --png-dir data/png --master-split-csv data/h5s/master_split.csv --unet-checkpoint results/models/unet/unet_weights.pt --classifier-checkpoint results/models/classifier/classifier_weights.pt --split-id 2 --unet-threshold 0.65 --classifier-threshold 0.725 --hough-threshold 50 --min-line-length 100 --max-line-gap 125 --morph-kernel-size 3 --min-component-size 500 --contour-area-threshold 1500 --output-dir results/metrics/test
+
+This command evaluates both the selected parameters and the fixed released ASTA defaults, as well as both raw predictions.
