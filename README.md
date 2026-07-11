@@ -1,6 +1,6 @@
 # Satellite Trail Segmentation
 
-This repository contains a reproducibility study of satellite trail detection in astronomical images. It implements: patch preprocessing, a patch classifier, baseline U-Net segmentation, Attention U-Net segmentation, and Hough-style postprocessing.
+This repository contains a reproducibility study of satellite trail detection in astronomical images. It implements patch preprocessing, a patch classifier, baseline U-Net segmentation, Attention U-Net segmentation, and probabilistic-Hough postprocessing.
 
 
 ## Documentation
@@ -102,21 +102,25 @@ MODEL_TYPE=attention_unet SPLIT=test sbatch scripts/slurm/eval.slurm
 Run the final PNG full-field comparison with:
 
 ```bash
-python scripts/python/evaluate_final_full_field.py --png-dir data/png --master-split-csv data/h5s/master_split.csv --unet-checkpoint results/models/unet/unet_weights.pt --classifier-checkpoint results/models/classifier/classifier_weights.pt --split-id 2 --output-dir final_eval_outputs --unet-threshold 0.65 --classifier-threshold 0.725
+python scripts/python/evaluate_final_full_field.py --png-dir data/png --master-split-csv data/h5s/master_split.csv --unet-checkpoint results/models/unet/unet_weights.pt --classifier-checkpoint results/models/classifier/classifier_weights.pt --split-id 2 --output-dir results/metrics/test --unet-threshold 0.65 --classifier-threshold 0.725 --hough-threshold 50 --min-line-length 100 --max-line-gap 125 --morph-kernel-size 3 --min-component-size 500 --contour-area-threshold 1500
 ```
+
+The command writes per-image CSVs for the two raw predictions, both predictions with released ASTA defaults, and both predictions with the selected parameters, plus ``aggregate_metrics.csv`` containing all six aggregate rows.
 
 ## Final Test Metrics
 
 Aggregate full-field metrics on 26 held-out test images:
 
-Selected operating thresholds for the final full-field evaluation were `UNET_THRESHOLD = 0.65` and `CLASSIFIER_THRESHOLD = 0.725`. 
+Selected operating thresholds were `UNET_THRESHOLD = 0.65` and `CLASSIFIER_THRESHOLD = 0.725`. The evaluator reports both the released ASTA postprocessing defaults and the validation-selected configuration (`hough_threshold=50`, `min_line_length=100`, `max_line_gap=125`, `morph_kernel_size=3`, `min_component_size=500`, and `contour_area_threshold=1500`).
 
 | Method | IoU | Dice/F1 | Precision | Recall | FNR | FPR |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | Classifier U-Net | 0.8202 | 0.9012 | 0.8893 | 0.9135 | 0.0865 | 7.02e-05 |
 | U-Net | 0.8131 | 0.8969 | 0.8801 | 0.9144 | 0.0856 | 7.68e-05 |
-| Classifier U-Net + ASTA-only | 0.7961 | 0.8865 | 0.8283 | 0.9534 | 0.0466 | 1.22e-04 |
-| U-Net + ASTA-only | 0.7914 | 0.8836 | 0.8231 | 0.9537 | 0.0463 | 1.27e-04 |
+| Classifier U-Net + selected postprocessing | 0.8100 | 0.8950 | 0.8484 | 0.9470 | 0.0530 | 1.04e-04 |
+| U-Net + selected postprocessing | 0.8095 | 0.8947 | 0.8465 | 0.9487 | 0.0513 | 1.06e-04 |
+| Classifier U-Net + ASTA defaults | 0.7961 | 0.8865 | 0.8283 | 0.9534 | 0.0466 | 1.22e-04 |
+| U-Net + ASTA defaults | 0.7914 | 0.8836 | 0.8231 | 0.9537 | 0.0463 | 1.27e-04 |
 
 ## Submission Notes
 
@@ -136,7 +140,7 @@ satellite_trails/
 ├── report/                             Final report and executive summary PDFs
 ├── data/                               Local data, ignored except small metadata
 ├── results/
-│   └── models/                         Final saved model checkpoints
+│   ├── models/                         Final saved model checkpoints
 ```
 
 ## Note on the Use of Autogeneration Tools

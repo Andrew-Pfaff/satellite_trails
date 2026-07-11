@@ -1,7 +1,7 @@
 Satellite Trail Segmentation
 ============================
 
-This project implements and evaluates deep-learning pipelines for detecting satellite trails in astronomical images. It reproduces the core ASTA-style workflow of patch-based segmentation with a U-Net and Hough-style postprocessing, using the PNG-derived image and mask data available for this project.
+This project implements and evaluates deep-learning pipelines for detecting satellite trails in astronomical images. It reproduces ASTA's patch-based U-Net and probabilistic-Hough workflow using the released PNG-derived images and masks, and adds classifier gating plus validation-selected postprocessing parameters.
 
 The repository contains:
 
@@ -43,14 +43,20 @@ The public pipeline entry point is currently :mod:`segmentation.py`. A typical u
        unet_threshold=0.65,
        classifier_threshold=0.725,
    )
-   postprocessed, postprocess_times, contour_details = pipeline.postprocessing(prediction["segmented_result"])
+   postprocessed, postprocess_times, contour_details = pipeline.postprocessing(
+       prediction["segmented_result"],
+       hough_threshold=50,
+       min_line_length=100,
+       max_line_gap=125,
+       contour_area_threshold=1500,
+   )
 
 This interface is useful for full-field PNG inference. The final evaluation scripts use the package evaluation utilities directly on H5 datasets.
 
 Final results
 -------------
 
-The held-out test results, classifier-only patch metrics, and full-field timing experiment are summarized in :doc:`results`. The final full-field evaluation used ``UNET_THRESHOLD = 0.65`` and ``CLASSIFIER_THRESHOLD = 0.725``.
+The held-out test results, classifier-only patch metrics, and full-field timing experiment are summarized in :doc:`results`. The final full-field evaluation used ``UNET_THRESHOLD = 0.65`` and ``CLASSIFIER_THRESHOLD = 0.725`` and compared released ASTA postprocessing defaults against the validation-selected configuration.
 
 Documentation map
 -----------------

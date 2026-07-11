@@ -42,7 +42,12 @@ The current full-field inference helper lives in ``segmentation.py``. It takes o
    pipeline = SatelliteTrailPipeline(unet_model=model)
    prepared = pipeline.preprocessing("data/png/example_full.png", normalization="source_zscore")
    prediction, timings = pipeline.segmentation(prepared["patch_data"], use_classifier=False, unet_threshold=0.65)
-   postprocessed, postprocess_timings, contour_details = pipeline.postprocessing(prediction["segmented_result"])
+   postprocessed, postprocess_timings, contour_details = pipeline.postprocessing(
+       prediction["segmented_result"],
+       hough_threshold=50,
+       min_line_length=100,
+       max_line_gap=125,
+       contour_area_threshold=1500,
+   )
 
 For more detailed full-field usage, see :doc:`full_field_pipeline`. 
-

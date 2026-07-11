@@ -1,7 +1,7 @@
 Results
 =======
 
-This page summarizes the final held-out test metrics. The table reports the raw U-Net and classifier-gated U-Net pipelines, with postprocessing.
+This page summarizes the final held-out test metrics for the raw models, the released ASTA postprocessing defaults, and the validation-selected postprocessing parameters.
 
 Final model metrics
 -------------------
@@ -36,7 +36,25 @@ Final model metrics
      - 0.9999
      - 7.68e-05
      - 0.0856
-   * - Classifier U-Net + ASTA-only
+   * - Classifier U-Net + selected postprocessing
+     - Test
+     - 0.8100
+     - 0.8950
+     - 0.8484
+     - 0.9470
+     - 0.9999
+     - 1.04e-04
+     - 0.0530
+   * - U-Net + selected postprocessing
+     - Test
+     - 0.8095
+     - 0.8947
+     - 0.8465
+     - 0.9487
+     - 0.9999
+     - 1.06e-04
+     - 0.0513
+   * - Classifier U-Net + ASTA defaults
      - Test
      - 0.7961
      - 0.8865
@@ -45,7 +63,7 @@ Final model metrics
      - 0.9999
      - 1.22e-04
      - 0.0466
-   * - U-Net + ASTA-only
+   * - U-Net + ASTA defaults
      - Test
      - 0.7914
      - 0.8836
@@ -54,6 +72,7 @@ Final model metrics
      - 0.9999
      - 1.27e-04
      - 0.0463
+
 Classifier-only patch metrics
 -----------------------------
 
@@ -95,6 +114,8 @@ Operating thresholds
 --------------------
 
 The final full-field evaluation used ``UNET_THRESHOLD = 0.65`` and ``CLASSIFIER_THRESHOLD = 0.725``.
+
+The selected postprocessing configuration uses Hough threshold ``50``, minimum line length ``100``, maximum line gap ``125``, a ``3 x 3`` closing kernel, minimum component size ``500``, and contour-area threshold ``1500``. The final evaluator also runs the released ASTA defaults, whose corresponding maximum line gap and contour-area threshold are ``250`` and ``3000``.
 
 The U-Net threshold was selected to balance precision and recall for the final full-field pipeline. The validation sweep showed a broad high-performing region, and the final threshold favors a conservative binary segmentation before optional postprocessing.
 
@@ -153,7 +174,7 @@ The GPU measurements were collected on a Colab A100 runtime using CUDA execution
      - 6.51 (0.02)
      - 6.12 (0.02)
 
-The classifier-gated pipeline is substantially faster on CPU because most patches are rejected before U-Net inference. On the A100 runtime, U-Net inference is already fast and the total runtime is dominated by preprocessing and Hough-style postprocessing, so the classifier gives a smaller absolute gain.
+The classifier-gated pipeline is substantially faster on CPU because most patches are rejected before U-Net inference. On the A100 runtime, U-Net inference is already fast and the total runtime is dominated by preprocessing and Hough postprocessing, so the classifier gives a smaller absolute gain.
 
 Validation threshold sweeps
 ---------------------------

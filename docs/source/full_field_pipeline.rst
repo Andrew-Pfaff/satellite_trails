@@ -60,7 +60,12 @@ Load the model checkpoints, construct ``SatelliteTrailPipeline``, and call the p
 
    postprocessed, postprocess_times, contour_details = pipeline.postprocessing(
        predictions["segmented_result"],
-       mode="asta_only",
+       hough_threshold=50,
+       min_line_length=100,
+       max_line_gap=125,
+       morph_kernel_size=3,
+       min_component_size=500,
+       contour_area_threshold=1500,
    )
 
    metrics = pipeline.evaluate_masks(
@@ -108,6 +113,14 @@ The module-level ``main`` function runs preprocessing, segmentation, postprocess
        normalization="source_zscore",
        unet_threshold=0.65,
        classifier_threshold=0.725,
+       postprocess_config={
+           "hough_threshold": 50,
+           "min_line_length": 100,
+           "max_line_gap": 125,
+           "morph_kernel_size": 3,
+           "min_component_size": 500,
+           "contour_area_threshold": 1500,
+       },
        output_dir="outputs",
        output_prefix="example_full",
    )
@@ -128,6 +141,10 @@ Run the same full-field workflow from the repository root:
      --normalization source_zscore \
      --unet-threshold 0.65 \
      --classifier-threshold 0.725 \
+     --hough-threshold 50 \
+     --min-line-length 100 \
+     --max-line-gap 125 \
+     --contour-area-threshold 1500 \
      --output-dir outputs \
      --output-prefix example_full
 
@@ -164,8 +181,8 @@ Common settings
 ``classifier_threshold``
    Probability threshold used to decide whether a patch contains a trail.
 
-``mode``
-   Postprocessing mode control. ``mode="asta_only"`` is the default and the recommended setting for the final pipeline. See :doc:`postprocessing` for details on the available experimental mode.
+``hough_threshold``, ``min_line_length``, and ``max_line_gap``
+   Probabilistic Hough transform settings used by postprocessing. The validation-selected final values are ``50``, ``100``, and ``125`` respectively.
 
 API reference
 -------------

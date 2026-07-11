@@ -1,19 +1,13 @@
 Postprocessing
 ==============
 
-Postprocessing refines raw segmentation masks into cleaner line detections. The project uses Hough-style processing to reconnect broken trail segments and reduce false negatives caused by patch boundaries, stars, or small gaps.
+Postprocessing starts from a binary prediction and uses probabilistic Hough line detection, morphological closing, connected-component removal, and contour filtering to reconnect broken trail segments and reduce false negatives.
 
 The core postprocessing code lives in:
 
 .. code-block:: text
 
    src/satellite_trail_segmentation/postprocess/
-
-The full-field pipeline uses:
-
-.. code-block:: python
-
-   from satellite_trail_segmentation.postprocess.pipeline import postprocess_segmentation
 
 Basic usage
 -----------
@@ -26,52 +20,31 @@ The postprocessing entry point accepts a binary-like mask. Any nonzero value is 
 
    postprocessed = postprocess_segmentation(
        raw_prediction,
-       mode="asta_only",
        hough_threshold=50,
        min_line_length=100,
-       max_line_gap=250,
+       max_line_gap=125,
        morph_kernel_size=3,
        min_component_size=500,
+       contour_area_threshold=1500,
    )
 
-Available modes
----------------
+Pipeline
+--------
 
-The pipeline supports exactly two postprocessing configurations through ``mode``.
+The live postprocessing pipeline performs the following sequence:
 
-.. list-table::
-   :header-rows: 1
+* Detect probabilistic Hough line segments.
+* Draw each detected segment with one-pixel thickness onto a copy of the input prediction.
+* Apply morphological closing.
+* Remove small connected components.
+* Optionally remove small and highly fragmented contours using a contour-local Hough transform and DBSCAN angle clustering.
 
-   * - ``mode``
-     - Behavior
-   * - ``asta_only``
-     - Detects Hough line segments, draws each detected segment with one-pixel thickness, then applies the shared cleanup stage. This is the default and matches the conservative ASTA-style setting.
-   * - ``asta_gap_fill``
-     - Experimental setting that starts from the ASTA-only Hough drawing, clusters detected segments into bounded representative centerlines, fills only support-anchored gaps, then applies the shared cleanup stage. This setting is retained for inspection but is not recommended for the final pipeline.
+The experimental width-aware gap-fill mode used during development is not part of the live pipeline.
 
-Mode guidance
--------------
+Final configurations
+--------------------
 
-Use ``mode="asta_only"`` as the conservative default. It draws real Hough-detected segments and does not estimate trail widths.
-
-The experimental ``mode="asta_gap_fill"`` was tested during development because early intermediate segmentation models produced visibly broken trails. On the final selected models it added too many false positives for little false-negative gain, so it is not recommended for reported results.
-
-Experimental gap-fill options
------------------------------
-
-These options only affect ``mode="asta_gap_fill"``. They are documented for reproducibility and inspection, but the recommended final setting is ``mode="asta_only"``.
-
-``width_samples``
-   Number of positions sampled along each representative centerline when estimating the gap-fill drawing width.
-
-``max_width_search``
-   Perpendicular search radius used for sampled width estimation.
-
-``fallback_width``
-   Width used when sampled width estimation fails. The default is ``1``.
-
-``min_fill_gap`` and ``max_fill_gap``
-   Lower and upper bounds on support-anchored gaps that may be filled.
+The final full-field evaluator runs two configurations. The validation-selected configuration uses ``hough_threshold=50``, ``min_line_length=100``, ``max_line_gap=125``, ``morph_kernel_size=3``, ``min_component_size=500``, and ``contour_area_threshold=1500``. The released ASTA defaults use the same values except ``max_line_gap=250`` and ``contour_area_threshold=3000``. The selected configuration is the default in ``evaluate_final_full_field.py``; the general ``postprocess_segmentation`` API retains the released ASTA values as its function defaults.
 
 Hough detection options
 -----------------------
@@ -84,23 +57,6 @@ Hough detection options
 
 ``max_line_gap``
    Maximum gap OpenCV may bridge when forming Hough line segments.
-
-Line clustering options
------------------------
-
-``asta_gap_fill`` clusters Hough segments before building representative centerlines.
-
-``line_cluster_angle_degrees``
-   Maximum orientation difference between segments in one cluster. Smaller values split trails more aggressively by angle.
-
-``line_cluster_distance``
-   Maximum perpendicular distance between segments in one cluster.
-
-``line_cluster_max_along_gap``
-   Maximum along-line gap between segments before they are split into separate clusters. Set to ``None`` in Python to disable this gap check.
-
-``max_extension_ratio``
-   Maximum representative-centerline span relative to the observed cluster endpoint span before clipping to the image boundary.
 
 Cleanup options
 ---------------
@@ -118,6 +74,8 @@ After Hough drawing, the pipeline applies cleanup steps:
 
 ``contour_area_threshold``
    Minimum contour area kept by the final contour filter.
+
+The contour-local Hough and DBSCAN parameters are also exposed by ``postprocess_segmentation``. Their released ASTA defaults are Hough threshold ``50``, minimum line length ``100``, maximum line gap ``10``, DBSCAN ``eps=5``, ``min_samples=1``, and rejection at five orientation clusters.
 
 Contour details
 ---------------
@@ -143,13 +101,13 @@ Full-field pipeline example
 
    postprocessed, timings, contour_details = pipeline.postprocessing(
        predictions["segmented_result"],
-       mode="asta_only",
        hough_threshold=50,
        min_line_length=100,
-       max_line_gap=250,
+       max_line_gap=125,
        morph_kernel_size=3,
        min_component_size=500,
        contour_filter=True,
+       contour_area_threshold=1500,
        contour_details=True,
    )
 
@@ -160,10 +118,10 @@ The same options are available on the command line through ``segmentation.py``:
    python segmentation.py \
      --source-path data/png/example_full.fits_full.png \
      --unet-checkpoint results/models/unet/unet_weights.pt \
-     --postprocess-mode asta_only \
      --hough-threshold 50 \
      --min-line-length 100 \
-     --max-line-gap 250 \
+     --max-line-gap 125 \
+     --contour-area-threshold 1500 \
      --contour-details
 
 Before/after evaluation
@@ -179,4 +137,4 @@ Important metrics for postprocessing are:
 * IoU/Dice change.
 * Visual continuity of broken trails.
 
-The conservative ASTA-style setting can reduce FNR and improve recall, but it may also lower precision and IoU because Hough drawing introduces additional false positives. The gap-fill setting is retained only as an experimental development option and is not recommended for the final reported pipeline.
+On the held-out test set, the selected setting gives raw-U-Net IoU ``0.8095`` and FNR ``0.0513`` after postprocessing, compared with IoU ``0.7914`` and FNR ``0.0463`` under the ASTA defaults. The selected setting therefore preserves overlap better, while the ASTA defaults recover more missed trail pixels.

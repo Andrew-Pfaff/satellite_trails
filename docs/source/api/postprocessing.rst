@@ -22,15 +22,6 @@ Contour helpers
    :members:
    :show-inheritance:
 
-Gap filling
------------
-
-This module is retained for reproducibility and inspection only. The gap-fill mode is experimental and is not recommended for the final reported pipeline. Use ``mode="asta_only"`` for the final ASTA-style postprocessing configuration.
-
-.. automodule:: satellite_trail_segmentation.postprocess.gap_fill
-   :members:
-   :show-inheritance:
-
 Mask utilities
 --------------
 
