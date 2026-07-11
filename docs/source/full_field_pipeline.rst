@@ -165,7 +165,7 @@ Common settings
    Probability threshold used to decide whether a patch contains a trail.
 
 ``mode``
-   Postprocessing mode control. ``mode="asta_only"`` is the default, and ``mode="asta_gap_fill"`` enables bounded support-anchored gap filling. See :doc:`postprocessing` for the available options.
+   Postprocessing mode control. ``mode="asta_only"`` is the default and the recommended setting for the final pipeline. See :doc:`postprocessing` for details on the available experimental mode.
 
 API reference
 -------------

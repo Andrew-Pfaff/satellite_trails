@@ -46,10 +46,8 @@ The classifier is evaluated patch-wise across thresholds. The tuning objective i
 Full-field evaluation
 ---------------------
 
-``scripts/python/evaluate_final_full_field.py`` evaluates the final PNG pipeline on rows selected from ``master_split.csv``. It runs raw U-Net predictions, classifier-gated U-Net predictions, and two postprocessed variants for each:
+``scripts/python/evaluate_final_full_field.py`` evaluates the final PNG pipeline on rows selected from ``master_split.csv``. It runs raw U-Net predictions, classifier-gated U-Net predictions, and the final ASTA-style postprocessing.
 
-* ``postprocess_asta_only``
-* ``postprocess_asta_gap_fill``
 
 The script writes one ``<method>_per_image_metrics.csv`` file per method and ``aggregate_metrics.csv`` in the output directory. Each row includes the confusion counts plus accuracy, precision, recall/sensitivity, specificity, FPR, FNR, IoU, and Dice/F1.
 
