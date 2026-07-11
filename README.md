@@ -30,7 +30,7 @@ The docs include quickstart usage, data notes, training, parameter search, evalu
 ## Quick Setup
 
 ```bash
-git clone <repo-url> satellite_trails
+git clone https://gitlab.developers.cam.ac.uk/phy/data-intensive-science-mphil/assessments/projects/anp50.git satellite_trails
 cd satellite_trails
 python3 -m venv .venv
 source .venv/bin/activate
@@ -109,14 +109,18 @@ python scripts/python/evaluate_final_full_field.py --png-dir data/png --master-s
 
 Aggregate full-field metrics on 26 held-out test images:
 
+Selected operating thresholds for the final full-field evaluation were `UNET_THRESHOLD = 0.65` and `CLASSIFIER_THRESHOLD = 0.725`. 
+
 | Method | IoU | Dice/F1 | Precision | Recall | FNR | FPR |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | Classifier U-Net | 0.8202 | 0.9012 | 0.8893 | 0.9135 | 0.0865 | 7.02e-05 |
 | U-Net | 0.8131 | 0.8969 | 0.8801 | 0.9144 | 0.0856 | 7.68e-05 |
 | Classifier U-Net + ASTA-only | 0.7961 | 0.8865 | 0.8283 | 0.9534 | 0.0466 | 1.22e-04 |
 | U-Net + ASTA-only | 0.7914 | 0.8836 | 0.8231 | 0.9537 | 0.0463 | 1.27e-04 |
-| Classifier U-Net + ASTA gap-fill | 0.7869 | 0.8808 | 0.8185 | 0.9533 | 0.0467 | 1.30e-04 |
-| U-Net + ASTA gap-fill | 0.7814 | 0.8773 | 0.8112 | 0.9551 | 0.0449 | 1.37e-04 |
+
+## Submission Notes
+
+The large ASTA PNG archive, generated H5 datasets, and most runtime result directories are not stored in version control because of size. The best model checkpoints used for the submitted results are included with the submission, and the remaining generated artifacts can be reproduced through the documented workflows.
 
 ## Repository Layout
 
@@ -129,6 +133,28 @@ satellite_trails/
 │   └── slurm/                          CSD3 job wrappers
 ├── docs/                               Sphinx documentation
 ├── tests/                              Unit tests
+├── report/                             Final report and executive summary PDFs
 ├── data/                               Local data, ignored except small metadata
-└── results/                            Runtime outputs, ignored
+├── results/
+│   └── models/                         Final saved model checkpoints
 ```
+
+## Note on the Use of Autogeneration Tools
+
+AI tools, such as OpenAI Codex and Gemini, were used during development for the following tasks:
+
+- Reviewing code and suggesting debugging fixes
+- Drafting and revising documentation, comments, and docstrings
+- Helping structure data preprocessing, HDF5 dataset generation, and split metadata workflows
+- Helping implement seeding and checkpointing utilities
+- Helping set up the postprocessing pipeline
+- Writing and modifying plotting utilities
+- Optimizing torch training code
+- Updating UNet training code and evaluation code to work with Attention U-Net
+- Writing command-line interfaces for scripts
+- Adding and updating SLURM scripts, including command-line interfaces
+- Writing tests using proposer critic workflow
+- Porting workflows to Google Colab notebooks
+- Checking repository structure and submission requirements
+
+All code, results, and written claims were reviewed and edited by me.
