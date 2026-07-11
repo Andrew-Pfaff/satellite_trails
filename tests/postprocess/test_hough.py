@@ -3,13 +3,7 @@ import numpy as np
 import pytest
 import torch
 
-from satellite_trail_segmentation.postprocess.hough import (
-    cluster_hough_lines,
-    line_records,
-    representative_centerline,
-    standardize_binary_mask,
-    to_numpy_2d,
-)
+from satellite_trail_segmentation.postprocess.postprocess_utils import standardize_binary_mask, to_numpy_2d
 
 
 def test_to_numpy_2d_handles_numpy_arrays_without_mutation():
@@ -67,7 +61,6 @@ def test_asta_draws_every_hough_line_with_thickness_one(monkeypatch):
 
     result = postprocess_segmentation(
         mask,
-        mode="asta_only",
         min_line_length=1,
         max_line_gap=20,
         morph_kernel_size=1,
@@ -78,70 +71,3 @@ def test_asta_draws_every_hough_line_with_thickness_one(monkeypatch):
     assert [line[2] for line in drawn] == [1, 1]
     assert result[15, 20] == 255
     assert result[15, 35] == 255
-
-
-def test_duplicate_parallel_hough_detections_cluster_into_one_trail():
-    lines = np.array(
-        [
-            [[2, 15, 37, 15]],
-            [[2, 16, 37, 16]],
-            [[2, 14, 37, 14]],
-            [[2, 5, 37, 5]],
-        ],
-        dtype=np.int32,
-    )
-
-    records = line_records(lines)
-    clusters = cluster_hough_lines(records, angle_degrees=3, distance=3)
-
-    assert sorted(len(cluster) for cluster in clusters) == [1, 3]
-
-
-def test_distant_collinear_hough_detections_split_by_along_gap():
-    lines = np.array(
-        [
-            [[5, 15, 35, 15]],
-            [[90, 15, 120, 15]],
-        ],
-        dtype=np.int32,
-    )
-
-    records = line_records(lines)
-    clusters = cluster_hough_lines(records, angle_degrees=3, distance=3, max_along_gap=25)
-
-    assert sorted(len(cluster) for cluster in clusters) == [1, 1]
-
-
-def test_nearby_collinear_hough_detections_cluster_by_along_gap():
-    lines = np.array(
-        [
-            [[5, 15, 35, 15]],
-            [[50, 15, 80, 15]],
-        ],
-        dtype=np.int32,
-    )
-
-    records = line_records(lines)
-    clusters = cluster_hough_lines(records, angle_degrees=3, distance=3, max_along_gap=25)
-
-    assert [len(cluster) for cluster in clusters] == [2]
-
-
-def test_representative_centerline_is_centered_between_cluster_members():
-    lines = np.array([[[5, 10, 35, 10]], [[5, 14, 35, 14]]], dtype=np.int32)
-
-    records = line_records(lines)
-    cluster = cluster_hough_lines(records, angle_degrees=3, distance=5)[0]
-    centerline = representative_centerline(cluster, image_shape=(30, 40), max_extension_ratio=1.0)
-
-    assert centerline.tolist() == [5, 12, 35, 12]
-
-
-def test_representative_centerline_extends_to_bounded_span():
-    lines = np.array([[[40, 10, 60, 10]]], dtype=np.int32)
-
-    records = line_records(lines)
-    cluster = cluster_hough_lines(records, angle_degrees=3, distance=5)[0]
-    centerline = representative_centerline(cluster, image_shape=(30, 200), max_extension_ratio=1.5)
-
-    assert centerline.tolist() == [35, 10, 65, 10]

@@ -1,9 +1,30 @@
 import cv2
+import inspect
 import numpy as np
-import pytest
 
-from satellite_trail_segmentation.postprocess.gap_fill import sampled_width_for_line
 from satellite_trail_segmentation.postprocess.pipeline import postprocess_segmentation
+
+
+def test_pipeline_defaults_match_asta_implementation():
+    defaults = {
+        name: parameter.default
+        for name, parameter in inspect.signature(postprocess_segmentation).parameters.items()
+    }
+
+    assert defaults["foreground_value"] == 255
+    assert defaults["hough_threshold"] == 50
+    assert defaults["min_line_length"] == 100
+    assert defaults["max_line_gap"] == 250
+    assert defaults["morph_kernel_size"] == 3
+    assert defaults["min_component_size"] == 500
+    assert defaults["contour_filter"] is True
+    assert defaults["contour_area_threshold"] == 3000
+    assert defaults["contour_hough_threshold"] == 50
+    assert defaults["contour_min_line_length"] == 100
+    assert defaults["contour_max_line_gap"] == 10
+    assert defaults["contour_dbscan_eps"] == 5
+    assert defaults["contour_dbscan_min_samples"] == 1
+    assert defaults["contour_max_orientation_clusters"] == 5
 
 
 def gapped_stripe_mask():
@@ -13,14 +34,7 @@ def gapped_stripe_mask():
     return mask
 
 
-@pytest.mark.parametrize(
-    "mode",
-    [
-        "asta_only",
-        "asta_gap_fill",
-    ],
-)
-def test_public_modes_do_not_mutate_input(monkeypatch, mode):
+def test_pipeline_does_not_mutate_input(monkeypatch):
     mask = gapped_stripe_mask()
     original = mask.copy()
 
@@ -31,187 +45,14 @@ def test_public_modes_do_not_mutate_input(monkeypatch, mode):
 
     postprocess_segmentation(
         mask,
-        mode=mode,
         min_line_length=1,
         max_line_gap=20,
         morph_kernel_size=1,
         min_component_size=1,
         contour_filter=False,
-        width_samples=5,
-        max_width_search=10,
     )
 
     np.testing.assert_array_equal(mask, original)
-
-
-def test_sampled_width_recovers_known_synthetic_stripe_width():
-    mask = np.zeros((40, 50), dtype=np.uint8)
-    mask[17:24, 5:45] = 255
-
-    width = sampled_width_for_line(mask, np.array([5, 20, 44, 20]), num_samples=7, max_width_search=12)
-
-    assert width == 7
-
-
-def test_sampled_gap_fills_only_synthetic_gap(monkeypatch):
-    mask = gapped_stripe_mask()
-    drawn = []
-
-    def fake_lines(*args, **kwargs):
-        return np.array([[[5, 20, 14, 20]], [[25, 20, 34, 20]]], dtype=np.int32)
-
-    original_line = cv2.line
-
-    def capture_line(image, pt1, pt2, color, thickness=1):
-        drawn.append((pt1, pt2, thickness))
-        return original_line(image, pt1, pt2, color, thickness=thickness)
-
-    monkeypatch.setattr(cv2, "HoughLinesP", fake_lines)
-    monkeypatch.setattr(cv2, "line", capture_line)
-
-    result = postprocess_segmentation(
-        mask,
-        mode="asta_gap_fill",
-        min_line_length=1,
-        max_line_gap=20,
-        morph_kernel_size=1,
-        min_component_size=1,
-        contour_filter=False,
-        width_samples=9,
-        max_width_search=10,
-    )
-
-    assert drawn[0][2] == 1
-    assert drawn[-1][0][0] > 5
-    assert drawn[-1][1][0] < 34
-    assert drawn[-1][2] == 5
-    assert result[20, 20] == 255
-    assert result[20, 40] == 0
-
-
-def test_sampled_gap_respects_min_fill_gap(monkeypatch):
-    mask = gapped_stripe_mask()
-    drawn = []
-
-    def fake_lines(*args, **kwargs):
-        return np.array([[[5, 20, 14, 20]], [[25, 20, 34, 20]]], dtype=np.int32)
-
-    original_line = cv2.line
-
-    def capture_line(image, pt1, pt2, color, thickness=1):
-        drawn.append((pt1, pt2, thickness))
-        return original_line(image, pt1, pt2, color, thickness=thickness)
-
-    monkeypatch.setattr(cv2, "HoughLinesP", fake_lines)
-    monkeypatch.setattr(cv2, "line", capture_line)
-
-    result = postprocess_segmentation(
-        mask,
-        mode="asta_gap_fill",
-        min_line_length=1,
-        max_line_gap=20,
-        min_fill_gap=11,
-        morph_kernel_size=1,
-        min_component_size=1,
-        contour_filter=False,
-        width_samples=9,
-        max_width_search=10,
-    )
-
-    assert len(drawn) == 2
-    assert result[20, 20] == 0
-    assert result[18, 20] == 0
-
-
-def test_asta_gap_fill_uses_second_cluster_pass(monkeypatch):
-    mask = gapped_stripe_mask()
-    mask[:, 35:] = 0
-    mask[18:23, 35:45] = 255
-    drawn = []
-
-    def fake_lines(*args, **kwargs):
-        return np.array(
-            [
-                [[5, 20, 14, 20]],
-                [[35, 20, 44, 20]],
-            ],
-            dtype=np.int32,
-        )
-
-    original_line = cv2.line
-
-    def capture_line(image, pt1, pt2, color, thickness=1):
-        drawn.append((pt1, pt2, thickness))
-        return original_line(image, pt1, pt2, color, thickness=thickness)
-
-    monkeypatch.setattr(cv2, "HoughLinesP", fake_lines)
-    monkeypatch.setattr(cv2, "line", capture_line)
-
-    result = postprocess_segmentation(
-        mask,
-        mode="asta_gap_fill",
-        min_line_length=1,
-        max_line_gap=60,
-        line_cluster_max_along_gap=10,
-        max_extension_ratio=5,
-        max_fill_gap=30,
-        morph_kernel_size=1,
-        min_component_size=1,
-        contour_filter=False,
-        width_samples=5,
-        max_width_search=10,
-    )
-
-    assert len(drawn) == 3
-    assert result[20, 20] == 255
-
-
-def test_asta_gap_fill_splits_distant_collinear_fragments(monkeypatch):
-    mask = np.zeros((40, 130), dtype=np.uint8)
-    mask[18:23, 5:35] = 255
-    mask[18:23, 90:120] = 255
-    drawn = []
-
-    def fake_lines(*args, **kwargs):
-        return np.array(
-            [
-                [[5, 20, 34, 20]],
-                [[90, 20, 119, 20]],
-            ],
-            dtype=np.int32,
-        )
-
-    original_line = cv2.line
-
-    def capture_line(image, pt1, pt2, color, thickness=1):
-        drawn.append((pt1, pt2, thickness))
-        return original_line(image, pt1, pt2, color, thickness=thickness)
-
-    monkeypatch.setattr(cv2, "HoughLinesP", fake_lines)
-    monkeypatch.setattr(cv2, "line", capture_line)
-
-    result = postprocess_segmentation(
-        mask,
-        mode="asta_gap_fill",
-        min_line_length=1,
-        max_line_gap=100,
-        line_cluster_max_along_gap=25,
-        morph_kernel_size=1,
-        min_component_size=1,
-        contour_filter=False,
-        width_samples=5,
-        max_width_search=10,
-    )
-
-    assert len(drawn) == 2
-    assert result[20, 20] == 255
-    assert result[20, 104] == 255
-    assert result[20, 60] == 0
-
-
-def test_invalid_options_raise_value_error():
-    with pytest.raises(ValueError, match="mode"):
-        postprocess_segmentation(np.zeros((10, 10), dtype=np.uint8), mode="wide")
 
 
 def test_default_return_is_mask_only(monkeypatch):

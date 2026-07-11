@@ -64,7 +64,7 @@ def test_plot_segmentation_postprocess_comparison_accepts_multiple_masks(tmp_pat
     image = np.zeros((8, 8), dtype=np.float32)
     mask = np.ones((8, 8), dtype=np.uint8)
     prediction = np.eye(8, dtype=np.uint8)
-    postprocessed = {"ASTA-only": prediction, "ASTA gap-fill": np.fliplr(prediction)}
+    postprocessed = {"ASTA": prediction, "Alternative": np.fliplr(prediction)}
 
     plot_segmentation_postprocess_comparison(image, mask, prediction, postprocessed, save_path=path, include_image=False, error_overlay=False)
 

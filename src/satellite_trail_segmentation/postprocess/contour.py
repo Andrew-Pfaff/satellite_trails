@@ -5,7 +5,17 @@ from sklearn.cluster import DBSCAN
 from satellite_trail_segmentation.postprocess.postprocess_utils import standardize_binary_mask
 
 
-def contour_filtering(mask, area_threshold=3000, foreground_value=255):
+def contour_filtering(
+    mask,
+    area_threshold=3000,
+    foreground_value=255,
+    hough_threshold=50,
+    min_line_length=100,
+    max_line_gap=10,
+    dbscan_eps=5,
+    dbscan_min_samples=1,
+    max_orientation_clusters=5,
+):
     """
     Applies contour filtering to a binary mask.
 
@@ -13,6 +23,12 @@ def contour_filtering(mask, area_threshold=3000, foreground_value=255):
         mask (np.ndarray or torch.Tensor): Binary-like mask after Hough filling and cleanup.
         area_threshold (float): Minimum contour area to keep. Defaults to 3000.
         foreground_value (int): Foreground value for returned mask. Defaults to 255.
+        hough_threshold (int): Accumulator threshold for the contour-local Hough pass. Defaults to 50.
+        min_line_length (int): Minimum contour-local Hough line length. Defaults to 100.
+        max_line_gap (int): Maximum contour-local Hough line gap. Defaults to 10.
+        dbscan_eps (float): DBSCAN angle-neighbourhood radius in degrees. Defaults to 5.
+        dbscan_min_samples (int): DBSCAN minimum samples per angle cluster. Defaults to 1.
+        max_orientation_clusters (int): Number of angle clusters at which a contour is rejected. Defaults to 5.
 
     Returns:
         output (np.ndarray): uint8 binary mask after contour filtering.
@@ -29,17 +45,24 @@ def contour_filtering(mask, area_threshold=3000, foreground_value=255):
 
         contour_mask = np.zeros_like(output, dtype=np.uint8)
         cv2.drawContours(contour_mask, [contour], -1, 1, thickness=cv2.FILLED)
-        lines = cv2.HoughLinesP(contour_mask, 1, np.pi / 180, threshold=50, minLineLength=100, maxLineGap=10)
+        lines = cv2.HoughLinesP(
+            contour_mask,
+            1,
+            np.pi / 180,
+            threshold=hough_threshold,
+            minLineLength=min_line_length,
+            maxLineGap=max_line_gap,
+        )
 
         if lines is None:
             continue
 
         lines = lines[:, 0, :]
         angles = np.array([_line_angle(line) for line in lines])
-        clustering = DBSCAN(eps=5, min_samples=1).fit(angles.reshape(-1, 1))
+        clustering = DBSCAN(eps=dbscan_eps, min_samples=dbscan_min_samples).fit(angles.reshape(-1, 1))
         unique_labels = set(clustering.labels_)
 
-        if len(unique_labels) >= 5:
+        if len(unique_labels) >= max_orientation_clusters:
             cv2.drawContours(output, [contour], -1, 0, thickness=cv2.FILLED)
             continue
 
