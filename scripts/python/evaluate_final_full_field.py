@@ -78,7 +78,7 @@ def test_rows(master_split_csv, png_dir, split_id="2"):
 
 def postprocess_methods():
     """
-    Defines the final full-field postprocessing variants to evaluate.
+    Defines the final full-field postprocessing variant to evaluate.
 
     Returns:
         dict: Mapping of output method suffixes to postprocessing keyword arguments.
@@ -94,13 +94,8 @@ def postprocess_methods():
         "contour_area_threshold": 3000,
     }
     return {
-        "postprocess_asta_only": {
+        "postprocess_asta": {
             **common,
-            "mode": "asta_only",
-        },
-        "postprocess_asta_gap_fill": {
-            **common,
-            "mode": "asta_gap_fill",
         },
     }
 
