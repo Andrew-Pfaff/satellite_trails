@@ -58,9 +58,49 @@ def test_postprocess_methods_are_final_report_configs():
 
     assert set(methods) == {
         "postprocess_asta",
+        "postprocess_selected",
+    }
+    assert methods["postprocess_asta"] == {
+        "hough_threshold": 50,
+        "min_line_length": 100,
+        "max_line_gap": 250,
+        "morph_kernel_size": 3,
+        "min_component_size": 500,
+        "contour_filter": True,
+        "contour_area_threshold": 3000,
     }
     assert all(config["contour_filter"] is True for config in methods.values())
-    assert all(config["contour_area_threshold"] == 3000 for config in methods.values())
+    config = methods["postprocess_selected"]
+    assert config["hough_threshold"] == 50
+    assert config["min_line_length"] == 100
+    assert config["max_line_gap"] == 125
+    assert config["morph_kernel_size"] == 3
+    assert config["min_component_size"] == 500
+    assert config["contour_filter"] is True
+    assert config["contour_area_threshold"] == 1500
+
+
+def test_postprocess_methods_use_selected_cli_values():
+    args = argparse.Namespace(
+        hough_threshold=25,
+        min_line_length=50,
+        max_line_gap=125,
+        morph_kernel_size=3,
+        min_component_size=500,
+        contour_area_threshold=1500,
+    )
+
+    config = evaluate_final_full_field.postprocess_methods(args)["postprocess_selected"]
+
+    assert config == {
+        "hough_threshold": 25,
+        "min_line_length": 50,
+        "max_line_gap": 125,
+        "morph_kernel_size": 3,
+        "min_component_size": 500,
+        "contour_filter": True,
+        "contour_area_threshold": 1500,
+    }
 
 
 def test_aggregate_rows_uses_summed_counts():
@@ -109,6 +149,12 @@ def test_evaluate_full_fields_writes_expected_csvs(monkeypatch, tmp_path):
         unet_batch_size=1,
         classifier_batch_size=1,
         num_workers=0,
+        hough_threshold=25,
+        min_line_length=50,
+        max_line_gap=125,
+        morph_kernel_size=3,
+        min_component_size=500,
+        contour_area_threshold=1500,
         output_dir=tmp_path / "outputs",
     )
 
@@ -119,6 +165,8 @@ def test_evaluate_full_fields_writes_expected_csvs(monkeypatch, tmp_path):
         "classifier_unet",
         "unet_postprocess_asta",
         "classifier_unet_postprocess_asta",
+        "unet_postprocess_selected",
+        "classifier_unet_postprocess_selected",
     }
     for method in expected_methods:
         path = args.output_dir / f"{method}_per_image_metrics.csv"

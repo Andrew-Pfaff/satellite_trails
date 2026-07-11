@@ -76,7 +76,7 @@ def test_rows(master_split_csv, png_dir, split_id="2"):
     return rows
 
 
-def postprocess_methods():
+def postprocess_methods(args=None):
     """
     Defines the final full-field postprocessing variant to evaluate.
 
@@ -84,19 +84,26 @@ def postprocess_methods():
         dict: Mapping of output method suffixes to postprocessing keyword arguments.
     """
 
-    common = {
-        "hough_threshold": 50,
-        "min_line_length": 100,
-        "max_line_gap": 250,
-        "morph_kernel_size": 3,
-        "min_component_size": 500,
+    selected = {
+        "hough_threshold": getattr(args, "hough_threshold", 50),
+        "min_line_length": getattr(args, "min_line_length", 100),
+        "max_line_gap": getattr(args, "max_line_gap", 125),
+        "morph_kernel_size": getattr(args, "morph_kernel_size", 3),
+        "min_component_size": getattr(args, "min_component_size", 500),
         "contour_filter": True,
-        "contour_area_threshold": 3000,
+        "contour_area_threshold": getattr(args, "contour_area_threshold", 1500),
     }
     return {
         "postprocess_asta": {
-            **common,
+            "hough_threshold": 50,
+            "min_line_length": 100,
+            "max_line_gap": 250,
+            "morph_kernel_size": 3,
+            "min_component_size": 500,
+            "contour_filter": True,
+            "contour_area_threshold": 3000,
         },
+        "postprocess_selected": selected,
     }
 
 
@@ -213,7 +220,7 @@ def evaluate_full_fields(args):
         "unet": [],
         "classifier_unet": [],
     }
-    configs = postprocess_methods()
+    configs = postprocess_methods(args)
     for prefix in ("unet", "classifier_unet"):
         for suffix in configs:
             rows_by_method[f"{prefix}_{suffix}"] = []
@@ -279,6 +286,12 @@ def parse_args():
     parser.add_argument("--unet-batch-size", type=int, default=None)
     parser.add_argument("--classifier-batch-size", type=int, default=None)
     parser.add_argument("--num-workers", type=int, default=0)
+    parser.add_argument("--hough-threshold", type=int, default=50)
+    parser.add_argument("--min-line-length", type=int, default=100)
+    parser.add_argument("--max-line-gap", type=int, default=125)
+    parser.add_argument("--morph-kernel-size", type=int, default=3)
+    parser.add_argument("--min-component-size", type=int, default=500)
+    parser.add_argument("--contour-area-threshold", type=float, default=1500)
     parser.add_argument("--output-dir", default="final_eval_outputs")
     return parser.parse_args()
 
