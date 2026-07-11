@@ -1,7 +1,7 @@
 Results
 =======
 
-This page summarizes the final held-out test metrics. The table reports the raw U-Net and classifier-gated U-Net pipelines, plus the ASTA-style postprocessed variants using ``mode="asta_only"`` and ``mode="asta_gap_fill"``.
+This page summarizes the final held-out test metrics. The table reports the raw U-Net and classifier-gated U-Net pipelines, with postprocessing.
 
 Final model metrics
 -------------------
@@ -54,25 +54,6 @@ Final model metrics
      - 0.9999
      - 1.27e-04
      - 0.0463
-   * - Classifier U-Net + ASTA gap-fill
-     - Test
-     - 0.7869
-     - 0.8808
-     - 0.8185
-     - 0.9533
-     - 0.9999
-     - 1.30e-04
-     - 0.0467
-   * - U-Net + ASTA gap-fill
-     - Test
-     - 0.7814
-     - 0.8773
-     - 0.8112
-     - 0.9551
-     - 0.9999
-     - 1.37e-04
-     - 0.0449
-
 Classifier-only patch metrics
 -----------------------------
 

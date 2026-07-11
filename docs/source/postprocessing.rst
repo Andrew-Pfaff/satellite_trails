@@ -47,17 +47,19 @@ The pipeline supports exactly two postprocessing configurations through ``mode``
    * - ``asta_only``
      - Detects Hough line segments, draws each detected segment with one-pixel thickness, then applies the shared cleanup stage. This is the default and matches the conservative ASTA-style setting.
    * - ``asta_gap_fill``
-     - Starts from the ASTA-only Hough drawing, clusters detected segments into bounded representative centerlines, fills only support-anchored gaps, then applies the shared cleanup stage.
+     - Experimental setting that starts from the ASTA-only Hough drawing, clusters detected segments into bounded representative centerlines, fills only support-anchored gaps, then applies the shared cleanup stage. This setting is retained for inspection but is not recommended for the final pipeline.
 
 Mode guidance
 -------------
 
 Use ``mode="asta_only"`` as the conservative default. It draws real Hough-detected segments and does not estimate trail widths.
 
-Use ``mode="asta_gap_fill"`` when the prediction has broken trails but you want to preserve the real ASTA Hough result. Width estimates are only used to draw bounded gap-fill segments where the fitted centerline is supported on both sides by existing foreground.
+The experimental ``mode="asta_gap_fill"`` was tested during development because early intermediate segmentation models produced visibly broken trails. On the final selected models it added too many false positives for little false-negative gain, so it is not recommended for reported results.
 
-Gap-fill options
-----------------
+Experimental gap-fill options
+-----------------------------
+
+These options only affect ``mode="asta_gap_fill"``. They are documented for reproducibility and inspection, but the recommended final setting is ``mode="asta_only"``.
 
 ``width_samples``
    Number of positions sampled along each representative centerline when estimating the gap-fill drawing width.
@@ -103,7 +105,7 @@ Line clustering options
 Cleanup options
 ---------------
 
-After Hough drawing and optional gap filling, the pipeline applies cleanup steps:
+After Hough drawing, the pipeline applies cleanup steps:
 
 ``morph_kernel_size``
    Square kernel size for morphological closing. Values less than or equal to ``1`` effectively skip closing.
@@ -141,13 +143,10 @@ Full-field pipeline example
 
    postprocessed, timings, contour_details = pipeline.postprocessing(
        predictions["segmented_result"],
-       mode="asta_gap_fill",
+       mode="asta_only",
        hough_threshold=50,
        min_line_length=100,
        max_line_gap=250,
-       max_extension_ratio=1.5,
-       min_fill_gap=10,
-       max_fill_gap=250,
        morph_kernel_size=3,
        min_component_size=500,
        contour_filter=True,
@@ -161,7 +160,7 @@ The same options are available on the command line through ``segmentation.py``:
    python segmentation.py \
      --source-path data/png/example_full.fits_full.png \
      --unet-checkpoint results/models/unet/unet_weights.pt \
-     --postprocess-mode asta_gap_fill \
+     --postprocess-mode asta_only \
      --hough-threshold 50 \
      --min-line-length 100 \
      --max-line-gap 250 \
@@ -180,4 +179,4 @@ Important metrics for postprocessing are:
 * IoU/Dice change.
 * Visual continuity of broken trails.
 
-The conservative ASTA-style setting can reduce FNR and improve recall, but it may also lower precision and IoU because Hough drawing introduces additional false positives. The gap-fill setting is available for cases where bounded, support-anchored filling is worth that trade-off.
+The conservative ASTA-style setting can reduce FNR and improve recall, but it may also lower precision and IoU because Hough drawing introduces additional false positives. The gap-fill setting is retained only as an experimental development option and is not recommended for the final reported pipeline.
