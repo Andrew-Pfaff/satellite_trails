@@ -24,7 +24,7 @@ Attention U-Net tuning:
 
    sbatch scripts/slurm/parameter_search/attention_unet_tuning.slurm
 
-Attention U-Net tuning used ``p_shift=0.25`` and ``use_batchnorm=True``, matching the selected baseline U-Net training configuration.
+The experimental Attention U-Net study was configured with ``p_shift=0.25`` and ``use_batchnorm=True``. Only the batch-normalisation setting matched the selected baseline U-Net configuration. The final baseline used ``p_shift=0.0``. The Attention U-Net study was not completed and did not contribute a model to the final evaluation.
 
 Ablations
 ---------

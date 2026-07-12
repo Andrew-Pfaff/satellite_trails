@@ -15,3 +15,8 @@ Patch-based context
 -------------------
 
 The models operate on ``528 x 528`` patches. Trails can cross patch boundaries, which can create fragmented predictions. Hough postprocessing is used to reduce this problem, but overlapping patches or full-field models would provide a more direct solution.
+
+Incomplete Attention U-Net experiment
+-------------------------------------
+
+The Attention U-Net architecture and its training utilities were implemented, but the tuning and training study could not be completed after access to data and computational resources was lost. No final Attention U-Net checkpoint or test metrics are included, so the reported model comparison is limited to the baseline U-Net and classifier-gated U-Net.

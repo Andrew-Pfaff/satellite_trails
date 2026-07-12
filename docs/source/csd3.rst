@@ -25,7 +25,7 @@ Runtime outputs are written under ``results/``:
    results/models/
    results/hyperparameter_tuning/
 
-These outputs should be copied into report tables/figures as needed but should not be committed to the repository.
+Most generated tuning databases, logs, plots, and intermediate checkpoints are not committed. The final classifier and baseline U-Net checkpoints used for the submitted evaluation are deliberate exceptions and are tracked under ``results/models/classifier/`` and ``results/models/unet/``. No final Attention U-Net checkpoint was produced.
 
 Safety note
 -----------

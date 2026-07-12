@@ -7,6 +7,8 @@ The main evaluator is ``scripts/python/evaluate_models.py``. It supports:
 * ``unet``
 * ``attention_unet``
 
+Support for ``attention_unet`` is provided for future experiments. The project did not produce a final Attention U-Net checkpoint or include that architecture in the reported evaluation.
+
 The CSD3 wrapper is:
 
 .. code-block:: bash
@@ -24,11 +26,11 @@ Evaluate a baseline U-Net on the validation split:
 
    MODEL_TYPE=unet SPLIT=val sbatch scripts/slurm/eval.slurm
 
-Evaluate an Attention U-Net on the test split:
+Evaluate an experimental Attention U-Net checkpoint, if one has been trained separately:
 
 .. code-block:: bash
 
-   MODEL_TYPE=attention_unet SPLIT=test sbatch scripts/slurm/eval.slurm
+   MODEL_TYPE=attention_unet SPLIT=val sbatch scripts/slurm/eval.slurm
 
 Evaluate a classifier:
 
@@ -56,4 +58,4 @@ The six output methods are ``unet``, ``classifier_unet``, ``unet_postprocess_ast
 Final protocol
 --------------
 
-The final report uses validation results for threshold selection and held-out test results for final comparison. ``evaluate_models.py`` is used for patch/H5 threshold selection and ``evaluate_final_full_field.py`` for final PNG full-field raw-versus-postprocessed comparisons.
+The final report uses validation results for threshold selection and held-out test results for final comparison. ``evaluate_models.py`` is used for patch/H5 threshold selection and ``evaluate_final_full_field.py`` for final PNG full-field raw-versus-postprocessed comparisons. The reported comparison includes the baseline U-Net and classifier-gated U-Net, not Attention U-Net.

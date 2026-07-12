@@ -1,6 +1,6 @@
 # Satellite Trail Segmentation
 
-This repository contains a reproducibility study of satellite trail detection in astronomical images. It implements patch preprocessing, a patch classifier, baseline U-Net segmentation, Attention U-Net segmentation, and probabilistic-Hough postprocessing.
+This repository contains a reproducibility study of satellite trail detection in astronomical images. It implements patch preprocessing, a patch classifier, baseline U-Net segmentation, an experimental Attention U-Net, and probabilistic-Hough postprocessing. The Attention U-Net was not trained to completion or included in the final evaluation.
 
 
 ## Documentation
@@ -83,20 +83,18 @@ sbatch scripts/slurm/parameter_search/classifier_ablation.slurm
 sbatch scripts/slurm/parameter_search/unet_ablation.slurm
 ```
 
-Train final models:
+Reproduce the final report training runs with the Colab notebooks:
 
-```bash
-sbatch scripts/slurm/training/classifier_train.slurm
-sbatch scripts/slurm/training/unet_train.slurm
-sbatch scripts/slurm/training/attention_unet_train.slurm
-```
+- `scripts/colab/classifier_train_colab.ipynb`
+- `scripts/colab/unet_train_colab.ipynb`
 
-Evaluate models:
+These notebooks contain the exact selected settings used for the reported classifier and U-Net. In particular, the final U-Net used 200 steps per epoch, positive weight 1.0, no shift augmentation, and batch normalisation. The training SLURM wrappers are generic CSD3 templates whose defaults do not reproduce the final checkpoints. They can be adapted by overriding their environment variables with the values recorded in the Colab notebooks.
+
+Evaluate the completed models:
 
 ```bash
 MODEL_TYPE=classifier SPLIT=test sbatch scripts/slurm/eval.slurm
 MODEL_TYPE=unet SPLIT=test sbatch scripts/slurm/eval.slurm
-MODEL_TYPE=attention_unet SPLIT=test sbatch scripts/slurm/eval.slurm
 ```
 
 Run the final PNG full-field comparison with:
@@ -137,10 +135,9 @@ satellite_trails/
 │   └── slurm/                          CSD3 job wrappers
 ├── docs/                               Sphinx documentation
 ├── tests/                              Unit tests
-├── report/                             Final report and executive summary PDFs
 ├── data/                               Local data, ignored except small metadata
 ├── results/
-│   ├── models/                         Final saved model checkpoints
+│   └── models/                         Committed final classifier and U-Net checkpoints
 ```
 
 ## Note on the Use of Autogeneration Tools

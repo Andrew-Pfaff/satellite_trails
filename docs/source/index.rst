@@ -8,7 +8,7 @@ The repository contains:
 * H5 dataset preprocessing for full-field PNG images and masks.
 * A patch classifier for deciding which patches contain trails.
 * A baseline U-Net segmentation model.
-* An Attention U-Net segmentation model.
+* An experimental Attention U-Net implementation, without a completed final training run.
 * Training, hyperparameter tuning, ablation, evaluation, and CSD3 SLURM wrappers.
 * Postprocessing utilities for converting raw segmentation masks into cleaner line detections.
 

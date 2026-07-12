@@ -3,6 +3,8 @@ Training
 
 Training scripts live in ``scripts/python/train`` and are wrapped by SLURM scripts in ``scripts/slurm/training``.
 
+The final reported classifier and baseline U-Net were trained using ``scripts/colab/classifier_train_colab.ipynb`` and ``scripts/colab/unet_train_colab.ipynb``. Those notebooks contain the exact selected settings. The SLURM training wrappers are generic alternative templates and their defaults do not reproduce the final checkpoints.
+
 Classifier
 ----------
 
@@ -40,7 +42,7 @@ CSD3 wrapper:
 Attention U-Net
 ---------------
 
-The Attention U-Net uses additive attention gates on skip connections while otherwise following the cleaned baseline U-Net conventions.
+The Attention U-Net uses additive attention gates on skip connections while otherwise following the cleaned baseline U-Net conventions. Its training and tuning entry points are retained for future experiments, but training was not completed, no final checkpoint is included, and it was excluded from the final evaluation.
 
 Local entry point:
 
@@ -75,7 +77,7 @@ The most important shared options are:
    * - ``--weight-decay``
      - AdamW weight decay. Defaults to ``1e-4``.
    * - ``--normalization``
-     - Input normalization mode. Choose from ``source_zscore``, ``patch_zscore``, or ``uint8``. Final wrappers default to ``source_zscore``.
+     - Input normalization mode. Choose from ``source_zscore``, ``patch_zscore``, or ``uint8``. The SLURM wrappers default to ``source_zscore``.
    * - ``--sampler-fraction``
      - Positive patch fraction requested by the fixed-step weighted sampler. If omitted, regular shuffled loading is used.
    * - ``--steps-per-epoch``
@@ -128,7 +130,7 @@ where ``--bce-weight-factor`` is :math:`\alpha`.
    * - ``--no-batchnorm``
      - Disables batch normalization. Batch normalization is enabled by default.
 
-During validation, segmentation checkpoints are selected by the best validation IoU over thresholds from ``0.05`` to ``0.95`` in 37 evenly spaced steps. The SLURM wrappers save final outputs under ``results/models/unet/`` and ``results/models/attention_unet/`` by default.
+During validation, segmentation checkpoints are selected by the best validation IoU over thresholds from ``0.05`` to ``0.95`` in 37 evenly spaced steps. The SLURM wrappers save runtime outputs under ``results/models/unet/`` and ``results/models/attention_unet/`` by default.
 
 Classifier settings
 -------------------
@@ -153,6 +155,6 @@ Classifier settings
    * - ``--recall-penalty``
      - Penalty strength when validation recall is below ``--min-recall``. The Python default is ``2.0``; the SLURM wrapper uses ``3.0``.
 
-During validation, classifier metrics are swept over thresholds from ``0.05`` to ``0.95`` in 37 evenly spaced steps. The SLURM wrapper saves final outputs under ``results/models/classifier/`` by default.
+During validation, classifier metrics are swept over thresholds from ``0.05`` to ``0.95`` in 37 evenly spaced steps. The SLURM wrapper saves runtime outputs under ``results/models/classifier/`` by default.
 
-Training checkpoints, model weights, and loss plots are runtime outputs and should not be committed to the repository.
+Generated training checkpoints, model weights, and loss plots are normally runtime outputs and should not be committed. The final classifier and baseline U-Net checkpoints used for the submitted evaluation are deliberate exceptions and are tracked under ``results/models/classifier/`` and ``results/models/unet/``.

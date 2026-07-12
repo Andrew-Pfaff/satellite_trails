@@ -27,12 +27,10 @@ Notebook guide
      - Runs the 36-configuration validation grid and writes aggregate confusion counts and metrics for every configuration plus the raw baseline.
    * - ``scripts/colab/final_full_field_evaluation_colab.ipynb``
      - Runs the final full-field PNG evaluation workflow used for report metrics, including raw predictions, released ASTA postprocessing defaults, and validation-selected postprocessing for both U-Net variants.
-   * - ``scripts/colab/plot_all_pipelines_colab.ipynb``
-     - Loads trained checkpoints and PNG examples, runs the available pipeline variants, and creates comparison plots for inspection or reporting.
    * - ``scripts/colab/pipeline_timing_colab.ipynb``
      - Benchmarks the end-to-end full-field pipeline on CPU and A100 GPU runtimes for the computation timing comparison.
 
 Relationship to CSD3 scripts
 ----------------------------
 
-The CSD3 scripts in ``scripts/slurm/`` remain the intended HPC workflow. The Colab notebooks mirror the same project scripts where possible, but wrap them with Drive mounting, local runtime copies, and notebook-specific output paths.
+The final reported classifier and U-Net were trained with the Colab notebooks above after CSD3 access became unavailable. The scripts in ``scripts/slurm/`` provide alternative HPC wrappers, but their training defaults are generic and do not match every selected final-model setting. The Colab training notebooks are the record of the final training commands.
